@@ -1,0 +1,29 @@
+---
+title: "Code 5"
+date: "2025-24-19"
+due_date: "2025-02-19"
+due_time: "11:59 PM"
+draft: false
+menu:
+  assignment:
+    parent: Code
+    weight: 6
+type: docs
+weight: 1
+output:
+  blogdown::html_page:
+    toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Computer Vision: MNIST revisted as a CNN
+
+Convolutional neural network for MNIST handwritten digits classification.
+
+- Download [ch08_1_MNIST_classification_CNN_code.Rmd](../../slides/code/ch08_1_MNIST_classification_CNN_code.Rmd). Modified from [dl-keras-tf](https://github.com/rstudio-conf-2020/dl-keras-tf).
+- Download [ch08_1_MNIST_classification_CNN_images.zip](../../slides/code/ch08_1_MNIST_classification_CNN_images.zip). Extract the `images` folder in the same directory as the `ch08_1_MNIST_classification_CNN_code.Rmd` file.
+- Read and run the code in the `ch08_1_MNIST_classification_CNN_code.Rmd` file. Consult ChatGPT in case of errors.
+- Answer questions in the code chunks labeled "Questions" and describe your observations.
+- Knit the document into an HTML format and submit the knitted document.
+

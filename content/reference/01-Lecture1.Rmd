@@ -1,0 +1,19 @@
+---
+title: Lecture 1 reading
+date: "`r Sys.Date()`"
+menu:
+  reference:
+    parent: Reference
+    weight: 1
+type: docs
+weight: 1
+output:
+  blogdown::html_page:
+      toc: TRUE
+---
+
+- [Linear algebra refresher, d2l.ai](https://d2l.ai/chapter_preliminaries/linear-algebra.html)
+- [Calculus refresher, d2l.ai](https://d2l.ai/chapter_preliminaries/calculus.html)
+- [Mathematics for Deep Learning, d2l.ai](https://d2l.ai/chapter_appendix-mathematics-for-deep-learning/index.html) - systematic deep learning math, linear algebra and matrix operations, eigendecomposition, single- and multivariable calculus, integral calculus, maximum likelihood and optimization, statistics (random variables, distributions, naive Bayes), information theory
+- [Paper: LeCun, Bengio, and Hinton, “Deep Learning.”](https://www.nature.com/articles/nature14539) - Classical deep learning review. Areas of application, historical development, principles of supervised learning, stochastic gradient descent (Figure 1 - illustration of forward and backpropagation, with equations), convolutional neural networks for image recognition and in other areas, language processing, recurrent neural networks, LSTMs
+- [A Comprehensive Guide to 21 Popular Deep Learning Interview Questions and Answers](https://www.analyticsvidhya.com/blog/2020/04/comprehensive-popular-deep-learning-interview-questions-answers/) - to read at the beginning and end of the course

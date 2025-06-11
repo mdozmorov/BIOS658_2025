@@ -1,0 +1,11 @@
+---
+# title: References
+menu:
+  reading:
+#    parent: Reading details
+    weight: 1
+type: docs
+weight: 1
+---
+
+Class-specific references will be posted following each class session. See ["Machine learning and deep learning resources"](https://github.com/mdozmorov/MachineLearning_notes) GitHub repository for more resources.

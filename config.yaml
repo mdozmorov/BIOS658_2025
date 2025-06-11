@@ -1,0 +1,80 @@
+baseurl: https://bios658-2025.netlify.app/
+defaultContentLanguage: en
+title: "Statistical Methods for High-throughput Genomic Data I"
+theme: hugo-academic
+
+
+# ------------------
+# Building options
+# ------------------
+permalinks:
+  post: "/:year/:month/:day/:slug/"
+buildFuture: True
+
+# No taxonomy
+disableKinds:
+  - taxonomy
+markup:
+  defaultMarkdownHandler: goldmark
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    codeFences: false
+  tableOfContents:
+    startLevel: 2
+    endLevel: 4
+imaging:
+  resampleFilter: lanczos
+  quality: 90
+  anchor: smart
+
+
+copyright: 'MGD'
+enableGitInfo: true
+hasCJKLanguage: false
+defaultContentLanguageInSubdir: false
+removePathAccents: true
+pagination: 
+  pagerSize: 10
+enableEmoji: true
+footnotereturnlinkcontents: <sup>^</sup>
+
+
+# ----------------
+# Output options
+# ----------------
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
+    - WebAppManifest
+  section:
+    - HTML
+    - RSS
+mediaTypes:
+  application/manifest+json:
+    suffixes:
+      - webmanifest
+outputFormats:
+  WebAppManifest:
+    mediaType: application/manifest+json
+    rel: manifest
+ignoreFiles:
+  - \.ipynb$
+  - .ipynb_checkpoints$
+  - \.Rmd$
+  - \.Rmarkdown$
+  - _files$
+  - _cache$
+  - \.Rproj.user$
+  - \.Rhistory$
+  - WIP$
+  - "^static/slides/code/.*\\.(Rmd|rmd|R|r)$"
+build:
+  writeStats: true
+  ignoreFiles:
+    - "static/slides/*_code\\.(Rmd|rmd|R|r)$"
+    - "static/slides/code/.*\\.(Rmd|rmd|R|r)$"
+

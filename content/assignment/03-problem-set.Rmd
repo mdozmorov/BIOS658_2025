@@ -1,0 +1,26 @@
+---
+title: "Code 3"
+date: "2025-01-29"
+due_date: "2025-02-05"
+due_time: "11:59 PM"
+draft: false
+menu:
+  assignment:
+    parent: Code
+    weight: 4
+type: docs
+weight: 1
+output:
+  blogdown::html_page:
+    toc: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Deep learning regression exercise
+
+- Download [03_Ames_house_price.Rmd](../../slides/code/03_Ames_house_price.Rmd). Modified from [dl-keras-tf](https://github.com/rstudio-conf-2020/dl-keras-tf).
+- Read and run the code in the `03_Ames_house_price.Rmd` file. Consult ChatGPT in case of errors.
+- Set `eval = TRUE` and answer questions in the code chunks labeled "Question:" and describe your observations.
+- Knit the document into an HTML format and submit the knitted document.
+

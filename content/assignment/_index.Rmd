@@ -1,0 +1,14 @@
+---
+title: Code details
+menu:
+  assignment:
+    parent: Code
+    weight: 1
+type: docs
+weight: 1
+output:
+  blogdown::html_page:
+    toc: true
+---
+
+Class-specific code will be posted following each class session

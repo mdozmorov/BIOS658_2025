@@ -1,0 +1,45 @@
+---
+title: "Day 5: Generative Adversarial Networks, Autoencoders, Recurrent Neural Networks, LSTM, GRU, sequence learning"
+# linktitle: "1: Introduction to R/RStudio and Images"
+date: "2020-06-12"
+read_date: "2020-06-12"
+draft: true
+menu:
+  reading:
+    parent: Readings
+    weight: 5
+type: docs
+---
+
+- [Deep learning with R: Chapter 6.2](https://www.manning.com/books/deep-learning-with-r) - Understanding RNN, LSTM, GRU layers
+- [Recurrent Neural Networks | MIT 6.S191](https://youtu.be/SEnXr6v2ifU) - RNN and LSTM overview
+
+- Lipton, Zachary C., John Berkowitz, and Charles Elkan. “[A Critical Review of Recurrent Neural Networks for Sequence Learning](http://arxiv.org/abs/1506.00019).” ArXiv:1506.00019 [Cs], October 17, 2015 - Recurrent Neural network review. Introduction to neural networks, forward and backpropagation, gradient descent. RNN architecture and math, Hopfield networks. LSTMs, Bidirectional RNNs, Neural Turing Machines.
+
+- [Deep learning with R: Chapter 8](https://www.manning.com/books/deep-learning-with-r) - Generarive deep learning
+- [Deep Generative Modeling | MIT 6.S191](https://youtu.be/rZufA635dq4) - GAN, Autoencoder, Variational autoencoder
+
+- [The Unreasonable Effectiveness of Recurrent Neural Networks](http://karpathy.github.io/2015/05/21/rnn-effectiveness/) - blog post by Andrej Karpathy
+
+- Hochreiter, Sepp, and Jürgen Schmidhuber. “[Long Short-Term Memory](https://www.bioinf.jku.at/publications/older/2604.pdf).” Neural Computation, 1997 - LSTM paper
+
+- [Understanding LSTM Networks](https://colah.github.io/posts/2015-08-Understanding-LSTMs/)
+
+- Hochreiter, Sepp, and Jürgen Schmidhuber. “[Long Short-Term Memory](https://www.bioinf.jku.at/publications/older/2604.pdf).” Neural Computation 9, no. 8 (1997): 1735–1780.
+
+- [LSTM is dead. Long Live Transformers!](https://youtu.be/S27pHKBEp30) - Crash course into LSTM and transformers, 30min video 
+
+- [Attn: Illustrated Attention](https://towardsdatascience.com/attn-illustrated-attention-5ec4ad276ee3)
+
+- Vaswani, Ashish, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. “[Attention Is All You Need](https://arxiv.org/abs/1706.03762” - Transformers paper
+
+- [Generative Models](https://openai.com/blog/generative-models/) - This post describes four projects that share a common theme of enhancing or using generative models, a branch of unsupervised learning techniques in machine learning
+- [A Friendly Introduction to Generative Adversarial Networks (GANs)](https://youtu.be/8L11aMN5KY8) - 20m video by Luis Serrano. [GitHub repo](https://github.com/luisguiserrano/gans)
+
+- Goodfellow, Ian J., Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, and Yoshua Bengio. “[Generative Adversarial Networks](http://arxiv.org/abs/1406.2661).” ArXiv:1406.2661 [Cs, Stat], June 10, 2014
+
+- Goodfellow, Ian. “[NIPS 2016 Tutorial: Generative Adversarial Networks](http://arxiv.org/abs/1701.00160).” ArXiv:1701.00160 [Cs], April 3, 2017
+
+- Pierre Baldi. “[Autoencoders, Unsupervised Learning, and Deep Architectures](http://proceedings.mlr.press/v27/baldi12a.html).” In Proceedings of ICML Workshop on Unsupervised and Transfer Learning, edited by Isabelle Guyon, Gideon Dror, Vincent Lemaire, Graham Taylor, and Daniel Silver, 37–49. PMLR, 2012 - Mathematical framework of autoencoders.
+
+- [4 Impressive GAN Libraries Every Data Scientist Should Know!](https://www.analyticsvidhya.com/blog/2020/08/top-5-gan-libraries-you-must-know/) by Analytics Vidhya

@@ -1,0 +1,6 @@
+[build]
+command = "hugo"
+
+[context.production.environment]
+HUGO_VERSION = "0.134.3"  # Replace with the latest stable version or the one you're using locally
+HUGO_ENV = "production"

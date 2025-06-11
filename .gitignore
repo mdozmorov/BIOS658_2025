@@ -1,0 +1,63 @@
+jena*
+pets*
+finegoods.txt
+celeba_gan
+img_align_celeba.zip
+spa-eng*
+pets_dataset.zip
+style-transfer*
+oxford_segmentation*
+libs
+logs
+glove*
+aclImdb*
+binary*
+*.keras
+pets_dataset
+
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Hugo-specific files
+public/
+resources/
+hugo_stats.json
+*.bak
+
+# Log files and temporary files
+*.log
+*.DS_Store
+*.swp
+*.swo
+*~
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Hugo-generated output files
+public/
+resources/
+
+# Backup files
+*.bak
+*.orig
+
+# Netlify (if you are deploying using Netlify)
+.netlify/
+# netlify.toml
+
+# Build or temp directories
+dist/
+tmp/
+.cache/
+

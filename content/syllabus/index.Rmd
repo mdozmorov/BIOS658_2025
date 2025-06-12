@@ -74,6 +74,7 @@ BIOS 524; and BIOS 544 or BIOS 654 (see [Bulletin](https://bulletin.vcu.edu/azco
 * Apply supervised and unsupervised methods to genomics data
 * Assess statistical significance when multiple hypothesis tests are performed, such as in the analysis of differential gene expression
 * Interpret biological findings obtained from statistical tests
+
 At the conclusion of the course, students will be able to collect, analyze and interpret genomics data using R programming environment
 
 ### Tentative schedule 

@@ -92,7 +92,127 @@ At the conclusion of the course, students will be able to collect, analyze and i
 - Networks
 - Machine learning
 
-## Grading
+## Homework format
 
-- Assignments (60%): Regular homework assignments and the final project
-- Participation (40%): Attendance and active participation in class discussions and labs
+- Assignments will be posted and should be submitted via VCU Canvas, [https://blackboard.vcu.edu](https://blackboard.vcu.edu)
+- Assignments should be submitted as reproducible reports in RMarkdown
+- Short summaries of Reading assignments should be organized in an RMarkdown report, maintained on GitHub
+- Final project should be submitted as a fully reproducible GitHub repository
+
+# Class rules
+
+* Attendance is required
+* Read all assignments before class
+* Bring your laptop and the book to every class
+
+# Grading Rubric
+
+## General Expectations (applies to all assignments)
+
+When evaluating any assignment, the following points will be considered:
+
+- **Punctuality and Completeness** – Was the assignment submitted on time and fully completed, addressing all required components?
+
+- **Organization and Presentation** – Is the material presented clearly, logically, and in a format suitable for a professional/academic audience?
+
+- **Effort and Application** – Does the work demonstrate serious engagement with the material and effective use of the required tools (e.g., R, RMarkdown, GitHub)?
+
+## Discussions
+
+- **Preparedness** – Student demonstrates they have completed the assigned preparation (videos, readings, tutorials) before class.
+
+- **Participation** – Student is actively engaged during discussion (listening attentively, asking questions, contributing ideas, responding to peers).
+
+## In-class Exercises
+
+- **Effort** – Student makes a genuine attempt to complete the exercise and uses it as an opportunity to deepen understanding of the topic.
+
+- **Collaboration** – When working with peers, the student contributes meaningfully to group progress.
+
+## Final project
+
+- In addition to the above grading considerations, each student will grade one peer's project, assigned randomly. The goal here is to learn from peer's work while assessing its quality. Grading by students will be averaged with instructor's grading.
+
+In addition to the criteria above, the final project will be evaluated on:
+
+- **Reproducibility** – The project must be reproducible, with clear instructions, well-documented code, and an organized GitHub repository.
+
+- **Depth and Rigor** – The project should demonstrate mastery of statistical and computational methods in genomics, with thoughtful application to a real dataset or problem.
+
+- **Communication** – Results and interpretations should be presented clearly, with effective use of figures, tables, and narrative.
+
+- **Peer Review** – Each student will evaluate one randomly assigned peer’s project. Peer grades will be combined with the instructor’s grade. Peer evaluation should be constructive and based on the same rubric.
+
+# Assignment Values
+
+## Grading model
+
+<!-- _includes/grading.md -->
+
+Grading for individual assignments reflects the overall quality of the completed work:
+
+* **A** – Excellent work demonstrating high quality, accuracy, and minimal need for revision.
+* **B** – Good work showing solid understanding and competence, with minor issues.
+* **C** – Satisfactory but below expectations; work has notable errors or omissions.
+* **D** – Poor work that fails to meet basic standards or demonstrates significant misunderstandings.
+* **F** – Unacceptable work with major deficiencies, showing little effort or understanding.
+
+| Grade |   Percentage  |        Performance       |
+|-------|---------------|--------------------------|
+|A+     | 97% to 100%   |         Excellent        |
+|A      | 93% to 96%    |         Excellent        |
+|A-     | 90% to 92%    |         Excellent        |
+|B+     | 87% to 89%    |           Good           |
+|B      | 83% to 86%    |           Good           |
+|B-     | 79% to 82%    |           Good           |
+|C+     | 76% to 78%    |      Unsatisfactory      |
+|C      | 73% to 75%    |      Unsatisfactory      |
+|C-     | 70% to 72%    |      Unsatisfactory      |
+|D+     | 67% to 69%    | More than unsatisfactory |
+|D      | 64% to 66%    | More than unsatisfactory |
+|D-     | 61% to 63%    | More than unsatisfactory |
+|F      | 60% and below |       Unacceptable       |
+
+## Assignments Grade Overall
+
+<!-- _includes/assignment-weight.md -->
+
+Your final grade reflects your performance throughout the semester. It includes readings, participation, in-class exercises (attendance is required), and assignments, weighted as follows:
+
+|            Assignment           | Percentage Value |
+|---------------------------------|------------------|
+|      In-class participation     |        20%       |
+| Reading and homework assignment |        50%       |
+|          Final project          |        30%       |
+|              TOTAL              |       100%       |
+
+<!-- _posts/policies/0001-01-01-deadline.md -->
+
+## Deadlines policy
+
+**Deadlines** are mandatory. Homework and reading assignment reviews are due **two weeks from the assignment date**, unless otherwise specified. Late submissions will receive no credit unless you discuss the situation with the instructor in advance.
+
+Assignments must be submitted **before the stated deadline**. For each day an assignment is late, the grade will drop by **half a letter grade**. Plan ahead and remember: *done is better than perfect*—it is always better to submit something than nothing. If you encounter difficulties, notify the instructor immediately rather than waiting until it is too late. In return, you can expect feedback from the instructor within a reasonable timeframe.
+
+<!-- _posts/policies/0001-01-01-copyright.md -->
+
+## Plagiarism and Copyright
+
+It is a **serious ethical violation** to take any material created by another person and represent it as your own original work. Any such plagiarism will result in **serious disciplinary action**, possibly including dismissal from VCU. Plagiarism can involve copying text from a book or magazine without proper attribution, or lifting words, code, photographs, videos, or other materials from the Internet and presenting them as your own. Please ask the instructor if you have any questions about distinguishing acceptable research from plagiarism.
+
+In addition to being a serious academic issue, **copyright is also a legal matter**.
+
+Never "lift," "borrow," "appropriate," or "repurpose" graphics, audio, or code without **both permission and proper attribution**. This guidance applies to scripts, audio, video clips, programs, photos, drawings, and other images, including those found online and in books.
+
+Create your own graphics, seek out images that are in the **public domain** or shared via a **Creative Commons license** that allows derivative works, or use images from the **AP Photo Bank** or other sources for which the school has obtained licensing.
+
+If you’re repurposing code, **keep the original licensing intact**. If you are unsure how to credit code, ask the instructor.
+
+The **exception is fair use**: if your work analyzes or comments on the image itself, reproducing it may be acceptable. For more guidance on fair use, the **Citizen Media Law Project** is an excellent resource.
+
+**When in doubt: ask.**
+
+Observe the [VCU Honor Pledge](https://conduct.students.vcu.edu/policy-and-resources/honor-system--standards-of-academic-conduct/academic-misconduct-/honor-pledge/) in any class- and homework activities
+
+[University-wide policies](https://president.vcu.edu/policies/)
+

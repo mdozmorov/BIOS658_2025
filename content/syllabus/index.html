@@ -67,9 +67,9 @@ Duration: 15 weeks (2 lectures per week, 1 hour 20 minutes each)</p>
 <li>Critically evaluate ant interpret statistical methods used in genomics data analysis</li>
 <li>Apply supervised and unsupervised methods to genomics data</li>
 <li>Assess statistical significance when multiple hypothesis tests are performed, such as in the analysis of differential gene expression</li>
-<li>Interpret biological findings obtained from statistical tests
-At the conclusion of the course, students will be able to collect, analyze and interpret genomics data using R programming environment</li>
+<li>Interpret biological findings obtained from statistical tests</li>
 </ul>
+<p>At the conclusion of the course, students will be able to collect, analyze and interpret genomics data using R programming environment</p>
 </div>
 <div id="tentative-schedule" class="section level3">
 <h3>Tentative schedule</h3>
@@ -89,11 +89,201 @@ At the conclusion of the course, students will be able to collect, analyze and i
 </ul>
 </div>
 </div>
-<div id="grading" class="section level2">
-<h2>Grading</h2>
+<div id="homework-format" class="section level2">
+<h2>Homework format</h2>
 <ul>
-<li>Assignments (60%): Regular homework assignments and the final project</li>
-<li>Participation (40%): Attendance and active participation in class discussions and labs</li>
+<li>Assignments will be posted and should be submitted via VCU Canvas, <a href="https://blackboard.vcu.edu">https://blackboard.vcu.edu</a></li>
+<li>Assignments should be submitted as reproducible reports in RMarkdown</li>
+<li>Short summaries of Reading assignments should be organized in an RMarkdown report, maintained on GitHub</li>
+<li>Final project should be submitted as a fully reproducible GitHub repository</li>
 </ul>
+</div>
+</div>
+<div id="class-rules" class="section level1">
+<h1>Class rules</h1>
+<ul>
+<li>Attendance is required</li>
+<li>Read all assignments before class</li>
+<li>Bring your laptop and the book to every class</li>
+</ul>
+</div>
+<div id="grading-rubric" class="section level1">
+<h1>Grading Rubric</h1>
+<div id="general-expectations-applies-to-all-assignments" class="section level2">
+<h2>General Expectations (applies to all assignments)</h2>
+<p>When evaluating any assignment, the following points will be considered:</p>
+<ul>
+<li><p><strong>Punctuality and Completeness</strong> – Was the assignment submitted on time and fully completed, addressing all required components?</p></li>
+<li><p><strong>Organization and Presentation</strong> – Is the material presented clearly, logically, and in a format suitable for a professional/academic audience?</p></li>
+<li><p><strong>Effort and Application</strong> – Does the work demonstrate serious engagement with the material and effective use of the required tools (e.g., R, RMarkdown, GitHub)?</p></li>
+</ul>
+</div>
+<div id="discussions" class="section level2">
+<h2>Discussions</h2>
+<ul>
+<li><p><strong>Preparedness</strong> – Student demonstrates they have completed the assigned preparation (videos, readings, tutorials) before class.</p></li>
+<li><p><strong>Participation</strong> – Student is actively engaged during discussion (listening attentively, asking questions, contributing ideas, responding to peers).</p></li>
+</ul>
+</div>
+<div id="in-class-exercises" class="section level2">
+<h2>In-class Exercises</h2>
+<ul>
+<li><p><strong>Effort</strong> – Student makes a genuine attempt to complete the exercise and uses it as an opportunity to deepen understanding of the topic.</p></li>
+<li><p><strong>Collaboration</strong> – When working with peers, the student contributes meaningfully to group progress.</p></li>
+</ul>
+</div>
+<div id="final-project" class="section level2">
+<h2>Final project</h2>
+<ul>
+<li>In addition to the above grading considerations, each student will grade one peer’s project, assigned randomly. The goal here is to learn from peer’s work while assessing its quality. Grading by students will be averaged with instructor’s grading.</li>
+</ul>
+<p>In addition to the criteria above, the final project will be evaluated on:</p>
+<ul>
+<li><p><strong>Reproducibility</strong> – The project must be reproducible, with clear instructions, well-documented code, and an organized GitHub repository.</p></li>
+<li><p><strong>Depth and Rigor</strong> – The project should demonstrate mastery of statistical and computational methods in genomics, with thoughtful application to a real dataset or problem.</p></li>
+<li><p><strong>Communication</strong> – Results and interpretations should be presented clearly, with effective use of figures, tables, and narrative.</p></li>
+<li><p><strong>Peer Review</strong> – Each student will evaluate one randomly assigned peer’s project. Peer grades will be combined with the instructor’s grade. Peer evaluation should be constructive and based on the same rubric.</p></li>
+</ul>
+</div>
+</div>
+<div id="assignment-values" class="section level1">
+<h1>Assignment Values</h1>
+<div id="grading-model" class="section level2">
+<h2>Grading model</h2>
+<!-- _includes/grading.md -->
+<p>Grading for individual assignments reflects the overall quality of the completed work:</p>
+<ul>
+<li><strong>A</strong> – Excellent work demonstrating high quality, accuracy, and minimal need for revision.</li>
+<li><strong>B</strong> – Good work showing solid understanding and competence, with minor issues.</li>
+<li><strong>C</strong> – Satisfactory but below expectations; work has notable errors or omissions.</li>
+<li><strong>D</strong> – Poor work that fails to meet basic standards or demonstrates significant misunderstandings.</li>
+<li><strong>F</strong> – Unacceptable work with major deficiencies, showing little effort or understanding.</li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th>Grade</th>
+<th>Percentage</th>
+<th>Performance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A+</td>
+<td>97% to 100%</td>
+<td>Excellent</td>
+</tr>
+<tr class="even">
+<td>A</td>
+<td>93% to 96%</td>
+<td>Excellent</td>
+</tr>
+<tr class="odd">
+<td>A-</td>
+<td>90% to 92%</td>
+<td>Excellent</td>
+</tr>
+<tr class="even">
+<td>B+</td>
+<td>87% to 89%</td>
+<td>Good</td>
+</tr>
+<tr class="odd">
+<td>B</td>
+<td>83% to 86%</td>
+<td>Good</td>
+</tr>
+<tr class="even">
+<td>B-</td>
+<td>79% to 82%</td>
+<td>Good</td>
+</tr>
+<tr class="odd">
+<td>C+</td>
+<td>76% to 78%</td>
+<td>Unsatisfactory</td>
+</tr>
+<tr class="even">
+<td>C</td>
+<td>73% to 75%</td>
+<td>Unsatisfactory</td>
+</tr>
+<tr class="odd">
+<td>C-</td>
+<td>70% to 72%</td>
+<td>Unsatisfactory</td>
+</tr>
+<tr class="even">
+<td>D+</td>
+<td>67% to 69%</td>
+<td>More than unsatisfactory</td>
+</tr>
+<tr class="odd">
+<td>D</td>
+<td>64% to 66%</td>
+<td>More than unsatisfactory</td>
+</tr>
+<tr class="even">
+<td>D-</td>
+<td>61% to 63%</td>
+<td>More than unsatisfactory</td>
+</tr>
+<tr class="odd">
+<td>F</td>
+<td>60% and below</td>
+<td>Unacceptable</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="assignments-grade-overall" class="section level2">
+<h2>Assignments Grade Overall</h2>
+<!-- _includes/assignment-weight.md -->
+<p>Your final grade reflects your performance throughout the semester. It includes readings, participation, in-class exercises (attendance is required), and assignments, weighted as follows:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Assignment</th>
+<th>Percentage Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>In-class participation</td>
+<td>20%</td>
+</tr>
+<tr class="even">
+<td>Reading and homework assignment</td>
+<td>50%</td>
+</tr>
+<tr class="odd">
+<td>Final project</td>
+<td>30%</td>
+</tr>
+<tr class="even">
+<td>TOTAL</td>
+<td>100%</td>
+</tr>
+</tbody>
+</table>
+<!-- _posts/policies/0001-01-01-deadline.md -->
+</div>
+<div id="deadlines-policy" class="section level2">
+<h2>Deadlines policy</h2>
+<p><strong>Deadlines</strong> are mandatory. Homework and reading assignment reviews are due <strong>two weeks from the assignment date</strong>, unless otherwise specified. Late submissions will receive no credit unless you discuss the situation with the instructor in advance.</p>
+<p>Assignments must be submitted <strong>before the stated deadline</strong>. For each day an assignment is late, the grade will drop by <strong>half a letter grade</strong>. Plan ahead and remember: <em>done is better than perfect</em>—it is always better to submit something than nothing. If you encounter difficulties, notify the instructor immediately rather than waiting until it is too late. In return, you can expect feedback from the instructor within a reasonable timeframe.</p>
+<!-- _posts/policies/0001-01-01-copyright.md -->
+</div>
+<div id="plagiarism-and-copyright" class="section level2">
+<h2>Plagiarism and Copyright</h2>
+<p>It is a <strong>serious ethical violation</strong> to take any material created by another person and represent it as your own original work. Any such plagiarism will result in <strong>serious disciplinary action</strong>, possibly including dismissal from VCU. Plagiarism can involve copying text from a book or magazine without proper attribution, or lifting words, code, photographs, videos, or other materials from the Internet and presenting them as your own. Please ask the instructor if you have any questions about distinguishing acceptable research from plagiarism.</p>
+<p>In addition to being a serious academic issue, <strong>copyright is also a legal matter</strong>.</p>
+<p>Never “lift,” “borrow,” “appropriate,” or “repurpose” graphics, audio, or code without <strong>both permission and proper attribution</strong>. This guidance applies to scripts, audio, video clips, programs, photos, drawings, and other images, including those found online and in books.</p>
+<p>Create your own graphics, seek out images that are in the <strong>public domain</strong> or shared via a <strong>Creative Commons license</strong> that allows derivative works, or use images from the <strong>AP Photo Bank</strong> or other sources for which the school has obtained licensing.</p>
+<p>If you’re repurposing code, <strong>keep the original licensing intact</strong>. If you are unsure how to credit code, ask the instructor.</p>
+<p>The <strong>exception is fair use</strong>: if your work analyzes or comments on the image itself, reproducing it may be acceptable. For more guidance on fair use, the <strong>Citizen Media Law Project</strong> is an excellent resource.</p>
+<p><strong>When in doubt: ask.</strong></p>
+<p>Observe the <a href="https://conduct.students.vcu.edu/policy-and-resources/honor-system--standards-of-academic-conduct/academic-misconduct-/honor-pledge/">VCU Honor Pledge</a> in any class- and homework activities</p>
+<p><a href="https://president.vcu.edu/policies/">University-wide policies</a></p>
 </div>
 </div>

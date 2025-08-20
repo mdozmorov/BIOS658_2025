@@ -2,9 +2,9 @@ main:
   - name: Syllabus
     url: /syllabus/
     weight: 1
-  - name: Schedule
-    url: /schedule/
-    weight: 2
+  # - name: Schedule
+  #   url: /schedule/
+  #   weight: 2
   # - name: Readings
   #   url: /reading/
   #   weight: 3

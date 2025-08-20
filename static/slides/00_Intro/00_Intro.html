@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>BIOS658 Introduction</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-20" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# BIOS658 Introduction
+]
+.subtitle[
+## Statistical Methods for High-throughput Genomic Data I
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-20
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## Course logistics
+
+**Instructor**: Mikhail G. Dozmorov &lt;mdozmorov@vcu.edu&gt;, Ph.D.  
+
+**Schedule**: Monday, Wednesday 1:00pm – 2:20pm  
+
+**Classroom**: One Capital Square (OCS) 2201  
+
+**Office hours**: By appointment, Mon, Wed 2:30pm – 4:00pm, OCS 709  
+
+**Course documents**:  
+
+&lt;https://bulletin.vcu.edu/azcourses/bios/&gt;  
+
+&lt;https://bios658-2025.netlify.app/&gt;
+
+---
+## Course prerequisites
+
+- BIOS 524, Biostatistical Computing, https://bios524-r-2023.netlify.app/
+- BIOS 544, Graduate Research Methods II or 
+- BIOS 654, Biostatistical Methods II
+
+**Required text**:  
+&lt;!-- Sorin Draghici, *Statistics and Data Analysis for Microarrays Using R and Bioconductor*, 2nd Ed., Chapman &amp; Hall/CRC Press, 2012. ISBN-978-1-4398-0975-4 --&gt; 
+- Supplemental reading and course materials will be provided in-class. We will be studying primary research papers.
+- Lecture notes will contain many footnotes with links. Make a good use of them, explore the references on your own!
+
+**Software**: The R programming environment, High Performance Computing
+
+---
+## Grading Policies
+
+|            Assignment           | Percentage Value |
+|---------------------------------|------------------|
+|      In-class participation     |        20%       |
+| Reading and homework assignment |        50%       |
+|          Final project          |        30%       |
+
+- Pre-proposal due in the middle of the semester, the final project due at the end
+
+- Deadlines are mandatory
+
+- Discuss homework with your peers, work together, but provide your own solution
+
+---
+## Expectations: What you should expect
+
+- Your learning is a priority  
+
+- There are no stupid questions — ask anything and expect answers or a follow-up from me 
+
+- You will have feedback on your homeworks  
+
+- You are professional partners, colleagues in learning
+
+---
+## Expectations: What you are expected to do
+
+- You make attending class a priority  
+
+- You submit your best work for homework: your own work, on time  
+
+- You engage in classroom discussion  
+
+- You learn from the class; you learn to teach yourself analytical skills  
+
+- You demonstrate your best professional working ethics (including beyond the class)
+
+---
+## Computational Genomics
+
+- Development and application of computational and statistical methods
+
+- Focused on large-scale genomic and biological datasets
+
+- Enables interpretation of DNA, RNA, and epigenomic information
+
+- Supports discovery of patterns, functions, and relationships in the genome
+
+- Bridges biology, computer science, mathematics, and statistics
+
+In summary: generation, organization, analysis, and interpretation of biological (especially genomic) data
+
+---
+## Biostatistics
+
+- The application of statistical methods to biological, medical, and public health data
+
+- Designs experiments and studies to collect reliable data
+
+- Analyzes complex, often noisy biological datasets
+
+- Quantifies uncertainty and tests scientific hypotheses
+
+- Supports decision-making in biomedical research and healthcare
+
+- Plays a key role in interpreting high-throughput technologies (e.g., genomics, clinical trials)
+
+In summary: using statistics to make sense of biological data
+
+---
+## Meet the curse of dimensionality
+
+The curse of dimensionality refers to the exponential increase in data volume and sparsity as the number of dimensions (features) grows, making it difficult for statistical models to generalize, visualize, or extract meaningful patterns without overfitting.
+
+.center[&lt;img src="img/cursedimensionality.png" height=300&gt;]
+
+.small[Credit: ChatGPT]
+
+---
+## Bioinformatics
+
+* Interdisciplinary field combining biology, computer science, mathematics, and statistics
+
+* Develops algorithms, tools, and databases for managing and analyzing biological data
+
+* Focuses on sequence analysis, genome annotation, structural biology, and systems biology
+
+* Enables integration and interpretation of genomic, transcriptomic, proteomic, and metabolomic data
+
+* Supports hypothesis generation and biological discovery from high-throughput experiments
+
+In summary: using computation to understand biological information
+
+---
+## Bioinformatics
+
+.center[&lt;img src="img/venn_bioinformatics.png" height=400&gt;]
+
+Data Scientist = statistician + programmer + coach + storyteller + artist  
+
+.small[ https://edvancer.in/8-data-science-skills/ ]
+
+---
+## RNA-seq
+
+**RNA-seq** (RNA sequencing) was first introduced in **2008** as a powerful new method for transcriptome profiling using next-generation sequencing (NGS).
+  * **Mortazavi et al.** (2008), *Nature Methods*: "Mapping and quantifying mammalian transcriptomes by RNA-Seq"
+  * **Nagalakshmi et al.** (2008), *Science*: "The Transcriptional Landscape of the Yeast Genome Defined by RNA Sequencing"
+
+These papers showed that RNA-seq could:
+
+* Quantify gene expression more precisely than microarrays,
+* Detect novel transcripts and isoforms,
+* Provide base-level resolution.
+
+.small[ https://doi.org/10.1038/nmeth.1226, https://doi.org/10.1126/science.1158441 ]
+
+---
+## RNA-seq
+
+Counts of papers per year in PubMed having the word "RNA-seq" in title/abstract
+
+&lt;img src="00_Intro_files/figure-html/unnamed-chunk-1-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Big genomics data consortia
+
+.center[&lt;img src="img/bigdata.png" height=450&gt;]
+
+.small[Credit: ChatGPT]
+
+---
+## What we will learn: Data analysis
+
+Which step of an RNA-Seq project do you find most intimidating?  
+
+.center[&lt;img src="img/intimidating.png" height=400&gt;]
+
+.small[ http://www.rna-seqblog.com/rna-seq-blog-poll-results-25/ ]
+
+---
+## Generative AI (Large Language Models, LLMs)
+
+- **Allowed and encouraged** — use it to clarify terms, generate examples, organize your code and help to solve errors.
+
+- Remember: you must know **how to ask good questions** and **how to verify answers** — this course focuses on building that skill.
+
+- Examples of LLMs: **ChatGPT**, **Claude**, **Gemini**, **NotebookLM**.  
+
+- VCU also provides access to **Microsoft Copilot**.
+
+.small[https://chatgpt.com  
+https://claude.ai  
+https://gemini.google.com  
+https://notebooklm.google.com  
+https://go.vcu.edu/copilot  
+https://aiguidebook.vcu.edu/tools/]
+
+---
+## Expectations (again) 
+
+- Attend every class  
+
+- Read every assigned reading  
+
+- Complete all homework in time  
+
+- Be active in class. Ask questions  
+
+- Work hard — it will pay off
+
+---
+## Course Evaluation
+
+* At the end of the course, you will be asked to **evaluate it**.
+
+* Reflect on and **assess what you have learned** during the course.
+
+* Take notes on **what you liked**, as well as **what could be improved**.
+
+* Your evaluation will be **anonymous**.
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

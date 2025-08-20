@@ -1,0 +1,197 @@
+---
+title: "Introduction to R"
+# subtitle: "Statistical Methods for High-throughput Genomic Data I"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## R expressions, function calls, and objects
+
+* According to John Chambers (creator of S, R’s precursor):
+  * *Everything that exists in R is an* **object**  
+  * *Everything that happens in R is a* **call to a function**
+
+* In R, you work with:
+  * **Objects** – data in various forms that you store and manipulate  
+  * **Functions** – methods that operate on these objects to compute, visualize, or modify them
+
+---
+
+## Functions
+
+- A function is a set of statements organized to perform a specific task:
+  * **Name** – e.g., `summary()`, `mean()`
+  * **Arguments** – values passed to functions
+  * **Code** – type function name without `()` to inspect, e.g., `cor`
+  * **Return value** – result from the function
+
+```r
+# `read.csv` imports a CSV file
+read.csv(file = "scores.csv")
+```
+
+* R has many built-in functions  
+* You can define your own functions
+
+---
+
+## Assignment
+
+* Use the assignment operator `<-` to save function outputs
+
+```r
+scores <- read.csv(file = "scores.csv")
+```
+
+* Use saved object in other functions:
+
+```r
+summary(scores)
+```
+
+### Tips:
+
+* Shortcut: `Alt + -` (Windows), `Option + -` (Mac)  
+* You can also use `=`, but `<-` is preferred
+
+---
+
+## Getting help
+
+- `?function_name` — help for **loaded** functions  
+
+- `??function_name` — search across all installed packages  
+
+- `apropos("partial_name")` — list of related function names  
+
+- `library(sos)` + `findFn("cosine", maxPages=2)` — broad search  
+
+- 🔍 Use search engines for tricky questions!
+
+---
+
+## Running functions
+
+### Two ways to run code:
+
+1. **Console** — type and hit Enter  
+2. **Script** — edit and execute full `.R` files
+
+* An R script:
+  * Saves, edits, shares, and reproduces your analysis
+  * Is a plain text file containing your code
+
+---
+
+## Packages
+
+- Functions live in **packages**  
+  * `read.csv()` is from `utils` (a base R package)
+
+- R ships with ~30 **base** packages  
+  * Thousands more are user-contributed (e.g., `ggplot2`)
+
+- Install a package once → Load it every time you use it
+
+---
+
+## Package repositories
+
+- **CRAN** – Comprehensive R Archive Network  
+  * > 22,500 packages 
+
+- **Bioconductor** – genomics-focused  
+  * > 3,600 packages
+
+- **GitHub** – developer-friendly, bleeding-edge packages
+
+.small[
+Statistics as of August 2025  
+<https://cran.r-project.org/>  
+<https://www.bioconductor.org/>  
+<https://github.com/>  
+]
+
+---
+
+## Installing packages
+
+- From CRAN: `install.packages("BiocManager")`
+
+- From tarball: `install.packages("pkg.tar.gz", repos = NULL)`
+
+- Command line: `R CMD INSTALL pkg.tar.gz`
+
+- From GitHub: `remotes::install_github("tidyverse/ggplot2")`
+
+- Bioconductor: `BiocManager::install()`
+
+---
+
+## Loading packages
+
+- Use `library()` - Preferred for most use cases
+  ```r
+  library(readxl)
+  ```
+
+- Conditional loading with `require()`:
+  ```r
+  if (!require(ggplot2)) {
+    install.packages("ggplot2")
+  }
+  ```
+  
+| Function    | Use Case                         | Behavior on Failure        |
+| ----------- | -------------------------------- | -------------------------- |
+| `library()` | Regular use in scripts/notebooks | Stops execution with error |
+| `require()` | Conditional loading in functions | Returns FALSE              |
+
+---
+
+## Useful Ways of Getting Data into R
+
+* **CSV / Delimited files**  
+  * Use the `readr` package
+    * `read_csv()`, `read_delim()` — fast and consistent
+    
+* **Excel files**  
+  * `readxl`: read-only support for `.xls` and `.xlsx`  
+  * `writexl`: write `.xlsx` files (no Java required)  
+ 
+* **Fixed-width files**  
+  * Use base R `read.fwf()` or `readr::read_fwf()`
+
+* **Large/tabular files**  
+  * Use `data.table::fread()` — extremely fast, auto-detects delimiter, supports compression
+
+

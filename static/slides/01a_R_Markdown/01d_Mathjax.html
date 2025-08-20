@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>MathJax</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-14" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# MathJax
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-14
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+&lt;!--https://raw.githubusercontent.com/ohsu-knight-cancer-biostatistics/reproducible-research/32bba6a78e347d64745982fb6245915cecb1b7c3/slides-info-reproducible-research/study-group-2016/Chpt%2013%20Web%20Presentations/MathJax_2.Rmd--&gt;
+
+
+
+
+## What is MathJax?
+
+**MathJax** is a **JavaScript library** that renders LaTeX, MathML, and AsciiMath formula directly in **web browsers**.  
+
+### Key Features:
+- Displays **high-quality mathematical notation** on web pages.
+- Works with **HTML, Markdown, and blogs**.
+- Supports **inline** (wrap in single `$`) and **centered** (wrap in double `$$`) math.
+- No compilation needed—browser handles rendering.
+- Ensures consistent **cross-platform appearance** of math formulas.
+
+Inline: `$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$`  
+Display:  `\(x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}\)`
+
+MathJax basic tutorial and quick reference:
+.small[http://meta.math.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference]
+ 
+---
+## Centering you equations
+
+Wrapping into two dollar signs `$$` centers your equations. Other examples, off set and centered - notice double dollar signs:
+ 
+``` 
+  $ \sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} $
+  
+  $$ \sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} $$
+```
+
+Inline equation  `\(\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}\)` on the same line. Or, self-standing equation on a separate line `$$\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$$`
+  
+  
+---
+## More Interesting Codes
+
+| **MathJax Syntax** | **Result** |
+|--------------------|------------|
+| **Greek Letters**  |            |
+| `$\alpha \beta \gamma \chi$` | `\(\alpha\ \beta\ \gamma\ \chi\)`   |
+| `$\Delta \Sigma \Omega$` | `\(\Delta\ \Sigma\ \Omega\)`    |
+| **Subscripts (_)** |            |
+| `$x_i$`            | `\(x_i\)`      |
+| `$\log_2 x$`       | `\(\log_2 x\)` |
+| **Superscripts (^)** |          |
+| `$x^2$`            | `\(x^2\)`      |
+| `$x_i^2$`          | `\(x_i^2\)`    |
+
+---
+## Grouping with Brackets
+
+Use brackets {...} to delimit a formula containing a superscript or subscript.  Notice the difference the grouping makes:
+
+| MathJax Syntax   | Result |
+|------------------|--------|
+| `${x^y}^z$`      | `\({x^y}^z\)` |
+| `$x^{y^z}$`      | `\(x^{y^z}\)` |
+| `$x_i^2$`        | `\(x_i^2\)` |
+| `$x_{i^2}$`      | `\(x_{i^2}\)` |
+
+
+---
+## Scaling:
+
+Add the scaling code `\left(...\right)` to make automatic size adjustments
+
+| Syntax | Rendered |
+|--------|----------|
+| `$(\frac{\sqrt x}{y^3})$` | `\((\frac{\sqrt x}{y^3})\)` |
+| `$\left(\frac{\sqrt x}{y^3}\right)$` | `\(\left(\frac{\sqrt x}{y^3}\right)\)` |
+
+
+---
+## Sums and Integrals
+
+Subscript (_) designates the lower limit; superscript (^) - upper limit:
+ 
+| Syntax | Rendered |
+|--------|----------|
+| `$\sum_1^n$` | `\(\sum_1^n\)` |
+| `$\sum_{i=0}^\infty i^2$` | `\(\sum_{i=0}^\infty i^2\)` |
+
+Other notable symbols:
+ 
+| Syntax | Rendered |
+|--------|----------|
+| `$\prod$` | `\(\prod\)` |
+| `$\infty$` | `\(\infty\)` |
+| `$\bigcup \bigcap$` | `\(\bigcup\ \bigcap\)` |
+| `$\int \iint$` | `\(\int\ \iint\)` |
+
+
+
+---
+## Radical Signs
+
+Use 'sqrt' code to adjust the size of its argument. Note the change in size of the square root function based on the code
+
+| Syntax | Rendered |
+|--------|----------|
+| `$\sqrt{x^3}$` | `\(\sqrt{x^3}\)` |
+| `$\sqrt[3]{\frac xy}$` | `\(\sqrt[3]{\frac xy}\)` |
+| `${...}^{1/2}` | `\({...}^{1/2}\)` |
+
+
+
+---
+## You can also change fonts!
+
+| Explanation | Rendered |
+|-------------|----------|
+| `\mathbb` for 'Blackboard bold' | `\(\mathbb{ABCDEFG}\)` |
+| `\mathbf` for boldface | `\(\mathbf{ABCDEFG}\)` |
+| `\mathtt` for 'typewriter' font | `\(\mathtt{ABCDEFG}\)` |
+| `\mathrm` for roman font | `\(\mathrm{ABCDEFG}\)` |
+| `\mathsf` for sans-serif | `\(\mathsf{ABCDEFG}\)` |
+| `\mathcal` for 'calligraphy' | `\(\mathcal{ABCDEFG}\)` |
+| `\mathscr` for script letters | `\(\mathscr{ABCDEFG}\)` |
+| `\mathfrak` for "Fraktur" (old German style) | `\(\mathfrak{ABCDEFG}\)` |
+
+---
+## You can also change fonts!
+
+In LaTeX/MathJax, certain mathematical functions and operators—like `lim`, `sin`, `cos`, `max`, `ln`—are conventionally typeset in roman font rather than the default italic used for variables. This ensures they are visually distinct from variables.
+  - Use `\sin, \lim, \max, \ln`, etc., to render them in roman font.
+  - Typing `sin` without the backslash will render it as italic, making it look like a product of variables `s × i × n`.
+
+| Syntax | Rendered |
+|--------|----------|
+| `$\sin x$` (roman font) | `\(\sin x\)` |
+| `$sin x$` (italic, treated as variables) | `\(sin x\)` |
+
+
+---
+## And, add curly brackets
+
+In LaTeX/MathJax, you can create grouped equations using a curly brace. Curly brackets are added using `\begin{cases}` ... `\end{cases}`.
+
+```
+$$
+\begin{cases}
+\widehat{IF_{1D}} = IF_{1D} - f(D)/2 \\
+\widehat{IF_{2D}} = IF_{2D} + f(D)/2
+\end{cases} \ (1)
+$$
+```
+
+$$
+\begin{cases}
+\widehat{IF_{1D}} = IF_{1D} - f(D)/2 \\
+\widehat{IF_{2D}} = IF_{2D} + f(D)/2
+\end{cases} \ (1)
+$$
+
+---
+## RStudio bonus
+
+Inline preview of forumlas and images in an RMarkdown document
+
+&lt;center&gt;&lt;img src="img/equation_preview_settings.png" height="370px" /&gt;&lt;/center&gt;
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

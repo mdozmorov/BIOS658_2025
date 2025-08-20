@@ -1,0 +1,58 @@
+---
+title: "Beamer presentation"
+# author: "Mikhail G. Dozmorov"
+# date: "June 4, 2016"
+output: 
+  beamer_presentation:
+    theme: "AnnArbor"
+    colortheme: "dolphin"
+    fonttheme: "structurebold"
+---
+
+
+# In the morning
+
+## Getting up
+
+\includegraphics[width=70mm]{../img/bandThree2.png}
+
+## Breakfast
+
+- Turn off alarm
+- Get out of bed  
+    - Eat eggs  
+    - Drink coffee  
+ 
+# In the evening
+
+## Dinner
+
+- Eat spaghetti
+- Drink wine
+
+
+111     222         333
+---- ------- ----------
+qq     www        wew
+
+`monospace formatting` and `r nrow(cars)`
+
+```{r eval=FALSE}
+a <- b
+```
+
+
+## Two columns
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+- This slide has two columns
+
+- test
+
+\end{column}
+\begin{column}{0.48\textwidth}
+If I put any code in here I get an error, see
+https://support.rstudio.com/hc/communities/public/questions/202717656-Can-we-have-columns-in-rmarkdown-beamer-presentations-
+\end{column}
+\end{columns}

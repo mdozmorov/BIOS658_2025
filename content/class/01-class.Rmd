@@ -19,9 +19,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Slides 
-
-### Welcome slides
+## Welcome slides
 
 <a href="../../slides/00_Intro/00_Intro.html#1" target="_blank">Lecture slides in HTML format</a>
 
@@ -29,3 +27,22 @@ editor_options:
 knitr::include_url('../../slides/00_Intro/00_Intro.html#1')
 ```
 
+## R overview
+
+<a href="../../slides/01a_R_Markdown/01a_RStudio.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01a_R_Markdown/01a_RStudio.html#1')
+```
+
+<a href="../../slides/01a_R_Markdown/01b_IntroRSlides.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01a_R_Markdown/01b_IntroRSlides.html#1')
+```
+
+<a href="../../slides/01a_R_Markdown/01c_Markdown.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01a_R_Markdown/01c_Markdown.html#1')
+```

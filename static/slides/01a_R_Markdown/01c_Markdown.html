@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Reproducible reports with RMarkdown</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-20" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link href="libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet" />
+    <script src="libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+    <link href="libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+    <script src="libs/datatables-binding-0.33/datatables.js"></script>
+    <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+    <link href="libs/dt-core-1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="libs/dt-core-1.13.6/css/jquery.dataTables.extra.css" rel="stylesheet" />
+    <script src="libs/dt-core-1.13.6/js/jquery.dataTables.min.js"></script>
+    <link href="libs/crosstalk-1.2.1/css/crosstalk.min.css" rel="stylesheet" />
+    <script src="libs/crosstalk-1.2.1/js/crosstalk.min.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Reproducible reports with RMarkdown
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-20
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+
+
+## Literate programming
+
+Let us change our traditional attitude to the construction of programs: Instead of imagining that our main task is to instruct a computer what to do, **let us concentrate rather on explaining to humans what we want the computer to do.** Basic idea - use human- and computer-readable chunks.
+
+--*Donald E. Knuth, Literate Programming, 1984*
+
+&lt;img src="img/literate_programming.png" width="325" height="70%" style="display: block; margin: auto;" /&gt;
+
+---
+class: center, middle
+
+# RMarkdown/knitR
+
+---
+## Writing reports
+
+- **HTML**: HyperText Markup Language, the standard markup for creating web pages. First version released in 1993.
+
+- **LaTeX**: a high-quality typesetting system for technical/scientific documentation (especially math-heavy). Primarily outputs PDF. First released in 1984 (Leslie Lamport’s LaTeX 2.09), with roots in TeX (1978).
+
+- **Sweave**: integrates R code into LaTeX documents for reproducible PDF reports. Introduced in 2002.
+
+- **Markdown**: a lightweight markup language for plain text formatting. Introduced in 2004. Easily converted to HTML, PDF, Word, and more.
+
+- **Quarto**: a modern, open-source publishing system (successor to R Markdown) for creating documents, presentations, dashboards, and websites from R, Python, Julia, or Observable JavaScript. Supports HTML, PDF, Word, and more.
+
+---
+## HTML Example
+
+- HTML files have the `.html` extension.
+- Content and formatting are defined by **tags** (usually in opening/closing pairs).
+- Tags can be **nested** to combine structure and style.
+
+
+``` html
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;My First Webpage&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Header Level 1&lt;/h1&gt;
+    &lt;p&gt;This is a &lt;strong&gt;paragraph&lt;/strong&gt; with &lt;em&gt;emphasized text&lt;/em&gt;.&lt;/p&gt;
+    &lt;p&gt;Here is a link to &lt;a href="https://www.example.com"&gt;Example.com&lt;/a&gt;.&lt;/p&gt;
+    &lt;ul&gt;
+      &lt;li&gt;First bullet item&lt;/li&gt;
+      &lt;li&gt;Second bullet item&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+```
+
+---
+## LaTeX Example
+
+- LaTeX files usually have the `.tex` extension.  
+- Commands begin with a backslash (`\`) and define appearance, structure, or formatting.  
+- Environments (e.g., `\\begin{...}...\\end{...}`) wrap larger structures like equations, tables, or lists.
+
+
+``` latex
+\documentclass{article}
+
+\begin{document}
+
+\section{Introduction}
+This is a simple \LaTeX{} document.  
+We can write text, include \textbf{bold} or \emph{italic} formatting,  
+and add mathematical formulas like \( E = mc^2 \).
+
+\subsection{A List}
+\begin{itemize}
+  \item First bullet point
+  \item Second bullet point
+\end{itemize}
+
+```
+&lt;!--
+\subsection{An Equation}
+\[
+\int_0^\infty e^{-x^2} \, dx = \frac{\sqrt{\pi}}{2}
+\]
+
+\end{document}
+--&gt;
+
+---
+## Sweave example
+
+- Sweave files typically have `.Rnw` extension  
+- LaTeX syntax for text, `&lt;&lt;chunk_name, options&gt;&gt;= ... @` outlines code blocks  
+
+
+``` sweave
+\documentclass{article}
+\usepackage{amsmath}
+
+\begin{document}
+We start by loading a built-in dataset:
+
+&lt;&lt;load-data, echo=TRUE&gt;&gt;=
+data(mtcars)
+summary(mtcars$mpg)
+@
+
+The average MPG is \Sexpr{round(mean(mtcars$mpg), 1)}.
+
+&lt;&lt;mpg-plot, fig=TRUE, echo=TRUE&gt;&gt;=
+hist(mtcars$mpg, main = "Miles per Gallon",
+     xlab = "MPG", col = "lightblue")
+@
+
+\end{document}
+```
+
+---
+## Markdown syntax
+
+`*italic*` &amp;nbsp; OR &amp;nbsp; `_italic_` &amp;nbsp;&amp;nbsp;&amp;nbsp; _italics_ 
+
+`**bold**` &amp;nbsp; OR &amp;nbsp;  `__bold__` &amp;nbsp;&amp;nbsp;&amp;nbsp; __bold__
+
+**Headers**
+
+`# Header 1`
+
+`## Header 2`
+
+`### Header 3`
+
+---
+## Markdown syntax | Lists
+
+**Unordered List**
+
+`* Item 1`
+
+`* Item 2`
+
+&amp;nbsp;&amp;nbsp;&amp;nbsp; ` [TAB][TAB] * Item 2a`
+
+(To achieve a subpoint, tab twice)
+
+---
+## Markdown syntax | Lists
+
+**Ordered List**
+
+`1. Item 1`
+
+`2. Item 2`
+
+`3. Item 3`
+
+&amp;nbsp;&amp;nbsp;&amp;nbsp; ` [TAB][TAB] + Item 3a`
+
+&amp;nbsp;&amp;nbsp;&amp;nbsp; ` [TAB][TAB] + Item 3b`
+
+---
+## Markdown syntax
+
+`superscript^2^` &amp;nbsp;&amp;nbsp;&amp;nbsp; x^2^
+
+`~~strikethrough~~` &amp;nbsp;&amp;nbsp;&amp;nbsp; ~~powerpoint~~
+
+**Horizontal Rule / Page Break**
+
+`******`
+
+`------`
+
+**Blockquotes**
+
+A friend once said:
+
+`&gt; It's always better to give`  
+`&gt; than to receive.`
+
+---
+## Markdown syntax
+
+**Links**
+
+`http://example.com`
+
+`[linked phrase](http://example.com)`
+
+**Images**
+
+`![](http://example.com/logo.png)`
+
+`![optional caption text](figures/img.png)`
+
+`&lt;center&gt;&lt;img src="img/clustering.png" height="370px" /&gt;&lt;/center&gt;`
+
+`knitr::include_graphics("img/knitr.png")`
+
+---
+## Markdown syntax
+
+**Tables**
+
+```
+First Header  | Second Header
+------------- | -------------
+Content Cell  | Content Cell
+Content Cell  | Content Cell
+```
+
+First Header  | Second Header
+------------- | -------------
+Content Cell  | Content Cell
+Content Cell  | Content Cell
+
+http://www.tablesgenerator.com/markdown_tables
+
+---
+## Creating R markdown document
+
+- R Markdown files have .Rmd extension and combine text, code, and output
+- In RStudio: File → New File → R Markdown
+- Choose document type (HTML, PDF, Word) and fill in title/author
+- RStudio provides a template with examples to get you started
+
+&lt;img src="img/markdown_document0.png" width="321" height="70%" style="display: block; margin: auto;" /&gt;
+
+---
+## Creating R markdown document
+
+&lt;img src="img/markdown_document.png" width="1720" height="90%" style="display: block; margin: auto;" /&gt;
+
+---
+## Mix and match HTML &amp; LaTeX
+
+R Markdown allows you to combine **Markdown** syntax with **HTML** and **LaTeX** for advanced formatting.
+
+#### Inline HTML:
+`&lt;span style="color:blue;"&gt;Change text color&lt;/span&gt;`  
+&lt;span style="color:blue;"&gt;Change text color&lt;/span&gt;
+
+`&lt;center&gt;Centered text or images&lt;/center&gt;`
+&lt;center&gt;Centered text or images&lt;/center&gt;
+
+#### Inline LaTeX:
+`$\alpha + \beta = \gamma$` → renders as α + β = γ
+
+---
+## YAML header (think settings)
+
+- YAML: YAML Ain't Markup Language (recursive acronim)
+- YAML is a simple text-based format for specifying data, like JSON
+
+
+``` yml
+---
+title: "Untitled"
+author: "Your Name"
+date: "Current date"
+output: html_document
+---
+```
+
+`output` is the critical part - it defines the output format. Can be `pdf_document` or `word_document`
+
+Comments `#` allowed - create a very detailed YAML header and comment out what's not needed
+
+.small[ http://rmarkdown.rstudio.com/html_document_format.html ]
+
+---
+## R Markdown | Code embedding
+
+- Chunks of code are labeled in two ways:  
+  - **Non-executable code formatting:** Single backticks around text like `myfunc()` renders in monospace font for display only
+  - **Inline executable code:** Single backticks with `r` and a space, then your R code, then closing backtick. The `r` indicates executable R code that runs and shows results in real time.
+
+Examples of inline code:
+
+The estimated correlation is [backtick r cor(x, y) backtick]
+
+Benefits: Instead of hard coding numbers, inline code automatically updates when data changes during knitting.  
+*Note: Replace [backtick] with the actual backtick character when typing*
+
+.small[ https://support.rstudio.com/hc/en-us/articles/205368677-R-Markdown-Dynamic-Documents-for-R ]
+
+---
+## Large code chunks
+
+- Marked with [three backticks]{r chunk_name, options} followed by R code, then [three backticks] to close
+
+Example structure:  
+[three backticks]{r chunk_name, verbatim=TRUE, eval=FALSE}  
+x = Inf + .Machine$xmin  
+x  
+[three backticks]  
+
+- The chunk nameis optional but helpful for organization
+- By default, both the R code AND its output are displayed in the report
+- Options like eval=FALSE control whether code runs, echo=FALSE hides code but shows output
+
+Note: Replace [three backticks] with actual backtick characters when typing
+
+---
+## Chunk options (comma-separated)
+
+- `echo=FALSE` *(default: TRUE)* — hide the code, show only output.  
+
+- `results='hide'` *(default: 'asis')* — hide output. `'hold'` delays output until the end of the chunk.  
+
+- `eval=FALSE` *(default: TRUE)* — display code without running it.  
+
+- `cache=TRUE` *(default: FALSE)* — cache results for slow computations.  
+
+- `fig.width=##`, `fig.height=##`, `fig.align="center"` — control figure size and alignment.  
+
+##### Example
+
+\{r fig.width=5, fig.height=4, fig.align='center', echo=FALSE, cache=TRUE\}
+
+---
+## Global chunk options
+
+- Some options you would like to set globally, instead of typing them for each chunk
+
+&amp;nbsp;
+
+
+``` r
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/', 
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+- `warning=FALSE` and `message=FALSE` suppress any R warnings or messages from being included in the final document
+
+- `fig.path='Figs/'` the figure files get placed in the Figs subdirectory. (Default: not saved at all)
+
+---
+## Tables with `knitr::kable()`
+
+- `knitr` has a built-in function to display a table quickly.  
+
+
+``` r
+data(mtcars)
+knitr::kable(head(mtcars))
+```
+
+
+
+|                  |  mpg| cyl| disp|  hp| drat|    wt|  qsec| vs| am| gear| carb|
+|:-----------------|----:|---:|----:|---:|----:|-----:|-----:|--:|--:|----:|----:|
+|Mazda RX4         | 21.0|   6|  160| 110| 3.90| 2.620| 16.46|  0|  1|    4|    4|
+|Mazda RX4 Wag     | 21.0|   6|  160| 110| 3.90| 2.875| 17.02|  0|  1|    4|    4|
+|Datsun 710        | 22.8|   4|  108|  93| 3.85| 2.320| 18.61|  1|  1|    4|    1|
+|Hornet 4 Drive    | 21.4|   6|  258| 110| 3.08| 3.215| 19.44|  1|  0|    3|    1|
+|Hornet Sportabout | 18.7|   8|  360| 175| 3.15| 3.440| 17.02|  0|  0|    3|    2|
+|Valiant           | 18.1|   6|  225| 105| 2.76| 3.460| 20.22|  1|  0|    3|    1|
+
+---
+## Tables with pander::pander()
+
+- `pander` package offers more customization for plain-text and markdown tables.
+
+
+``` r
+library(pander)
+panderOptions('table.style', 'rmarkdown') 
+panderOptions('table.split.table', Inf)
+pander(head(mtcars))
+```
+
+
+
+|        &amp;nbsp;         | mpg  | cyl | disp | hp  | drat |  wt   | qsec  | vs | am | gear | carb |
+|:---------------------:|:----:|:---:|:----:|:---:|:----:|:-----:|:-----:|:--:|:--:|:----:|:----:|
+|     **Mazda RX4**     |  21  |  6  | 160  | 110 | 3.9  | 2.62  | 16.46 | 0  | 1  |  4   |  4   |
+|   **Mazda RX4 Wag**   |  21  |  6  | 160  | 110 | 3.9  | 2.875 | 17.02 | 0  | 1  |  4   |  4   |
+|    **Datsun 710**     | 22.8 |  4  | 108  | 93  | 3.85 | 2.32  | 18.61 | 1  | 1  |  4   |  1   |
+|  **Hornet 4 Drive**   | 21.4 |  6  | 258  | 110 | 3.08 | 3.215 | 19.44 | 1  | 0  |  3   |  1   |
+| **Hornet Sportabout** | 18.7 |  8  | 360  | 175 | 3.15 | 3.44  | 17.02 | 0  | 0  |  3   |  2   |
+|      **Valiant**      | 18.1 |  6  | 225  | 105 | 2.76 | 3.46  | 20.22 | 1  | 0  |  3   |  1   |
+
+---
+## Tables with xtable::xtable()
+
+- `xtable` converts R data frames to LaTeX or HTML tables, allowing fine formatting control.
+
+
+``` r
+library(xtable)
+print(xtable(head(mtcars)), type = "html")
+```
+
+&lt;!-- html table generated in R 4.5.1 by xtable 1.8-4 package --&gt;
+&lt;!-- Wed Aug 20 11:10:49 2025 --&gt;
+&lt;table border=1&gt;
+&lt;tr&gt; &lt;th&gt;  &lt;/th&gt; &lt;th&gt; mpg &lt;/th&gt; &lt;th&gt; cyl &lt;/th&gt; &lt;th&gt; disp &lt;/th&gt; &lt;th&gt; hp &lt;/th&gt; &lt;th&gt; drat &lt;/th&gt; &lt;th&gt; wt &lt;/th&gt; &lt;th&gt; qsec &lt;/th&gt; &lt;th&gt; vs &lt;/th&gt; &lt;th&gt; am &lt;/th&gt; &lt;th&gt; gear &lt;/th&gt; &lt;th&gt; carb &lt;/th&gt;  &lt;/tr&gt;
+  &lt;tr&gt; &lt;td align="right"&gt; Mazda RX4 &lt;/td&gt; &lt;td align="right"&gt; 21.00 &lt;/td&gt; &lt;td align="right"&gt; 6.00 &lt;/td&gt; &lt;td align="right"&gt; 160.00 &lt;/td&gt; &lt;td align="right"&gt; 110.00 &lt;/td&gt; &lt;td align="right"&gt; 3.90 &lt;/td&gt; &lt;td align="right"&gt; 2.62 &lt;/td&gt; &lt;td align="right"&gt; 16.46 &lt;/td&gt; &lt;td align="right"&gt; 0.00 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;td align="right"&gt; 4.00 &lt;/td&gt; &lt;td align="right"&gt; 4.00 &lt;/td&gt; &lt;/tr&gt;
+  &lt;tr&gt; &lt;td align="right"&gt; Mazda RX4 Wag &lt;/td&gt; &lt;td align="right"&gt; 21.00 &lt;/td&gt; &lt;td align="right"&gt; 6.00 &lt;/td&gt; &lt;td align="right"&gt; 160.00 &lt;/td&gt; &lt;td align="right"&gt; 110.00 &lt;/td&gt; &lt;td align="right"&gt; 3.90 &lt;/td&gt; &lt;td align="right"&gt; 2.88 &lt;/td&gt; &lt;td align="right"&gt; 17.02 &lt;/td&gt; &lt;td align="right"&gt; 0.00 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;td align="right"&gt; 4.00 &lt;/td&gt; &lt;td align="right"&gt; 4.00 &lt;/td&gt; &lt;/tr&gt;
+  &lt;tr&gt; &lt;td align="right"&gt; Datsun 710 &lt;/td&gt; &lt;td align="right"&gt; 22.80 &lt;/td&gt; &lt;td align="right"&gt; 4.00 &lt;/td&gt; &lt;td align="right"&gt; 108.00 &lt;/td&gt; &lt;td align="right"&gt; 93.00 &lt;/td&gt; &lt;td align="right"&gt; 3.85 &lt;/td&gt; &lt;td align="right"&gt; 2.32 &lt;/td&gt; &lt;td align="right"&gt; 18.61 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;td align="right"&gt; 4.00 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;/tr&gt;
+  &lt;tr&gt; &lt;td align="right"&gt; Hornet 4 Drive &lt;/td&gt; &lt;td align="right"&gt; 21.40 &lt;/td&gt; &lt;td align="right"&gt; 6.00 &lt;/td&gt; &lt;td align="right"&gt; 258.00 &lt;/td&gt; &lt;td align="right"&gt; 110.00 &lt;/td&gt; &lt;td align="right"&gt; 3.08 &lt;/td&gt; &lt;td align="right"&gt; 3.21 &lt;/td&gt; &lt;td align="right"&gt; 19.44 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;td align="right"&gt; 0.00 &lt;/td&gt; &lt;td align="right"&gt; 3.00 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;/tr&gt;
+  &lt;tr&gt; &lt;td align="right"&gt; Hornet Sportabout &lt;/td&gt; &lt;td align="right"&gt; 18.70 &lt;/td&gt; &lt;td align="right"&gt; 8.00 &lt;/td&gt; &lt;td align="right"&gt; 360.00 &lt;/td&gt; &lt;td align="right"&gt; 175.00 &lt;/td&gt; &lt;td align="right"&gt; 3.15 &lt;/td&gt; &lt;td align="right"&gt; 3.44 &lt;/td&gt; &lt;td align="right"&gt; 17.02 &lt;/td&gt; &lt;td align="right"&gt; 0.00 &lt;/td&gt; &lt;td align="right"&gt; 0.00 &lt;/td&gt; &lt;td align="right"&gt; 3.00 &lt;/td&gt; &lt;td align="right"&gt; 2.00 &lt;/td&gt; &lt;/tr&gt;
+  &lt;tr&gt; &lt;td align="right"&gt; Valiant &lt;/td&gt; &lt;td align="right"&gt; 18.10 &lt;/td&gt; &lt;td align="right"&gt; 6.00 &lt;/td&gt; &lt;td align="right"&gt; 225.00 &lt;/td&gt; &lt;td align="right"&gt; 105.00 &lt;/td&gt; &lt;td align="right"&gt; 2.76 &lt;/td&gt; &lt;td align="right"&gt; 3.46 &lt;/td&gt; &lt;td align="right"&gt; 20.22 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;td align="right"&gt; 0.00 &lt;/td&gt; &lt;td align="right"&gt; 3.00 &lt;/td&gt; &lt;td align="right"&gt; 1.00 &lt;/td&gt; &lt;/tr&gt;
+   &lt;/table&gt;
+
+---
+## Interactive tables with DT::datatable()
+
+`DT` is an R interface to the DataTables JavaScript library for interactive tables.
+
+
+``` r
+library(DT)
+datatable(mtcars)
+```
+
+<div class="datatables html-widget html-fill-item" id="htmlwidget-e969baf9311e91c010b2" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-e969baf9311e91c010b2">{"x":{"filter":"none","vertical":false,"data":[["Mazda RX4","Mazda RX4 Wag","Datsun 710","Hornet 4 Drive","Hornet Sportabout","Valiant","Duster 360","Merc 240D","Merc 230","Merc 280","Merc 280C","Merc 450SE","Merc 450SL","Merc 450SLC","Cadillac Fleetwood","Lincoln Continental","Chrysler Imperial","Fiat 128","Honda Civic","Toyota Corolla","Toyota Corona","Dodge Challenger","AMC Javelin","Camaro Z28","Pontiac Firebird","Fiat X1-9","Porsche 914-2","Lotus Europa","Ford Pantera L","Ferrari Dino","Maserati Bora","Volvo 142E"],[21,21,22.8,21.4,18.7,18.1,14.3,24.4,22.8,19.2,17.8,16.4,17.3,15.2,10.4,10.4,14.7,32.4,30.4,33.9,21.5,15.5,15.2,13.3,19.2,27.3,26,30.4,15.8,19.7,15,21.4],[6,6,4,6,8,6,8,4,4,6,6,8,8,8,8,8,8,4,4,4,4,8,8,8,8,4,4,4,8,6,8,4],[160,160,108,258,360,225,360,146.7,140.8,167.6,167.6,275.8,275.8,275.8,472,460,440,78.7,75.7,71.09999999999999,120.1,318,304,350,400,79,120.3,95.09999999999999,351,145,301,121],[110,110,93,110,175,105,245,62,95,123,123,180,180,180,205,215,230,66,52,65,97,150,150,245,175,66,91,113,264,175,335,109],[3.9,3.9,3.85,3.08,3.15,2.76,3.21,3.69,3.92,3.92,3.92,3.07,3.07,3.07,2.93,3,3.23,4.08,4.93,4.22,3.7,2.76,3.15,3.73,3.08,4.08,4.43,3.77,4.22,3.62,3.54,4.11],[2.62,2.875,2.32,3.215,3.44,3.46,3.57,3.19,3.15,3.44,3.44,4.07,3.73,3.78,5.25,5.424,5.345,2.2,1.615,1.835,2.465,3.52,3.435,3.84,3.845,1.935,2.14,1.513,3.17,2.77,3.57,2.78],[16.46,17.02,18.61,19.44,17.02,20.22,15.84,20,22.9,18.3,18.9,17.4,17.6,18,17.98,17.82,17.42,19.47,18.52,19.9,20.01,16.87,17.3,15.41,17.05,18.9,16.7,16.9,14.5,15.5,14.6,18.6],[0,0,1,1,0,1,0,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,0,1,0,0,0,1],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1],[4,4,4,3,3,3,3,4,4,4,4,3,3,3,3,3,3,4,4,4,3,3,3,3,3,4,5,5,5,5,5,4],[4,4,1,1,2,1,4,2,2,4,4,3,3,3,4,4,4,1,2,1,1,2,2,4,2,1,2,2,4,6,8,2]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>mpg<\/th>\n      <th>cyl<\/th>\n      <th>disp<\/th>\n      <th>hp<\/th>\n      <th>drat<\/th>\n      <th>wt<\/th>\n      <th>qsec<\/th>\n      <th>vs<\/th>\n      <th>am<\/th>\n      <th>gear<\/th>\n      <th>carb<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,2,3,4,5,6,7,8,9,10,11]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"mpg","targets":1},{"name":"cyl","targets":2},{"name":"disp","targets":3},{"name":"hp","targets":4},{"name":"drat","targets":5},{"name":"wt","targets":6},{"name":"qsec","targets":7},{"name":"vs","targets":8},{"name":"am","targets":9},{"name":"gear","targets":10},{"name":"carb","targets":11}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+## Creating the final report
+
+- Markdown documents `*.md` can be converted to HTML using
+
+`markdown::markdownToHTML('markdown_example.md', 'markdown_example.html')`
+
+- Another option is to use: 
+
+`rmarkdown::render('markdown_example.md')`
+
+At the backend it uses `pandoc` command line tool, installed with Rstudio [http://pandoc.org/](http://pandoc.org/)
+
+---
+## Creating the final report: KnitR
+
+- KnitR: a package for dynamic report generation written in R Markdown. PDF, HTML, DOCX output. Developed in 2012
+
+- Available at: [https://github.com/yihui/knitr](https://github.com/yihui/knitr)
+
+- Available for installation from CRAN, using:
+`install.packages('knitr', dependencies = TRUE)`
+
+
+&lt;img src="img/knitr.png" width="600px" /&gt;
+
+---
+## Creating the final report
+
+- Rstudio: one button
+
+- `knit2html()`, `knit2pdf`
+
+&lt;img src="img/final.png" width="335" height="70%" style="display: block; margin: auto;" /&gt;
+
+- **Note**: KnitR compiles the document in an R environment separate from yours (think Makefile). Do not use **./Rprofile** file.
+
+---
+## R Markdown best practices
+
+- At the beginning, include a code chunk named `libraries`, and load all the packages in this chunk. Generally, it is good to load `dplyr` and `pander` packages by default.
+
+- Include a `settings` code chunk, add any cutoff variables or boolean switches that control the behavior of the main code base. 
+  - e.g. `pval_adj_cutoff &lt;- 0.1 # Cutoff for FDR-adjusted filtering`
+  - ~~An important settings affecting `data.frame` behavior to include is `stringsAsFactors = FALSE`~~
+  - `set.seed(12345)`: initialize random number generator 
+
+---
+## R Markdown best practices
+
+- At the end of the document, include session information: outputs all packages/versions used
+
+
+``` r
+library("dplyr")
+library("pander")
+diagnostics &lt;- devtools::session_info()
+platform &lt;- data.frame(diagnostics$platform %&gt;% unlist, stringsAsFactors = FALSE)
+colnames(platform) &lt;- c("description")
+pander(platform)
+packages &lt;- as.data.frame(diagnostics$packages)
+pander(packages[ packages$`*` == "*", ])
+```
+
+---
+class: center, middle
+# Bibliography
+
+---
+## BibTex
+
+```
+@article{Berkum:2010aa,
+	Abstract = {The three-dimensional folding of chromosomes ...},
+	Author = {van Berkum, Nynke L and Lieberman-Aiden, Erez and Williams, Louise and Imakaev, Maxim and Gnirke, Andreas and Mirny, Leonid A and Dekker, Job and Lander, Eric S},
+	Date-Added = {2016-10-08 14:26:23 +0000},
+	Date-Modified = {2016-10-08 14:26:23 +0000},
+	Doi = {10.3791/1869},
+	Journal = {J Vis Exp},
+	Journal-Full = {Journal of visualized experiments : JoVE},
+	Mesh = {Chromosome Positioning; Chromosomes; DNA; Genomics; Nucleic Acid Conformation},
+	Number = {39},
+	Pmc = {PMC3149993},
+	Pmid = {20461051},
+	Pst = {epublish},
+	Title = {Hi-C: a method to study the three-dimensional architecture of genomes},
+	Year = {2010},
+	Bdsk-Url-1 = {http://dx.doi.org/10.3791/1869}}
+```
+Save references in `.bib` text file
+
+---
+## BibTex managers
+
+- **JabRef** (Windows, macOS, Linux) – http://www.jabref.org/
+  - Open-source, cross-platform GUI for managing .bib files; integrates with LaTeX editors.
+- **BibDesk** (macOS) – http://bibdesk.sourceforge.net/
+  - Classic macOS BibTeX manager with citation search and integration into macOS services.
+  - Tweaks for Pandoc: https://github.com/dsanson/bibdesk-pandoc-export-templates
+- **Zotero** (Windows, macOS, Linux) – https://www.zotero.org/
+  - Popular reference manager that can export .bib files; supports browser capture and plugins.
+- **Mendeley Reference Manager** (Windows, macOS, Linux) – https://www.mendeley.com/
+  - Cloud-based tool for organizing references and exporting to BibTeX.
+  
+---
+## BibTex and RMarkdown
+
+Add to YAML header
+
+```
+bibliography: 3D_refs.bib
+```
+
+Insert into RMarkdown as 
+
+```
+The 3D structure of the human genome has proven to be highly organized 
+[@Dixon:2012aa; @Rao:2014aa]. This organization starts from distinct 
+chromosome territories [@Cremer:2010aa], following by topologically associated 
+domains (TADs) [@Dixon:2012aa; @Jackson:1998aa; @Ma:1998aa; @Nora:2012aa; @Sexton:2012aa], 
+smaller "sub-TADs" [@Phillips-Cremins:2013aa; @Rao:2014aa] and, on the 
+most local level, individual regions of interacting chromatin [@Rao:2014aa; @Dowen:2014aa; @Ji:2016aa].
+```
+
+---
+## Format your BibTex references
+
+To apply a journal-specific citation style in R Markdown, add the following line to your YAML header:
+
+```
+csl: genomebiology.csl
+```
+
+- **CSL** (Citation Style Language) files define how references are formatted.
+
+- You can download thousands of styles (e.g., APA, Nature, Genome Biology) from the Zotero Style Repository. https://www.zotero.org/styles
+
+- Place the `.csl` file in your project directory so R Markdown can find it.
+
+
+
+---
+## Format your Word output
+
+- When knitting to Word (.docx), you can customize fonts, headings, margins, and other styles instead of using the defaults.
+  1. Create a template Word document with your preferred formatting.
+    - Open a blank Word file, adjust styles (e.g., "Normal", "Heading 1") by right-clicking the style name and selecting Modify.
+    - Save the file (e.g., `style.docx`).
+
+- Reference the template in your YAML header:
+
+```
+output:
+  word_document:
+    reference_docx: style.docx
+```
+
+Your knitted Word file will use the styles from your template.
+
+---
+## Putting it all together
+
+A complete YAML header example that combines **Word styling**, **bibliography references**, and **citation formatting** in one place:
+
+```
+---
+title: "NIH Grant Proposal"
+author: "Mikhail Dozmorov"
+date: "2025-08-20"
+output:
+  word_document:
+    reference_docx: styles/NIH_grant_style.docx
+bibliography: references.bib
+csl: bioinformatics.csl
+link-citations: true
+---
+```
+
+---
+## RStudio "Visual" Mode
+
+- Provides a **WYSIWYG** (What You See Is What You Get) editor for Markdown  
+- Lets you apply **formatting visually** (bold, italic, headings, lists, tables) without typing syntax  
+- Supports **inserting images, links, citations** via menus and dialogs  
+- Switch easily between **Visual** and **Source** modes  
+- Useful for beginners who want to focus on **content and style** rather than Markdown syntax  
+- Still produces **plain-text Markdown** under the hood → fully compatible  
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

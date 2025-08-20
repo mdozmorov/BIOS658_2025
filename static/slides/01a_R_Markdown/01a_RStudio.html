@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Introduction to RStudio</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-20" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Introduction to RStudio
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-20
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## RStudio
+
+- RStudio is a program that allows you to run R in a more user-friendly environment  
+  
+- RStudio offers some GUI (graphical user interface) features for R  
+
+- RStudio can be considered an "R portal"  
+
+- The same R program is running underneath the interface  
+
+- RStudio is open-source software (and therefore is free)  
+
+- After you install R and RStudio, you only need to run RStudio 
+
+.small[ https://cran.r-project.org/bin/windows/base/  
+https://posit.co/download/rstudio-desktop ]
+
+---
+## RStudio
+
+Open RStudio and this is what you will see:
+
+.center[&lt;img src="img/RStudioConsole.png" height=500&gt;]
+
+---
+
+## RStudio
+
+Outlined in red is the R Console:
+
+.center[&lt;img src="img/RStudioConsole2.png" height=500&gt;]
+
+---
+
+## RStudio
+
+You can open a new script in the editing window:
+
+.center[&lt;img src="img/RStudioConsole3.png" height=500&gt;]
+
+---
+
+## RStudio
+
+Or you can open an existing script:
+
+.center[&lt;img src="img/RStudioConsole4.png" height=500&gt;]
+
+---
+
+## RStudio
+
+There can be multiple scripts open in the editing window:
+
+.center[&lt;img src="img/RStudioConsole5.png" height=500&gt;]
+
+---
+
+## RStudio
+
+History tab shows command run:
+
+.center[&lt;img src="img/RStudioConsole6.png" height=500&gt;]
+
+---
+
+## RStudio
+
+Environment tab keeps track of the things the user defines:
+
+.center[&lt;img src="img/RStudioConsole7.png" height=500&gt;]
+
+---
+
+## RStudio
+
+Plots appear in the plots tab (as expected):
+
+.center[&lt;img src="img/RStudioConsole8.png" height=500&gt;]
+
+
+---
+
+## RStudio keyboard shortcuts
+
+- Command (Ctrl) + Enter — Run current line/selection, go to the next line  
+- Alt + Enter — Run current line/selection, stay on the current line  
+- Ctrl + 1 — Move cursor to source  
+- Ctrl + 2 — Move cursor to console  
+- Ctrl + L — Clear console  
+- Ctrl + Alt + I — Create new code chunk  
+- Ctrl + Alt + C — Run current code chunk  
+- All the usual — Ctrl + Z, C, X, V, S, O  
+
+Other features: Tab Autocompletion, Code highlightning, Color themes
+
+.small[ https://support.rstudio.com/hc/en-us/articles/200711853-Keyboard-Shortcuts ]
+
+---
+## RStudio integration with GitHub Copilot
+
+- Integrates AI-powered assistance directly into the RStudio IDE  
+
+- Offers intelligent code completions based on the current context  
+
+- Provides recommendations for functions, syntax, and best practices  
+
+- Can generate entire code snippets or templates to accelerate coding  
+
+- Helps debug, refactor, and write cleaner, more efficient code  
+
+- Enhances productivity, especially for beginners and exploratory tasks  
+
+.small[ https://docs.posit.co/ide/user/ide/guide/tools/copilot.html ]
+
+---
+
+## RStudio summary
+
+- Project-centric work – scripts and data are organized in one folder (project), easily accessible  
+
+- Single workspace with four (rearrangeable, zoomable) panels  
+
+- Work on multiple projects simultaneously in several instances of RStudio  
+
+- Work on multiple (types of) scripts (rearrangeable tabbed interface)  
+
+- See all variables in R environment, easily visualize them  
+
+- Easy access to help, plots, packages  
+
+- Simple integration with Git version control system
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

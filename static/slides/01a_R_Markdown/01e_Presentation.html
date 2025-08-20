@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Presentations in RMarkdown</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-14" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Presentations in RMarkdown
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-14
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## The power of RMarkdown
+
+We have seen that RMarkdown is an efficient and flexible tool for technical documentation
+
+&lt;img src="img/bandThree2.png" width="300px" style="display: block; margin: auto;" /&gt;
+
+&lt;http://rmarkdown.rstudio.com/&gt;
+
+---
+## RMarkdown and RStudio
+
+RStudio houses many tools for creating presentations, reports, web pages, etc.
+
+Some tools require packages and provide templates
+
+---
+## R Presentations
+
+- Default presentations in RStudio
+
+- Written in RMarkdown
+
+&lt;img src="img/r_presentation1.png" width="300px" style="display: block; margin: auto;" /&gt;
+
+&lt;https://support.rstudio.com/hc/en-us/sections/200130218-R-Presentations&gt;
+
+
+---
+## Formatting R Presentations | Beamer
+
+- **Beamer**: LaTeX-based template for creating slides and presentations
+
+- YAML setting: `output: beamer_presentation`
+
+- Customize with YAML: **theme**, **colortheme**, **fonttheme**
+
+- Combine **Markdown** and **LaTeX** content seamlessly
+
+- Presentation format guide: &lt;http://rmarkdown.rstudio.com/beamer_presentation_format.html&gt;
+
+- Tips for better-looking slides: &lt;https://kbroman.wordpress.com/2013/10/07/better-looking-latexbeamer-slides&gt;
+
+---
+## Formatting R presentations | ioslides
+
+- Default HTML5 presentation format for R Markdown
+
+- YAML setting: `output: ioslides_presentation`
+
+- Supports Markdown mixed with HTML
+
+- Features: incremental bullets, presenter notes, fullscreen mode
+
+- Customize with options like `widescreen`, `transition`, `incremental`
+
+- Presentation format guide: https://bookdown.org/yihui/rmarkdown/ioslides-presentation.html
+
+
+---
+## Formatting R presentations | others
+
+- **Slidy**: HTML-based slideshow
+  - YAML setting: `output: slidy_presentation`
+  - Features: Supports incremental slides, table of contents, custom CSS
+  - Customization: Adjust slide duration, add footers, custom styles
+  - Documentation: R Markdown Slidy Presentation Guide https://bookdown.org/yihui/rmarkdown/slidy-presentation.html
+
+- **reveal.js**: Highly customizable HTML presentation framework
+  - YAML setting: `output: revealjs::revealjs_presentation`
+  - Features: Fullscreen mode, overview, incremental bullets, LaTeX support
+  - Customization: Extensive theming, transitions, and plugin support
+  - Documentation: R Markdown reveal.js Guide https://bookdown.org/yihui/rmarkdown/revealjs.html
+
+.small[ https://www.w3.org/Talks/Tools/Slidy2/  
+https://revealjs.com/]
+
+&lt;!--
+## Slidify
+
+- Customizable presentations in R Markdown. HTML-based. Can render presentations in any format.
+
+- &lt;http://slidify.org/&gt;: 5 min video tutorial 
+
+- Example: Slidify: 'Reproducible HTML Slides from R Markdown', &lt;http://slidify.org/samples/intro/&gt;
+
+- Themes: &lt;https://ramnathv.github.io/slidifyExamples/&gt;
+--&gt;
+
+---
+## Tufte-style handouts
+
+- Distinctive style of text with sidenotes 
+
+![](img/tuftepng.png)
+
+.small[ https://www.wired.com/2003/09/ppt2/ ]
+
+---
+## Tufte-style handouts
+
+Tufte Handouts are documents formatted in the style that Edward Tufte uses in his books and handouts. Tufte’s style is known for its extensive use of sidenotes, tight integration of graphics with text, and well-set typography
+
+&lt;center&gt;&lt;img src="img/tufte-handout.png" height="370px" /&gt;&lt;/center&gt;
+
+---
+## Tufte-style handouts
+
+- `tufte` package implements rendering `tufte_handouts`, `tufte_book`, `tufte_html`
+
+- Installed as a template in RStudio once the `tufte` package is installed in R
+
+- See the link for examples on accessing and formatting tufte-style reports:
+
+&lt;http://rmarkdown.rstudio.com/tufte_handout_format.html&gt;
+
+---
+## Xaringan
+
+- R package for creating HTML5 presentations with R Markdown
+
+- Built on the JavaScript library remark.js, https://remarkjs.com
+
+- YAML setting: `output: xaringan::moon_reader`
+
+- Features:
+  - Supports LaTeX math and code highlighting
+  - Customizable themes and transitions
+  - Presenter notes and incremental slides
+
+- Documentation and examples: https://slides.yihui.name/xaringan
+
+&lt;!--
+## Interactive reports
+
+- Shiny - a web application framework for R, &lt;http://shiny.rstudio.com/&gt;
+
+- Presentation format, &lt;http://rmarkdown.rstudio.com/authoring_shiny.html&gt;
+
+- Generally used for exploratory data analysis
+--&gt;
+
+---
+## Bookdown: Authoring Books with R Markdown
+
+- Bookdown is an R package that extends R Markdown to facilitate writing books, technical documents, and long-form reports. Key Features:
+  - Generate output in multiple formats: HTML, PDF, EPUB, and Word.
+  - Supports numbering and cross-referencing of figures, tables, equations, and sections.
+  - Includes support for citations, bibliographies, and LaTeX-style theorem environments.
+  - Allows embedding of interactive content such as HTML widgets and Shiny applications.
+
+Documentation:  
+.small[ https://bookdown.org/  
+https://bookdown.org/yihui/bookdown/ ] 
+
+.small[R Programming for Data Science https://bookdown.org/rdpeng/rprogdatascience/  
+]
+
+---
+## Blogdown
+
+- Blogdown is an R package that facilitates building websites using R Markdown and Hugo, a fast static site generator written in Go. Key Features:
+  - Dynamic Content: Embed R code, output, and interactive elements within your site.
+  - Technical Writing: Supports LaTeX math, citations, and footnotes, making it ideal for academic and technical documentation.
+  - Customizable Themes: Utilize themes from Hugo Themes or create your own.
+  - Version Control Integration: Seamlessly integrates with Git and GitHub for version control and deployment.
+
+&lt;!-- Getting Started:
+  - Install the package: `install.packages("blogdown")`
+  - Create a new site: `blogdown::new_site(theme = "hugo-lithium-theme")`
+  - Serve the site locally: `blogdown::serve_site()`
+--&gt;
+
+Documentation:  
+.small[ https://bookdown.org/yihui/blogdown/  
+https://github.com/rstudio/blogdown]
+
+---
+## Websites | GitHub pages
+
+- A simple way to make a website using Markdown and git, &lt;http://rmarkdown.rstudio.com/rmarkdown_websites.html&gt;
+
+- GitHub pages hosting, &lt;https://pages.github.com/&gt; - quick start on one page
+
+- Example: 'Easy websites with GitHub Pages', &lt;http://kbroman.org/simple_site/&gt;
+
+&lt;!--
+
+## Publishing articles
+
+- LaTeX Journal Article Templates for R Markdown, &lt;https://github.com/rstudio/rticles&gt;
+
+![](img/peerJ.png)
+
+open access peer-reviewed scientific mega journal, &lt;https://peerj.com/&gt;
+
+- Free preprint submission. Judges scientific/methodological rigor. Does not judge the results (may be null), interest or impact
+
+
+&lt;https://github.com/PeerJ/paper-now&gt; 
+
+
+## RPubs
+
+- &lt;http://rpubs.com/&gt;: publishing R Markdown reports and presentation on the web
+- Everything public
+- Example: 'R Cookbook - Chapter 11 - Linear Regression and ANOVA', &lt;http://rpubs.com/escott8908/RC11&gt;
+
+&lt;center&gt;
+![](img/rpubs.png)
+&lt;/center&gt;
+
+## Formulas in presentations
+
+- **MathJax** - formula rendering engine accepting LaTeX, MathML, or AsciiMath syntax.
+- Inline formula - decorate with **`$..$`**
+    - e.g. `"... when `\(x &lt; y\)` we have ..."` 
+    - becomes "... when `\(x &lt; y\)` we have ..."
+- Self-standing equation - decorate with **`$$..$$`**
+    - e.g. `$$\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$$`
+    - becomes `$$\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$$`
+
+&lt;https://en.wikibooks.org/wiki/LaTeX/Mathematics&gt;
+
+&lt;http://meta.math.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference&gt;
+--&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

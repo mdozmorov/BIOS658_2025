@@ -21,22 +21,11 @@ editor_options:
 
 ## Slides 
 
-Coming soon
+### Welcome slides
 
-<!--
-### AI, Machine Learning, Deep Learning concepts
-
-<a href="../../slides/01a_What_is_DL.html#1" target="_blank">Lecture slides in HTML format</a>
+<a href="../../slides/00_Intro/00_Intro.html#1" target="_blank">Lecture slides in HTML format</a>
 
 ```{r echo=FALSE}
-knitr::include_url('../../slides/01a_What_is_DL.html#1')
+knitr::include_url('../../slides/00_Intro/00_Intro.html#1')
 ```
 
-### Brief History of Machine Learning
-
-<a href="../../slides/01b_History.html#1" target="_blank">Lecture slides in HTML format</a>
-
-```{r echo=FALSE}
-knitr::include_url('../../slides/01b_History.html#1')
-```
--->

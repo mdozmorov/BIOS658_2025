@@ -46,3 +46,27 @@ knitr::include_url('../../slides/01a_R_Markdown/01b_IntroRSlides.html#1')
 ```{r echo=FALSE}
 knitr::include_url('../../slides/01a_R_Markdown/01c_Markdown.html#1')
 ```
+
+<a href="../../slides/01a_R_Markdown/01d_Mathjax.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01a_R_Markdown/01d_Mathjax.html#1')
+```
+
+<a href="../../slides/01a_R_Markdown/01e_Presentation.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01a_R_Markdown/01e_Presentation.html#1')
+```
+
+<a href="../../slides/01b_Graphics_dplyr/01b_dplyr.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01b_Graphics_dplyr/01b_dplyr.html#1')
+```
+
+<a href="../../slides/01b_Graphics_dplyr/01c_ggplot2.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/01b_Graphics_dplyr/01c_ggplot2.html#1')
+```

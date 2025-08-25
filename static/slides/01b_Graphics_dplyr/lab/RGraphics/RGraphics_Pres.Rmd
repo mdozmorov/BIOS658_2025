@@ -1,0 +1,163 @@
+---
+title: "Getting Started with R Graphics"
+author: "Clay Ford"
+date: "November 2014"
+output:
+  ioslides_presentation: default
+  beamer_presentation: default
+---
+
+## Graphics in R
+
+R has powerful graphical facilities
+
+- Easily produce standard statistical graphs
+- Allows you to create new types of graphs
+- Create publication quality graphs
+- Many packages provide powerful plotting functions
+- Lots of free reference material available
+
+
+## Producing graphics in R not always easy
+
+- Need to know the right function and how to set its arguments
+- Arguments are not always intuitive
+- Data sometimes need to be in certain format or shape
+- Error messages not always helpful
+
+It's OK. Everyone struggles with R Graphics from time to time. Google can help you.
+
+## Workshop Plan
+
+Follow along in R Studio as we learn about the following:
+
+- R’s plotting framework
+- How to do common graphs
+- ggplot2 package
+- Examples of package-specific plotting functions
+
+## R graphics framework
+
+R graphics are created with three kinds of functions:
+
+- **High-level functions**: create a graphic
+- **Low-level functions**: add to an existing graphic
+- **Interactive functions**: add or extract information from a graph, typically with a mouse
+
+All functions have arguments that specify how they work.
+
+In addition R has separate **graphical parameters** that apply to the display of graphics.
+
+## High-level function example
+
+
+```{r, fig.height=3.5,fig.width=6}
+plot(x = mtcars$hp, y = mtcars$mpg)
+```
+
+
+## Low-level function example
+
+```{r, fig.height=3.5,fig.width=6}
+plot(x = mtcars$hp, y = mtcars$mpg)
+points(x = 300, y = 30, pch = 19, col = "red")
+```
+
+
+## Graphical Parameters example
+
+```{r, fig.height=3, fig.width=7}
+par(mfrow=c(1,2))
+hist(mtcars$hp); hist(mtcars$mpg)
+```
+
+Let's go to R!
+
+## ggplot2
+
+- Popular graphing package that implements Leland Wilkinson’s _Grammar of Graphics_ (2005)
+- Features consistent coding
+- Works in a layered fashion, first showing raw data and then adding layers of annotations and summaries
+- Provides very nice default theme
+- Handles legends beautifully
+
+## ggplot2 - the components
+
+- Data and aesthetic mappings (**data** and **aes**)
+- Geometric objects represent what you see on plot (**geoms**)
+- Statistical transformations summarize data (**stats**)
+- Scales that map values from data to the graph (**scale**)
+- A coordinate system (**coord**)
+- A faceting specification that describes how to lay out data (**facet**)
+
+
+## basic ggplot structure
+
+**Specify data and aesthetics**   
+`ggplot(data, aes(x=, y=, color=, shape=, size=)) +`   
+
+**Specify geometric shapes**  
+`geom_xxxxx() +`   
+
+**Specify statistical, scale or coordinate changes**   
+`stat_xxxx() +` or `scale_xxxx() +` or `coord_xxxx() +`   
+
+**Specify how to layout multiple graphs**   
+`facet_xxxx()`   
+
+## ggplot example
+
+```{r, message=FALSE, fig.height=3, fig.width=6}
+library(ggplot2)
+ggplot(iris, aes(x = Petal.Width, y = Petal.Length, 
+                 color=Species)) + 
+  geom_point() +
+  geom_smooth(method="lm") + 
+  ggtitle("Petals of the Iris data set") 
+
+```
+
+
+## ggplot - the catch
+
+- Data must be a data frame
+- Data must be in _long_ format, which could mean reshaping data
+- The package is young and still evolving (ie, code that works today may not work in the future)
+- Consistent interface, yes, but still many arguments to keep track of
+
+Let’s go to R...
+
+## References
+
+- Chang, W. (2013), _R Graphics Cookbook_, O’Reilly.
+- Murrell, P. (2005), _R Graphics_, Chapman and Hall.
+- Wickham, H. (2010), "A Layered Grammar of Graphics", _Journal of Computational and Graphical Statistics_, Volume 19, Number 1, Pages 3–28: http://vita.had.co.nz/papers/layered-grammar.pdf
+- Wickham, H. (2009), _ggplot2: Elegant Graphics for Data Analysis_, Springer.
+- A complete list of R Graphics functions with individual help pages: library(help = "graphics")
+- Intro to R Graphics: http://cran.r-project.org/doc/manuals/R-intro.html#Graphics 
+
+## some web sites
+
+**CRAN Task View (all Graphics packages)**  
+http://cran.r-project.org/web/views/Graphics.html  
+**Cookbook for R: Graphs**  
+http://www.cookbook-r.com/Graphs/   
+**ggplot2 wiki**   
+https://github.com/hadley/ggplot2/wiki   
+**Quick-R: Basic Graphs**  
+http://www.statmethods.net/graphs/index.html   
+**R Tips: Graphs and tables**  
+https://www.zoology.ubc.ca/~schluter/R/display/    
+**R Graph Catalog**   
+http://shinyapps.stat.ubc.ca/r-graph-catalog/  
+
+## StatLab
+
+Thanks for coming today!
+
+For help and advice with your data analysis, contact the StatLab to set up an appointment: statlab@virginia.edu
+
+Sign up for more workshops or see past workshops:
+http://data.library.virginia.edu/statlab/
+
+Register for the Research Data Services newsletter to stay up-to-date on StatLab events and resources: http://data.library.virginia.edu/newsletters/

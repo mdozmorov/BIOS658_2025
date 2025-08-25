@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data visualization in R</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-25" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Data visualization in R
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-25
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+
+&lt;!-- - Rather than using one-off plotting functions, ggplot2 lets you build visualizations step-by-step by adding layers like data, aesthetics (mapping variables to visual properties), geometric objects (e.g., points, bars, lines), scales, and themes. --&gt;
+
+## ggplot2 package
+
+- **ggplot2** is a data visualization package, part of the tidyverse ecosystem created by Hadley Wickham. It’s built on the concept of the Grammar of Graphics (Leland Wilkinson), which provides a consistent, layered framework for creating plots. .small[ https://ggplot2.tidyverse.org/ ]
+
+
+Key Features
+- **Layered approach** – Start with data and progressively add plot elements.
+- **Aesthetic mapping** – Easily link variables to colors, sizes, shapes, and other visual attributes.
+- **Wide variety of geoms** – From scatter plots and bar charts to boxplots and heatmaps.
+- **Highly customizable** – Control scales, coordinate systems, annotations, and themes for publication-quality visuals.
+- **Works well with tidy data** – Integrates seamlessly with dplyr and other tidyverse packages.  
+
+
+---
+## The basics of ggplot2 graphics
+
+- Data mapped to graphical elements
+- Add graphical layers and transformations
+- Commands are chained with "+" sign
+
+| Object     |       | Description                                                        |
+|------------|-------|--------------------------------------------------------------------|
+| Data       |       | The raw data that you want to plot                                 |
+| Aethetics  | aes() | How to map your data on x, y axis, color, size, shape (aesthetics) |
+| Geometries | geom_ | The geometric shapes that will represent the data                  |
+data + 
+
+aesthetic mappings of data to plot coordinates +
+
+geometry to represent the data
+
+---
+## Basic ggplot2 syntax
+
+**Specify data, aesthetics and geometric shapes** 
+
+`ggplot(data, aes(x=, y=, color=, shape=, size=, fill=)) +`   
+`geom_point()`, or `geom_histogram()`, or `geom_boxplot()`, etc.   
+
+- This combination is very effective for exploratory graphs. 
+
+- The data must be a data frame in a **long** (not wide) format
+
+- The `aes()` function maps **columns** of the data frame to aesthetic properties of geometric shapes to be plotted.
+
+- `ggplot()` defines the plot; the `geoms` show the data; layers are added with `+` 
+
+&lt;!---
+## Examples of ggplot2 graphics
+
+
+``` r
+diamonds %&gt;% filter(cut == "Good", color == "E") %&gt;% 
+  ggplot(aes(x = price, y = carat)) +
+  geom_point()  # aes(size = price) +
+```
+
+Try other geoms
+
+```
+  geom_smooth() # method = lm
+  geom_line()
+  geom_boxplot()
+  geom_bar(stat="identity")
+  geom_histogram()
+```
+--&gt;
+
+---
+## Moving beyond `ggplot` + `geoms`
+
+Customizing scales
+
+* Scales control the mapping from data to aesthetics and provide tools to read the plot (ie, axes and legends).
+
+* Every aesthetic has a default scale. To add or modify a scale, use a `scale` function. 
+
+* All scale functions have a common naming scheme:
+`scale` `_` name of aesthetic `_` name of scale
+
+* Examples: `scale_y_continuous`, `scale_color_discrete`, `scale_fill_manual`
+
+---
+## ggplot2 example - update scale for y-axis
+
+
+``` r
+ggplot(iris, aes(x = Petal.Width, y = Sepal.Width, 
+                 color=Species)) + geom_point() +
+  scale_y_continuous(limits=c(0,5), breaks=seq(0,5,0.5)) +
+  scale_color_manual(name="Iris Species", 
+                     values=c("red","blue","black"))
+```
+
+&lt;img src="01c_ggplot2_files/figure-html/unnamed-chunk-2-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Moving beyond `ggplot` + `geoms`
+
+Split plots
+
+* A natural next step in exploratory graphing is to create plots of subsets of data. These are called facets in ggplot2.
+
+* Use `facet_wrap()` if you want to facet by one variable and have `ggplot2` control the layout. Example:   
+  + `facet_wrap( ~ var)`
+
+- Use `facet_grid()` if you want to facet by one and/or two variables and control layout yourself. Examples:    
+  + `facet_grid(. ~ var1)` - facets in columns   
+  + `facet_grid(var1 ~ .)` - facets in rows   
+  + `facet_grid(var1 ~ var2)` - facets in rows and columns   
+
+---
+## ggplot2 example - `facet_wrap` 
+
+Note free x scales
+
+
+``` r
+ggplot(iris, aes(x = Petal.Width, y = Sepal.Width)) + 
+  geom_point() + geom_smooth(method="lm") +
+  facet_wrap(~ Species, scales = "free_x")
+```
+
+&lt;img src="01c_ggplot2_files/figure-html/unnamed-chunk-3-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## stat functions
+
+- All `geoms` perform a default statistical transformation. 
+
+- For example, `geom_histogram()` bins the data before plotting. `geom_smooth()` fits a line through the data according to a specified method.
+
+- In some cases the transformation is the "identity", which just means plot the raw data. For example, `geom_point()`
+
+- These transformations are done by `stat` functions. The naming scheme is `stat_` followed by the name of the transformation. For example, `stat_bin`, `stat_smooth`, `stat_boxplot`
+
+- **Every geom has a default stat, every stat has a default geom.**
+
+---
+## stat functions
+
+
+``` r
+# Case 1: Directly on a categorical variable (Species)
+head(iris)
+```
+
+```
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1          5.1         3.5          1.4         0.2  setosa
+## 2          4.9         3.0          1.4         0.2  setosa
+## 3          4.7         3.2          1.3         0.2  setosa
+## 4          4.6         3.1          1.5         0.2  setosa
+## 5          5.0         3.6          1.4         0.2  setosa
+## 6          5.4         3.9          1.7         0.4  setosa
+```
+
+``` r
+# geom_bar() uses stat_count() by default
+ggplot(iris, aes(x = Species, fill = Species)) +
+  geom_bar() +
+  ggtitle("geom_bar() with default stat = 'count'") 
+```
+
+&lt;img src="01c_ggplot2_files/figure-html/unnamed-chunk-4-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## stat functions
+
+
+``` r
+# Case 2: Using pre-computed counts with dplyr + stat = 'identity'
+(species_counts &lt;- iris %&gt;%
+  group_by(Species) %&gt;%
+  summarise(Count = n(), .groups = "drop"))
+```
+
+```
+## # A tibble: 3 × 2
+##   Species    Count
+##   &lt;fct&gt;      &lt;int&gt;
+## 1 setosa        50
+## 2 versicolor    50
+## 3 virginica     50
+```
+
+``` r
+ggplot(species_counts, aes(x = Species, y = Count, fill = Species)) +
+  geom_bar(stat = "identity") +
+  ggtitle("geom_bar(stat = 'identity') with summarised counts")
+```
+
+&lt;img src="01c_ggplot2_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Update themes and labels
+
+* The default ggplot2 theme is excellent. It follows the advice of several landmark papers regarding statistics and visual perception. (Wickham 2009, p. 141)
+
+* However you can change the theme using ggplot2's themeing system. To date, there are seven built-in themes: `theme_gray` (_default_), `theme_bw`, `theme_linedraw`, `theme_light`, `theme_dark`, `theme_minimal`, `theme_classic`
+
+* You can also update axis labels and titles using the `labs` function.
+
+---
+## ggplot2 enhancements
+.pull-left[
+
+``` r
+ggplot(iris, aes(x = Petal.Width, y = Sepal.Width, color = Species)) +
+  geom_point(size = 2, alpha = 0.8) +
+  labs( title    = "Sepal vs. Petal",
+        subtitle = "Iris dataset",
+        x        = "Petal Width (cm)",
+        y        = "Sepal Width (cm)",
+        color    = "Species") +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x      = element_text(angle = 45, hjust = 1),
+        plot.title       = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle    = element_text(hjust = 0.5),
+        legend.position  = "top",
+        panel.grid.minor = element_blank())
+```
+
+&lt;img src="01c_ggplot2_files/figure-html/unnamed-chunk-6-1.png" style="display: block; margin: auto;" /&gt;
+]
+.pull-right[
+- `theme_minimal()` for a clean look
+
+- Larger points with slight transparency (size, alpha)
+
+- Subtitle added in `labs()`
+
+- Rotated x-axis labels with `element_text(angle = 45)`
+
+- Centered bold title &amp; subtitle
+
+- Legend moved to the top
+
+- Minor gridlines removed
+]
+
+---
+## Summary: Fine tuning ggplot2 graphics
+
+| Parameter                   |        | Description                                                                                                                     | 
+|-----------------------------|--------|---------------------------------------------------------------------------------------------------------------------------------| 
+| Facets                      | facet_ | Split one plot into multiple plots based on a grouping variable                                                                 | 
+| Scales                      | scale_ | Maps between the data ranges and the dimensions of the plot                                                                     | 
+| Visual Themes               | theme  | The overall visual defaults of a plot: background, grids, axe, default typeface, sizes, colors, etc.                            | 
+| Statistical transformations | stat_  | Statistical summaries of the data that can be plotted, such as quantiles, fitted curves (loess, linear models, etc.), sums etc. | 
+| Coordinate systems          | coord_ | Expressing coordinates in a system other than Cartesian                                                                         | 
+---
+## R Graphics Resources
+
+* **Plotly** – An interactive graphing library that works with R and integrates with **ggplot2**. It allows zooming, tooltips, and interactive exploration of data in the browser or RStudio Viewer.
+
+* **GoogleVis** – An R package that provides an interface to the **Google Charts API**. It creates interactive charts (motion charts, maps, gauges, etc.) that can be viewed in a web browser.
+
+* **ggbio** – An extension of **ggplot2** that implements the grammar of graphics for **biological data**. It provides specialized visualizations for genomic features, tracks, and annotation data.
+
+.small[https://plotly.com/r/  
+https://cran.r-project.org/web/packages/googleVis/vignettes/googleVis_intro.html  
+https://bioconductor.org/packages/ggbio/
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

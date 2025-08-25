@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data manipulation with dplyr</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-08-25" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Data manipulation with dplyr
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-08-25
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## dplyr: Data Manipulation with R
+
+80% of your work will involve data preparation:
+
+- **Filtering rows** (to create a subset) – `filter()`  
+
+- **Selecting columns** (selecting variables) – `select()`, `pull()`  
+
+- **Adding new variables** – `mutate()`  
+
+- **Sorting** – `arrange()`  
+
+- **Aggregating** – `summarise()` (often used with `group_by()`)  
+
+- **Joining** – `left_join()`, `right_join()`, `inner_join()`, `full_join()`  
+
+.small[https://dplyr.tidyverse.org/]
+
+---
+## The pipe `%&gt;%` operator
+
+- Pass the output of one command as the input to another — chain commands together (similar to the `|` operator in Linux)  
+- Read as “then”: take the object, *then* perform the next operation  
+
+
+``` r
+library(dplyr)
+
+# Without the pipe
+round(sqrt(1000), 3)
+```
+
+```
+## [1] 31.623
+```
+
+``` r
+# With the pipe
+1000 %&gt;% sqrt() %&gt;% round()
+```
+
+```
+## [1] 32
+```
+
+``` r
+# Using . to specify where the piped value goes
+1000 %&gt;% sqrt() %&gt;% round(., 3)
+```
+
+```
+## [1] 31.623
+```
+
+&lt;!---
+## The pipe %&gt;% operator
+
+- For example, we can view the head of the `diamonds` data.frame using either of the last two lines of code here:
+
+
+``` r
+library(dplyr)
+library(ggplot2)
+data(diamonds)
+head(diamonds)
+diamonds %&gt;% head
+```
+
+
+```
+## # A tibble: 6 × 10
+##   carat cut       color clarity depth table price     x     y     z
+##   &lt;dbl&gt; &lt;ord&gt;     &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1  0.23 Ideal     E     SI2      61.5    55   326  3.95  3.98  2.43
+## 2  0.21 Premium   E     SI1      59.8    61   326  3.89  3.84  2.31
+## 3  0.23 Good      E     VS1      56.9    65   327  4.05  4.07  2.31
+## 4  0.29 Premium   I     VS2      62.4    58   334  4.2   4.23  2.63
+## 5  0.31 Good      J     SI2      63.3    58   335  4.34  4.35  2.75
+## 6  0.24 Very Good J     VVS2     62.8    57   336  3.94  3.96  2.48
+```
+
+## The pipe %&gt;% operator
+
+- For example, read the last line of code as:
+    "Take the `price` column of the `diamonds` data.frame and _then_ summarize it"
+    
+
+``` r
+library(dplyr)
+data(diamonds)
+head(diamonds)
+diamonds %&gt;% head
+summary(diamonds$price)
+diamonds$price %&gt;% summary(object = .)
+```
+--&gt;
+
+---
+## dplyr::filter()
+
+- `filter(data, condition)` - filter (select) rows based on the condition of a column
+
+- For example, keep only the entries with Ideal cut
+
+
+``` r
+library(dplyr)
+library(ggplot2)
+diamonds %&gt;% filter(., cut == "Ideal")
+```
+
+```
+## # A tibble: 21,551 × 10
+##    carat cut   color clarity depth table price     x     y     z
+##    &lt;dbl&gt; &lt;ord&gt; &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1  0.23 Ideal E     SI2      61.5    55   326  3.95  3.98  2.43
+##  2  0.23 Ideal J     VS1      62.8    56   340  3.93  3.9   2.46
+##  3  0.31 Ideal J     SI2      62.2    54   344  4.35  4.37  2.71
+##  4  0.3  Ideal I     SI2      62      54   348  4.31  4.34  2.68
+##  5  0.33 Ideal I     SI2      61.8    55   403  4.49  4.51  2.78
+##  6  0.33 Ideal I     SI2      61.2    56   403  4.49  4.5   2.75
+##  7  0.33 Ideal J     SI1      61.1    56   403  4.49  4.55  2.76
+##  8  0.23 Ideal G     VS1      61.9    54   404  3.93  3.95  2.44
+##  9  0.32 Ideal I     SI1      60.9    55   404  4.45  4.48  2.72
+## 10  0.3  Ideal I     SI2      61      59   405  4.3   4.33  2.63
+## # ℹ 21,541 more rows
+```
+
+---
+## dplyr::select()
+
+- `select(data, columns)` - Select columns from the dataset by names
+  - **Note:** The `select()` function name exists in multiple R packages (e.g., `MASS`, `caret`), which can cause conflicts. If you enrounter errors, call it explicitly as `dplyr::select()`.
+
+
+``` r
+diamonds %&gt;% select(., carat, cut, color, price, clarity)
+```
+
+```
+## # A tibble: 53,940 × 5
+##    carat cut       color price clarity
+##    &lt;dbl&gt; &lt;ord&gt;     &lt;ord&gt; &lt;int&gt; &lt;ord&gt;  
+##  1  0.23 Ideal     E       326 SI2    
+##  2  0.21 Premium   E       326 SI1    
+##  3  0.23 Good      E       327 VS1    
+##  4  0.29 Premium   I       334 VS2    
+##  5  0.31 Good      J       335 SI2    
+##  6  0.24 Very Good J       336 VVS2   
+##  7  0.24 Very Good I       336 VVS1   
+##  8  0.26 Very Good H       337 SI1    
+##  9  0.22 Fair      E       337 VS2    
+## 10  0.23 Very Good H       338 VS1    
+## # ℹ 53,930 more rows
+```
+
+---
+## dplyr::mutate()
+
+- `mutate(data, new_column = function(old_columns))` - Add new columns to your dataset that are functions of old columns
+
+
+``` r
+diamonds %&gt;% mutate(price_per_carat = price/carat)
+```
+
+```
+## # A tibble: 53,940 × 11
+##    carat cut   color clarity depth table price     x     y     z price_per_carat
+##    &lt;dbl&gt; &lt;ord&gt; &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;           &lt;dbl&gt;
+##  1  0.23 Ideal E     SI2      61.5    55   326  3.95  3.98  2.43           1417.
+##  2  0.21 Prem… E     SI1      59.8    61   326  3.89  3.84  2.31           1552.
+##  3  0.23 Good  E     VS1      56.9    65   327  4.05  4.07  2.31           1422.
+##  4  0.29 Prem… I     VS2      62.4    58   334  4.2   4.23  2.63           1152.
+##  5  0.31 Good  J     SI2      63.3    58   335  4.34  4.35  2.75           1081.
+##  6  0.24 Very… J     VVS2     62.8    57   336  3.94  3.96  2.48           1400 
+##  7  0.24 Very… I     VVS1     62.3    57   336  3.95  3.98  2.47           1400 
+##  8  0.26 Very… H     SI1      61.9    55   337  4.07  4.11  2.53           1296.
+##  9  0.22 Fair  E     VS2      65.1    61   337  3.87  3.78  2.49           1532.
+## 10  0.23 Very… H     VS1      59.4    61   338  4     4.05  2.39           1470.
+## # ℹ 53,930 more rows
+```
+
+---
+## dplyr::arrange()
+
+- `arrange(data, column_to_sort_by)` - Sort your data by columns
+
+
+``` r
+diamonds %&gt;% arrange(cut, desc(price))
+```
+
+```
+## # A tibble: 53,940 × 10
+##    carat cut   color clarity depth table price     x     y     z
+##    &lt;dbl&gt; &lt;ord&gt; &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1  2.01 Fair  G     SI1      70.6    64 18574  7.43  6.64  4.69
+##  2  2.02 Fair  H     VS2      64.5    57 18565  8     7.95  5.14
+##  3  4.5  Fair  J     I1       65.8    58 18531 10.2  10.2   6.72
+##  4  2    Fair  G     VS2      67.6    58 18515  7.65  7.61  5.16
+##  5  2.51 Fair  H     SI2      64.7    57 18308  8.44  8.5   5.48
+##  6  3.01 Fair  I     SI2      65.8    56 18242  8.99  8.94  5.9 
+##  7  3.01 Fair  I     SI2      65.8    56 18242  8.99  8.94  5.9 
+##  8  2.32 Fair  H     SI1      62      62 18026  8.47  8.31  5.2 
+##  9  5.01 Fair  J     I1       65.5    59 18018 10.7  10.5   6.98
+## 10  1.93 Fair  F     VS1      58.9    62 17995  8.17  7.97  4.75
+## # ℹ 53,930 more rows
+```
+
+---
+## dplyr::summarize()
+
+- `summarize(function_of_variables)` - Summarize columns by custom summary statistics
+
+
+``` r
+diamonds %&gt;% summarize(length = n(), avg_price = mean(price))
+```
+
+```
+## # A tibble: 1 × 2
+##   length avg_price
+##    &lt;int&gt;     &lt;dbl&gt;
+## 1  53940     3933.
+```
+
+---
+## dplyr::group_by()
+
+- `group_by(data, column_to_group)` - Summarize *subsets of* columns by custom summary statistics
+
+
+``` r
+diamonds %&gt;% group_by(cut, color) %&gt;% summarize(mean(price))
+```
+
+```
+## `summarise()` has grouped output by 'cut'. You can override using the `.groups`
+## argument.
+```
+
+```
+## # A tibble: 35 × 3
+## # Groups:   cut [5]
+##    cut   color `mean(price)`
+##    &lt;ord&gt; &lt;ord&gt;         &lt;dbl&gt;
+##  1 Fair  D             4291.
+##  2 Fair  E             3682.
+##  3 Fair  F             3827.
+##  4 Fair  G             4239.
+##  5 Fair  H             5136.
+##  6 Fair  I             4685.
+##  7 Fair  J             4976.
+##  8 Good  D             3405.
+##  9 Good  E             3424.
+## 10 Good  F             3496.
+## # ℹ 25 more rows
+```
+
+---
+## tidyr::pivot_longer()
+
+- `pivot_longer(data, cols, names_to, values_to)` - Reshape data from wide to long format  
+
+- Useful when values are spread across multiple columns and you want them in a single column  
+
+
+``` r
+library(tidyr)
+relig_income
+```
+
+```
+## # A tibble: 18 × 11
+##    religion `&lt;$10k` `$10-20k` `$20-30k` `$30-40k` `$40-50k` `$50-75k` `$75-100k`
+##    &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;
+##  1 Agnostic      27        34        60        81        76       137        122
+##  2 Atheist       12        27        37        52        35        70         73
+##  3 Buddhist      27        21        30        34        33        58         62
+##  4 Catholic     418       617       732       670       638      1116        949
+##  5 Don’t k…      15        14        15        11        10        35         21
+##  6 Evangel…     575       869      1064       982       881      1486        949
+##  7 Hindu          1         9         7         9        11        34         47
+##  8 Histori…     228       244       236       238       197       223        131
+##  9 Jehovah…      20        27        24        24        21        30         15
+## 10 Jewish        19        19        25        25        30        95         69
+## 11 Mainlin…     289       495       619       655       651      1107        939
+## 12 Mormon        29        40        48        51        56       112         85
+## 13 Muslim         6         7         9        10         9        23         16
+## 14 Orthodox      13        17        23        32        32        47         38
+## 15 Other C…       9         7        11        13        13        14         18
+## 16 Other F…      20        33        40        46        49        63         46
+## 17 Other W…       5         2         3         4         2         7          3
+## 18 Unaffil…     217       299       374       365       341       528        407
+## # ℹ 3 more variables: `$100-150k` &lt;dbl&gt;, `&gt;150k` &lt;dbl&gt;,
+## #   `Don't know/refused` &lt;dbl&gt;
+```
+
+``` r
+# Example: turn multiple measurement columns into key-value pairs
+relig_income %&gt;% 
+  pivot_longer(cols = !religion, 
+               names_to = "income", 
+               values_to = "count")
+```
+
+```
+## # A tibble: 180 × 3
+##    religion income             count
+##    &lt;chr&gt;    &lt;chr&gt;              &lt;dbl&gt;
+##  1 Agnostic &lt;$10k                 27
+##  2 Agnostic $10-20k               34
+##  3 Agnostic $20-30k               60
+##  4 Agnostic $30-40k               81
+##  5 Agnostic $40-50k               76
+##  6 Agnostic $50-75k              137
+##  7 Agnostic $75-100k             122
+##  8 Agnostic $100-150k            109
+##  9 Agnostic &gt;150k                 84
+## 10 Agnostic Don't know/refused    96
+## # ℹ 170 more rows
+```
+
+---
+## tidyr::pivot_longer()
+
+- `pivot_longer(data, cols, names_to, values_to)` - Reshape data from wide to long format  
+
+- Useful when values are spread across multiple columns and you want them in a single column  
+
+
+``` r
+library(tidyr)
+# Turn multiple measurement columns into key-value pairs
+relig_income %&gt;% 
+  pivot_longer(cols = !religion, 
+               names_to = "income", 
+               values_to = "count")
+```
+
+```
+## # A tibble: 180 × 3
+##    religion income             count
+##    &lt;chr&gt;    &lt;chr&gt;              &lt;dbl&gt;
+##  1 Agnostic &lt;$10k                 27
+##  2 Agnostic $10-20k               34
+##  3 Agnostic $20-30k               60
+##  4 Agnostic $30-40k               81
+##  5 Agnostic $40-50k               76
+##  6 Agnostic $50-75k              137
+##  7 Agnostic $75-100k             122
+##  8 Agnostic $100-150k            109
+##  9 Agnostic &gt;150k                 84
+## 10 Agnostic Don't know/refused    96
+## # ℹ 170 more rows
+```
+
+---
+## tidyr::pivot_wider()
+
+- `pivot_wider(data, names_from, values_from)` - Reshape data from long to wide format
+
+- Useful when observations are in rows but you want them spread across columns
+
+
+``` r
+relig_income %&gt;% 
+  pivot_longer(cols = !religion, 
+               names_to = "income", 
+               values_to = "count") %&gt;% 
+  pivot_wider(names_from = income, values_from = count)
+```
+
+```
+## # A tibble: 18 × 11
+##    religion `&lt;$10k` `$10-20k` `$20-30k` `$30-40k` `$40-50k` `$50-75k` `$75-100k`
+##    &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;
+##  1 Agnostic      27        34        60        81        76       137        122
+##  2 Atheist       12        27        37        52        35        70         73
+##  3 Buddhist      27        21        30        34        33        58         62
+##  4 Catholic     418       617       732       670       638      1116        949
+##  5 Don’t k…      15        14        15        11        10        35         21
+##  6 Evangel…     575       869      1064       982       881      1486        949
+##  7 Hindu          1         9         7         9        11        34         47
+##  8 Histori…     228       244       236       238       197       223        131
+##  9 Jehovah…      20        27        24        24        21        30         15
+## 10 Jewish        19        19        25        25        30        95         69
+## 11 Mainlin…     289       495       619       655       651      1107        939
+## 12 Mormon        29        40        48        51        56       112         85
+## 13 Muslim         6         7         9        10         9        23         16
+## 14 Orthodox      13        17        23        32        32        47         38
+## 15 Other C…       9         7        11        13        13        14         18
+## 16 Other F…      20        33        40        46        49        63         46
+## 17 Other W…       5         2         3         4         2         7          3
+## 18 Unaffil…     217       299       374       365       341       528        407
+## # ℹ 3 more variables: `$100-150k` &lt;dbl&gt;, `&gt;150k` &lt;dbl&gt;,
+## #   `Don't know/refused` &lt;dbl&gt;
+```
+
+&lt;!---
+## The power of pipe %&gt;%
+
+- Summarize *subsets of* columns by custom summary statistics
+
+
+``` r
+arrange(mutate(arrange(filter(tbl_df(diamonds), cut == "Ideal"), price),
+  price_per_carat = price/carat), price_per_carat)
+arrange(
+  mutate(
+    arrange(
+      filter(tbl_df(diamonds), cut == "Ideal"), 
+    price), 
+  price_per_carat = price/carat), 
+price_per_carat)
+diamonds %&gt;% filter(cut == "Ideal") %&gt;% arrange(price) %&gt;%
+  mutate(price_per_carat = price/carat) %&gt;% arrange(price_per_carat)
+```
+--&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

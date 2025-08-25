@@ -1,0 +1,231 @@
+---
+title: "Data manipulation with dplyr"
+# subtitle: "Using ggplot2 and dplyr"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## dplyr: Data Manipulation with R
+
+80% of your work will involve data preparation:
+
+- **Filtering rows** (to create a subset) – `filter()`  
+
+- **Selecting columns** (selecting variables) – `select()`, `pull()`  
+
+- **Adding new variables** – `mutate()`  
+
+- **Sorting** – `arrange()`  
+
+- **Aggregating** – `summarise()` (often used with `group_by()`)  
+
+- **Joining** – `left_join()`, `right_join()`, `inner_join()`, `full_join()`  
+
+.small[https://dplyr.tidyverse.org/]
+
+---
+## The pipe `%>%` operator
+
+- Pass the output of one command as the input to another — chain commands together (similar to the `|` operator in Linux)  
+- Read as “then”: take the object, *then* perform the next operation  
+
+```{r echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+
+# Without the pipe
+round(sqrt(1000), 3)
+
+# With the pipe
+1000 %>% sqrt() %>% round()
+
+# Using . to specify where the piped value goes
+1000 %>% sqrt() %>% round(., 3)
+```
+
+<!---
+## The pipe %>% operator
+
+- For example, we can view the head of the `diamonds` data.frame using either of the last two lines of code here:
+
+```{R echo=TRUE, eval=TRUE, message=F, warning=F, results="hide"}
+library(dplyr)
+library(ggplot2)
+data(diamonds)
+head(diamonds)
+diamonds %>% head
+```
+
+```{R echo=FALSE, eval=TRUE}
+diamonds %>% head
+```
+
+## The pipe %>% operator
+
+- For example, read the last line of code as:
+    "Take the `price` column of the `diamonds` data.frame and _then_ summarize it"
+    
+```{R echo=TRUE, eval=TRUE, message=F, warning=F, results="hide"}
+library(dplyr)
+data(diamonds)
+head(diamonds)
+diamonds %>% head
+summary(diamonds$price)
+diamonds$price %>% summary(object = .)
+```
+-->
+
+---
+## dplyr::filter()
+
+- `filter(data, condition)` - filter (select) rows based on the condition of a column
+
+- For example, keep only the entries with Ideal cut
+
+```{r echo=TRUE, eval=TRUE}
+library(dplyr)
+library(ggplot2)
+diamonds %>% filter(., cut == "Ideal")
+```
+
+---
+## dplyr::select()
+
+- `select(data, columns)` - Select columns from the dataset by names
+  - **Note:** The `select()` function name exists in multiple R packages (e.g., `MASS`, `caret`), which can cause conflicts. If you enrounter errors, call it explicitly as `dplyr::select()`.
+
+```{r echo=TRUE, eval=TRUE}
+diamonds %>% select(., carat, cut, color, price, clarity)
+```
+
+---
+## dplyr::mutate()
+
+- `mutate(data, new_column = function(old_columns))` - Add new columns to your dataset that are functions of old columns
+
+```{r echo=TRUE, eval=TRUE}
+diamonds %>% mutate(price_per_carat = price/carat)
+```
+
+---
+## dplyr::arrange()
+
+- `arrange(data, column_to_sort_by)` - Sort your data by columns
+
+```{r echo=TRUE, eval=TRUE}
+diamonds %>% arrange(cut, desc(price))
+```
+
+---
+## dplyr::summarize()
+
+- `summarize(function_of_variables)` - Summarize columns by custom summary statistics
+
+```{r echo=TRUE, eval=TRUE}
+diamonds %>% summarize(length = n(), avg_price = mean(price))
+```
+
+---
+## dplyr::group_by()
+
+- `group_by(data, column_to_group)` - Summarize *subsets of* columns by custom summary statistics
+
+```{r echo=TRUE, eval=TRUE}
+diamonds %>% group_by(cut, color) %>% summarize(mean(price))
+```
+
+---
+## tidyr::pivot_longer()
+
+- `pivot_longer(data, cols, names_to, values_to)` - Reshape data from wide to long format  
+
+- Useful when values are spread across multiple columns and you want them in a single column  
+
+```{r echo=TRUE, eval=TRUE}
+library(tidyr)
+relig_income
+# Example: turn multiple measurement columns into key-value pairs
+relig_income %>% 
+  pivot_longer(cols = !religion, 
+               names_to = "income", 
+               values_to = "count")
+```
+
+---
+## tidyr::pivot_longer()
+
+- `pivot_longer(data, cols, names_to, values_to)` - Reshape data from wide to long format  
+
+- Useful when values are spread across multiple columns and you want them in a single column  
+
+```{r echo=TRUE, eval=TRUE}
+library(tidyr)
+# Turn multiple measurement columns into key-value pairs
+relig_income %>% 
+  pivot_longer(cols = !religion, 
+               names_to = "income", 
+               values_to = "count")
+```
+
+---
+## tidyr::pivot_wider()
+
+- `pivot_wider(data, names_from, values_from)` - Reshape data from long to wide format
+
+- Useful when observations are in rows but you want them spread across columns
+
+```{r echo=TRUE, eval=TRUE}
+relig_income %>% 
+  pivot_longer(cols = !religion, 
+               names_to = "income", 
+               values_to = "count") %>% 
+  pivot_wider(names_from = income, values_from = count)
+```
+
+<!---
+## The power of pipe %>%
+
+- Summarize *subsets of* columns by custom summary statistics
+
+```{R echo=TRUE, eval=FALSE}
+arrange(mutate(arrange(filter(tbl_df(diamonds), cut == "Ideal"), price),
+  price_per_carat = price/carat), price_per_carat)
+arrange(
+  mutate(
+    arrange(
+      filter(tbl_df(diamonds), cut == "Ideal"), 
+    price), 
+  price_per_carat = price/carat), 
+price_per_carat)
+diamonds %>% filter(cut == "Ideal") %>% arrange(price) %>%
+  mutate(price_per_carat = price/carat) %>% arrange(price_per_carat)
+```
+-->

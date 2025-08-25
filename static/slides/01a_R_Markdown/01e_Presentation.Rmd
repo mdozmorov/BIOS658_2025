@@ -223,6 +223,18 @@ https://github.com/rstudio/blogdown]
 
 - Example: 'Easy websites with GitHub Pages', <http://kbroman.org/simple_site/>
 
+---
+## Websites | Netlify
+
+- Modern platform for hosting static sites, <https://www.netlify.com/>
+
+- Integrates easily with GitHub / GitLab / Bitbucket for automatic deployment
+
+- Supports custom domains, HTTPS, and continuous deployment out of the box
+
+- Example tutorial: 'Publishing a Hugo blog on Netlify', <https://gohugo.io/hosting-and-deployment/hosting-on-netlify/>
+
+
 <!--
 
 ## Publishing articles

@@ -179,19 +179,24 @@ In LaTeX/MathJax, you can create grouped equations using a curly brace. Curly br
 
 ```
 $$
+f(x) =
 \begin{cases}
-\widehat{IF_{1D}} = IF_{1D} - f(D)/2 \\
-\widehat{IF_{2D}} = IF_{2D} + f(D)/2
-\end{cases} \ (1)
+x^2, & x \geq 0 \\
+-x, & x < 0 \\
+0, & \text{otherwise}
+\end{cases}
 $$
 ```
-
 $$
+f(x) =
 \begin{cases}
-\widehat{IF_{1D}} = IF_{1D} - f(D)/2 \\
-\widehat{IF_{2D}} = IF_{2D} + f(D)/2
-\end{cases} \ (1)
+x^2, & x \geq 0 \\
+-x, & x < 0 \\
+0, & \text{otherwise}
+\end{cases}
 $$
+
+
 
 ---
 ## RStudio bonus

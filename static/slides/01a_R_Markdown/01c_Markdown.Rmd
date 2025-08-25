@@ -84,7 +84,7 @@ class: center, middle
 
 # RMarkdown/knitR
 
----
+<!--
 ## Writing reports
 
 - **HTML**: HyperText Markup Language, the standard markup for creating web pages. First version released in 1993.
@@ -97,7 +97,6 @@ class: center, middle
 
 - **Quarto**: a modern, open-source publishing system (successor to R Markdown) for creating documents, presentations, dashboards, and websites from R, Python, Julia, or Observable JavaScript. Supports HTML, PDF, Word, and more.
 
----
 ## HTML Example
 
 - HTML files have the `.html` extension.
@@ -122,7 +121,6 @@ class: center, middle
 </html>
 ```
 
----
 ## LaTeX Example
 
 - LaTeX files usually have the `.tex` extension.  
@@ -146,16 +144,7 @@ and add mathematical formulas like \( E = mc^2 \).
 \end{itemize}
 
 ```
-<!--
-\subsection{An Equation}
-\[
-\int_0^\infty e^{-x^2} \, dx = \frac{\sqrt{\pi}}{2}
-\]
 
-\end{document}
--->
-
----
 ## Sweave example
 
 - Sweave files typically have `.Rnw` extension  
@@ -182,6 +171,7 @@ hist(mtcars$mpg, main = "Miles per Gallon",
 
 \end{document}
 ```
+-->
 
 ---
 ## Markdown syntax

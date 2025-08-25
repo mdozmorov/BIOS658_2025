@@ -4,7 +4,7 @@
     <title>MathJax</title>
     <meta charset="utf-8" />
     <meta name="author" content="Mikhail Dozmorov" />
-    <meta name="date" content="2025-08-14" />
+    <meta name="date" content="2025-08-25" />
     <script src="libs/header-attrs-2.29/header-attrs.js"></script>
     <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
   </head>
@@ -22,7 +22,7 @@ class: center, middle, inverse, title-slide
 ### Virginia Commonwealth University
 ]
 .date[
-### 2025-08-14
+### 2025-08-25
 ]
 
 ---
@@ -180,19 +180,24 @@ In LaTeX/MathJax, you can create grouped equations using a curly brace. Curly br
 
 ```
 $$
+f(x) =
 \begin{cases}
-\widehat{IF_{1D}} = IF_{1D} - f(D)/2 \\
-\widehat{IF_{2D}} = IF_{2D} + f(D)/2
-\end{cases} \ (1)
+x^2, &amp; x \geq 0 \\
+-x, &amp; x &lt; 0 \\
+0, &amp; \text{otherwise}
+\end{cases}
 $$
 ```
+$$
+f(x) =
+`\begin{cases}
+x^2, &amp; x \geq 0 \\
+-x, &amp; x &lt; 0 \\
+0, &amp; \text{otherwise}
+\end{cases}`
+$$
 
-$$
-\begin{cases}
-\widehat{IF_{1D}} = IF_{1D} - f(D)/2 \\
-\widehat{IF_{2D}} = IF_{2D} + f(D)/2
-\end{cases} \ (1)
-$$
+
 
 ---
 ## RStudio bonus

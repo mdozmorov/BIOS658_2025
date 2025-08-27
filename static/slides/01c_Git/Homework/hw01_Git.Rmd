@@ -1,0 +1,63 @@
+---
+output:
+  html_document: default
+  word_document: default
+---
+
+### Homework 01
+
+# Git & GitHub Basics
+
+## Part 1: Local Git
+
+1. Create a new folder called `git-homework`.
+2. Inside the folder, create a file called `hello.txt` and write your name inside.
+3. Initialize a Git repository:  
+```bash
+   git init
+```
+
+4. Check the status of your repository. What does Git report?
+5. Add `hello.txt` to the staging area and make your first commit with the message:
+   `"First commit: add hello.txt"`
+
+## Part 2: Working with Changes
+
+1. Edit `hello.txt` and add today’s date.
+2. Run `git status`. What do you see?
+3. Stage and commit your changes with the message:
+   `"Update hello.txt with date"`
+
+## Part 3: GitHub Setup
+
+1. Make sure you have a GitHub account. If not, create one at https://github.com/.
+2. Configure your GitHub credentials and enable passwordless login (SSH key or HTTPS with a credential manager).
+3. Create a new repository on GitHub called **git-homework** (without initializing with README).
+
+## Part 4: Connecting Local & Remote
+
+1. Connect your local repo to GitHub:
+
+ ```bash
+ git remote add origin git@github.com:USERNAME/git-homework.git
+ ```
+*(Replace `USERNAME` with your GitHub username.)*
+
+2. Push your commits to the main branch:
+
+ ```bash
+ git branch -M main
+ git push -u origin main
+ ```
+
+## Part 5: Questions
+
+Answer briefly in a text file (`answers.txt`) and commit it to your repo:
+
+* What is the difference between **git add** and **git commit**?
+* What happens if you delete the `.git` folder?
+* Why should you never share your private key (`id_rsa`)?
+
+## Part 6: Submission
+
+- Submit your GitHub username and the repository link.

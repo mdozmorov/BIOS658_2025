@@ -94,7 +94,7 @@ At the conclusion of the course, students will be able to collect, analyze and i
 
 ## Homework format
 
-- Assignments will be posted and should be submitted via VCU Canvas, [https://blackboard.vcu.edu](https://blackboard.vcu.edu)
+- Assignments will be posted and should be submitted via VCU Canvas, https://learningsystems.vcu.edu/canvas/
 - Assignments should be submitted as reproducible reports in RMarkdown
 - Short summaries of Reading assignments should be organized in an RMarkdown report, maintained on GitHub
 - Final project should be submitted as a fully reproducible GitHub repository

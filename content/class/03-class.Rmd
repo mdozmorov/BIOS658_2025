@@ -38,3 +38,22 @@ knitr::include_url('../../slides/02a_Biology/02b_DNA.html#1')
 ```{r echo=FALSE}
 knitr::include_url('../../slides/02a_Biology/02c_Genes.html#1')
 ```
+
+
+<a href="../../slides/03a_Genomic_technologies/02_Genomics.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/03a_Genomic_technologies/02_Genomics.html#1')
+```
+
+<a href="../../slides/03a_Genomic_technologies/02b_Human_Genome.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/03a_Genomic_technologies/02b_Human_Genome.html#1')
+```
+
+<a href="../../slides/03a_Genomic_technologies/02c_Genomic_formats.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/03a_Genomic_technologies/02c_Genomic_formats.html#1')
+```

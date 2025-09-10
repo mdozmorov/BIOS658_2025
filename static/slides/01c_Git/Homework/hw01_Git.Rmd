@@ -30,7 +30,7 @@ output:
 
 ## Part 3: GitHub Setup
 
-1. Make sure you have a GitHub account. If not, create one at https://github.com/.
+1. Make sure you have a GitHub account. If not, create one at https://github.com/. Select professional username.
 2. Configure your GitHub credentials and enable passwordless login (SSH key or HTTPS with a credential manager).
 3. Create a new repository on GitHub called **git-homework** (without initializing with README).
 

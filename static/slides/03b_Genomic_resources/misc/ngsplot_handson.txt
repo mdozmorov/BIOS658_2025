@@ -1,0 +1,34 @@
+ngsplot: Hands-on
+Goal:  Run ngsplot tool to generate plots (average profile and heatmap) to show/find enrichment of interest.
+Datasets for the hands-on exercises are from ngsplot website and/or ENCODE project. 
+Setup Files Needed
+Create symbolic links (symlinks) to the needed files,
+ln –s /nfs/BaRC_Public/Hot_Topics/ngsplot_Apr2014/demo/* .
+
+Hands-on Exercises
+I.  List ngsplot available genomes installed
+   	     ngsplotdb –y list
+II.      Average profile plots and heatmaps
+a. H3K4me3 enrichment near TSS
+bsub ngs.plot.r -G hg19  -R tss -C hesc.H3k4me3.1M.bam  -O hesc.H3k4me3vsInp.tss -T H3K4me3 -L 3000 -FL 300 
+> Note: you can view the output (pdf) files from the tak command line as well
+eg. evince myFile.pdf
+
+b. H3K27me3 distribution across the gene body
+bsub ngs.plot.r -G hg19 -R genebody -C wgEncodeSydhHistoneK562bH3k27me3bUcdAlnRep1.bam -O hesc.k27.genebody -D ensembl -FL 300  
+
+c. Multiple plots on the same graph with subsets of gene lists
+bsub ngs.plot.r -G hg19 -R genebody -C config.hesc.k4.txt -O hesc.k4.genebody -D ensembl -FL 300  
+> Note: here a config (text) file is used with the “-C” option. 
+
+d. TF binding site (TFBS) near the TSS
+bsub ngs.plot.r -G hg19 -R tss -C config.erythropoiesis.txt -O gata2_eryth.tss -D ensembl -L 1000 -FL 200  
+> Gene list from PMID: 21270440
+
+e. H3K4me3 in custom repeats regions
+bsub ngs.plot.r -G hg19  -C hesc.H3k4me3.1M.bam -O hesc.H3k4me3vsInp.Repeats -T H3K4me3 -L 3000 -FL 300 -R bed -E UCSC_RepeatMaskerRepeats.bed  
+
+f. Small RNA-Seq coverage
+bsub ngs.plot.r -G hg19 -R genebody –C GSM605626_hg19_wgEncodeCshlShortRnaSeqProstateCellTotalAln.bam -O ShortRNASeq_Prostate.genebody -T SmallRNASeq -L 1000 -FL 200  
+
+

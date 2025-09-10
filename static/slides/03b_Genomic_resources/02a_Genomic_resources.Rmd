@@ -1,0 +1,433 @@
+---
+title: "Genomic resources"
+# subtitle: "Using ggplot2 and dplyr"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+library(dplyr)
+library(ggplot2)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## GEO: Gene Expression Omnibus
+
+- A public functional genomics data repository at **NCBI**.  
+
+- Gene expression (microarray, RNA-seq)  
+
+- Epigenomics (ChIP-seq, ATAC-seq, methylation, single-cell data)  
+
+- Functional genomics profiles (perturbations, treatments, time courses)  
+
+- https://www.ncbi.nlm.nih.gov/geo/
+
+---
+## GEO data types
+
+- **GSE** – Series (experiment-level datasets)  
+  - **GSM** – Samples (individual measurements)  
+  - **GPL** – Platforms (array designs or sequencing technologies)  
+
+- **GDS** – Curated DataSets (processed/curated subsets)  
+
+.small[ https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE110626 ]
+
+---
+## Sequence Read Archive (SRA)  
+
+- World’s largest repository of raw high-throughput sequencing data.  
+
+- Maintained by the **NCBI**, with mirrors at **ENA** (Europe) and **DDBJ** (Japan).  
+
+- Stores raw reads from diverse technologies (Illumina, PacBio, Nanopore, etc.).  
+
+- Covers many experiment types: RNA-seq, ChIP-seq, ATAC-seq, WGS, metagenomics, and more.  
+
+- Data accessible via web interface, FTP, or programmatic tools (`sra-tools`).  
+
+- [https://www.ncbi.nlm.nih.gov/sra](https://www.ncbi.nlm.nih.gov/sra)  
+
+---
+## European Nucleotide Archive (ENA)  
+
+- Comprehensive archive of nucleotide sequencing data.  
+
+- Hosted by the **European Bioinformatics Institute (EMBL-EBI)**.  
+
+- Stores raw reads, assembled sequences, and functional annotation.  
+
+- Fully synchronized with **NCBI SRA** and **DDBJ** (Japanese version) as part of the International Nucleotide Sequence Database Collaboration (INSDC).  
+
+- Supports all sequencing platforms (Illumina, PacBio, Nanopore, etc.).  
+
+- Data accessible via web portal, FTP, APIs, and programmatic tools.  
+
+- [https://www.ebi.ac.uk/ena](https://www.ebi.ac.uk/ena)  
+
+---
+## UCSC Genome Browser
+
+- A graphical tool for exploring and visualizing genome annotations.
+
+- Developed in 2000 by Jim Kent during his Ph.D. in Biology.
+
+- Hosts genomic annotation data for a wide range of species.
+
+- Offers additional tools for data analysis and database queries.
+
+.small[ http://genome.ucsc.edu/
+
+https://genome.ucsc.edu/FAQ/FAQgenes.html]
+
+---
+## UCSC Genome Browser Track Hubs
+
+- Track hubs are web-accessible (HTTP or FTP) directories of genomic data viewable in the UCSC Genome Browser.
+
+- Tracks are organized using a text file in the UCSC track hub format:
+    - Advantage: Easily shared with collaborators or other users.
+    - Disadvantage: Requires creating the text configuration file.
+
+.small[ http://genome.ucsc.edu/goldenpath/help/hgTrackHubHelp.html ]
+
+---
+## Small track hub example
+
+- Minimum set of track description fields:
+    - _track_ - Symbolic name of the track
+    - _type_ - One of the supported formats
+        - bigWig, bigBed, bam, vcfTabix ...
+    - _bigDataUrl_ - Web location (URL) of the data file
+    - _shortLabel_ - Short track description (Max 17 characters)
+    - _longLabel_ - Longer track description (displayed over tracks in the browser)
+
+---
+## Small track hub example
+
+.small[
+```
+track McGill_MS000101_monocyte_RNASeq_signal_forward
+type bigWig
+bigDataUrl http://epigenomesportal.ca/public_data/MS000101.monocyte.RNASeq.signal_forward.bigWig 
+shortLabel 000101mono.rna
+longLabel MS000101 | human | monocyte | RNA-Seq | signal_forward
+
+track McGill_MS000101_monocyte_RNASeq_signal_reverse
+type bigWig
+bigDataUrl http://epigenomesportal.ca/public_data/MS000101.monocyte.RNASeq.signal_reverse.bigWig 
+shortLabel 000101mono.rna
+longLabel MS000101 | human | monocyte | RNA-Seq | signal_reverse
+```
+]
+
+---
+## WashU Epigenome Browser
+
+- Interactive platform for visualizing genomics and epigenomics data.
+
+- Includes data from the Roadmap Epigenome Project.
+
+- Supports many track types also available in the UCSC Genome Browser.
+
+- Can load UCSC track hub files for seamless integration.
+
+.small[ https://epigenomegateway.wustl.edu/ ]
+
+---
+## Integrative Genomics Viewer (IGV)
+
+* Fast, interactive desktop tool for exploring and visualizing diverse genomics datasets (e.g., RNA-seq, ChIP-seq, BED files).
+
+```{r, out.width = "700px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/igv.png")
+```
+
+.small[ http://software.broadinstitute.org/software/igv/ ]
+
+---
+## IGV Features
+
+- Intuitive interface for exploring large genomic datasets.
+
+- Integrate multiple data types with clinical or sample metadata.
+
+- Access data from various sources:
+    - Local files, remote servers, and cloud storage.
+    - Intelligent remote file handling — no need to download entire datasets.
+
+- Automate tasks using the command-line interface.
+
+.small[ Tutorial: https://github.com/griffithlab/rnaseq_tutorial/wiki/IGV-Tutorial ]
+
+
+
+
+---
+## Other Genome Browsers & Databases
+
+### General Multi-Species Browsers
+
+- **NCBI Genome Data Viewer** – Interactive browser for over 4,120 eukaryotic assemblies. https://www.ncbi.nlm.nih.gov/gdv
+
+- **Ensembl Genome Browser** – Broad, multi-species support with rich annotation resources. https://useast.ensembl.org/Homo_sapiens/
+
+- **Integrated Genome Browser (IGB)** – Desktop application supporting real-time zooming and multiple data formats. https://www.bioviz.org/  
+
+---
+## Other Genome Browsers & Databases
+
+### Species-Specific Genome Browsers / Databases
+
+- **MGI (Mouse Genome Informatics)** – Deep mouse-specific annotation; supports the Multiple Genome Viewer for cross-species comparisons. https://www.informatics.jax.org/
+
+- **WormBase** – Genomic and functional data for *C. elegans*.  https://parasite.wormbase.org/
+
+- **FlyBase** – Comprehensive resource for *Drosophila* genetics.  https://flybase.org/
+
+- **SGD (Saccharomyces Genome Database)** – Yeast-specific annotations and tools.  https://www.yeastgenome.org/
+
+- **TAIR (The Arabidopsis Information Resource)** – *Arabidopsis thaliana* genomic hub.  https://www.arabidopsis.org/
+
+---
+class: center,middle
+# High-throughput data repositories
+
+---
+## ENCODE Project  
+
+- **Encyclopedia of DNA Elements (ENCODE)**  
+
+- Comprehensive catalog of functional elements in the human genome.  
+
+- Includes transcription factor binding, histone modifications, chromatin accessibility, RNA expression.  
+
+- Data freely available via [https://www.encodeproject.org](https://www.encodeproject.org).  
+
+```{r, out.width = "350px", fig.align='center', echo=FALSE}
+knitr::include_graphics("https://www.encodeproject.org/static/img/encode-logo-small-2x.png")
+```
+
+---
+## Roadmap Epigenomics Project  
+
+- NIH Roadmap Epigenomics Mapping Consortium.  
+
+- Reference epigenomes across multiple human tissues and cell types.  
+
+- Data types: histone modifications, DNA methylation, chromatin accessibility.  
+
+- Resource for studying tissue-specific gene regulation.  
+
+- [https://egg2.wustl.edu/roadmap/](https://egg2.wustl.edu/roadmap/).  
+
+```{r, out.width = "750px", fig.align='center', echo=FALSE}
+knitr::include_graphics("https://egg2.wustl.edu/roadmap/web_portal/images/logo5.png")
+```
+
+---
+## GTEx (Genotype-Tissue Expression)  
+
+- Large-scale resource linking genetic variation to gene expression.  
+
+- RNA-seq data across ~50 human tissues.  
+
+- Enables eQTL analysis and tissue-specific regulation studies.  
+
+- [https://gtexportal.org](https://gtexportal.org).  
+
+```{r, out.width = "650px", fig.align='center', echo=FALSE}
+knitr::include_graphics("https://gtexportal.org/img/gtex-logo.372cd1b4.png")
+```
+
+---
+## Connectivity Map (CMap)
+
+- **CMap 1**: ~1,300 compounds profiled across ~5 human cell lines (circa 2006).  
+- **CMap 2 (L1000)**: ~1.3 million expression signatures, ~42,000 perturbagens, across ∼8 cell lines under LINCS.  
+- Enables querying relationships between diseases, genes, and compounds via transcriptional signatures.
+
+- **Interactive portal (Clue.io)** – Query, visualize, and analyze signatures.  
+- **API** – Programmatic access to CMap datasets and results.  
+- **LINCS ecosystem portal** – Broad data and tool platform.  
+- **L1000 Query Tool** – Submit gene lists to find connected perturbagens.
+
+.small[
+https://www.broadinstitute.org/connectivity-map-cmap  
+https://clue.io/  https://clue.io/api  http://lincsproject.org/  https://clue.io/l1000-query  
+Subramanian, A., et al. “A Next Generation Connectivity Map: L1000 Platform and the First 1,000,000 Profiles.” Cell  (2017). https://doi.org/10.1016/j.cell.2017.10.049.
+]
+
+
+
+
+---
+## RECOUNT2
+
+```{r, out.width = "750px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/recount2.png")
+```
+
+- A resource hosting uniformly processed RNA-seq data from the **Sequence Read Archive (SRA)**, **GTEx**, and **TCGA**
+- Provides gene, exon, junction, and base-pair–level expression counts, along with metadata
+- \>70,000 human RNA-seq samples
+- Data normalized and ready-to-use in R/Bioconductor
+
+.small[ Web: https://jhubiostatistics.shinyapps.io/recount/
+
+R package: https://bioconductor.org/packages/recount/
+
+Collado-Torres, L., et al. “Reproducible RNA-Seq Analysis Using Recount2.” Nature Biotechnology (2017): 319–21. https://doi.org/10.1038/nbt.3838.
+]
+
+---
+## ARCHS4
+
+- A cloud-powered resource that uniformly processes and makes publicly available **gene- and transcript-level RNA-seq data** from human and mouse samples.
+- Over **922,000 human** and **1,040,000 mouse** samples accessible using the latest release.
+- Data available in **HDF5 (H5)** format, optimized for efficient storage and access
+- Web interface offers t-SNE–based 3D visualization, metadata search, downloadable subsets via auto-generated scripts, and interactive gene landing pages with:
+    - Average expression by tissue/cell line  
+    - Top co-expressed genes  
+    - Predicted functions and protein–protein interactions based on co-expression + prior knowledge 
+
+.small[
+Lachmann A, Torre D, Keenan AB, et al. Massive mining of publicly available RNA-seq data from human and mouse. Nature Communications (2018), https://doi.org/10.1038/s41467-018-03751-6
+
+https://archs4.org/
+]
+
+---
+## cellxgene — Interactive Single-Cell Data Explorer  
+
+- A web-based, no-code platform developed by the Chan-Zuckerberg Initiative for exploring single-cell RNA-seq datasets via an intuitive browser interface.
+
+- **Core Functionalities**  
+  - **Find & Explore Datasets (Discover & Explorer)** — Quickly locate, visualize, and analyze public single-cell datasets using metadata-driven filters and interactive embeddings (like UMAP or tSNE).  
+  - **Metadata & Gene Filtering** — Color by categorical metadata (e.g., cell type, tissue) or continuous metrics (e.g., gene expression, QC values), then select and subset cells via lasso tool or sidebar filters.  
+  - **Gene & Marker Discovery** — Search genes to overlay expression patterns, create bivariate plots for gene comparisons, and identify marker genes between selected cell populations (up to ~50K cells for differential analysis).  
+.small[
+https://cellxgene.cziscience.com/  
+Megill C. et al., cellxgene: a performant, scalable exploration platform for high dimensional sparse matrices. bioRxiv 2021, https://doi.org/10.1101/2021.04.05.438318
+]
+
+---
+## scBaseCount
+
+- An AI agent–curated, uniformly processed single-cell RNA-seq repository—the largest public resource of its kind.
+
+- Contains ~230 million cells spanning **21 species** and **72 tissues**.
+
+- Data sourced from public repositories (e.g., GEO/SRA) and processed via automated AI agents to ensure standardized quality and interoperability.
+
+.small[
+https://arcinstitute.org/manuscripts/scBaseCount  
+Youngblut N. et al., scBaseCount: an AI agent-curated, uniformly processed, and continually expanding single cell data repository. bioRxiv 2025. https://doi.org/10.1101/2025.02.27.640494
+]
+
+---
+## Galaxy  
+
+- A web-based, open-source framework for accessible, reproducible, and transparent computational biology (Motto: *“Data-intensive biology for everyone”*)
+
+- User-friendly **GUI** to run hundreds of popular bioinformatics tools without coding  
+
+- Every step, parameter, and dataset automatically tracked for **reproducibility**  
+
+- Build, save, and share **custom analysis workflows**; import/share workflows
+
+.small[ https://usegalaxy.org/  
+Many local and institutional Galaxy servers also available   ]
+
+<!--## Other resources
+
+- **BaseSpace** - Illumina-oriented cloud computing environment, https://basespace.illumina.com/home/index
+- **GenePattern** - web-based computational biology suite of tools for genomic analysis. http://software.broadinstitute.org/cancer/software/genepattern/
+- **GenomeSpace** - integrated environment of the aforementioned genomic platforms allowing the data to be stored in one place and analyzed by a multitude of tools. http://www.genomespace.org/
+
+\tiny Side-by-side comparison of many resources https://docs.google.com/spreadsheets/d/1o8iYwYUy0V7IECmu21Und3XALwQihioj23WGv-w0itk/pubhtml -->
+
+---
+## Summarized data sets, services and resources
+
+<!-- misc/Table_resources.xlsx -->
+
+```{r, out.width = "850px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/big_data_sets.png")
+```
+
+.small[ Langmead, Ben, and Abhinav Nellore. “Cloud Computing for Genomic Data Analysis and Collaboration.” Nature Reviews Genetics, January 30, 2018. https://doi.org/10.1038/nrg.2017.113. ]
+
+---
+## Large genomics projects and resources
+
+<!-- misc/Table_big_data.xlsx-->
+
+.small[ 
+
+| Name                                                    | Website                         | Description                                                                                                                                                                      |
+|---------------------------------------------------------|---------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1000 Genomes Project (1KGP)                             | www.internationalgenome.org     | This project includes whole-genome and exome sequencing data from 2,504 individuals across 26 populations                                                                        |
+| Cancer Cell Line Encyclopedia (CCLE)                    | portals.broadinstitute.org/ccle | This resource includes data spanning 1,457 cancer cell lines                                                                                                                     |
+| Encyclopedia of DNA Elements (ENCODE)                   | www.encodeproject.org           | The goal of this project is to identify functional elements of the human genome using a gamut of sequencing assays across cell lines and tissues                                 |
+| Genome Aggregation Database (gnomAD)                    | gnomad.broadinstitute.org       | This resource entails coverage and allele frequency information from over 120,000 exomes and 15,000 whole genomes                                                                |
+| Genotype–Tissue Expression (GTEx) Portal                | gtexportal.org                  | This effort has to date performed RNA sequencing or genotyping of 714 individuals across 53 tissues                                                                              |
+| Global Alliance for Genomics and Health (GA4GH)         | genomicsandhealth.org           | This consortium of over 400 institutions aims to standardize secure sharing of genomic and clinical data                                      ]                                   |
+
+---
+## Large genomics projects and resources
+
+.small[ 
+
+| Name                                                    | Website                         | Description                                                                                                                                                                      |
+|---------------------------------------------------------|---------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| International Cancer Genome Consortium (ICGC)           | icgc.org                        | This consortium spans 76 projects, including TCGA                                                                                                                                |
+| Million Veterans Program (MVP)                          | www.research.va.gov/mvp         | This US programme aims to collect blood samples and health information from 1 million military veterans                                                                          |
+| Model Organism Encyclopedia of DNA Elements (modENCODE) | www.modencode.org               | The goal of this effort is to identify functional elements of the Drosophila melanogaster and Caenorhabditis elegans genomes using a gamut of sequencing assays                  |
+| Precision Medicine Initiative (PMI)                     | allofus.nih.gov                 | This US programme aims to collect genetic data from over 1 million individuals                                                                                                   |
+| The Cancer Genome Atlas (TCGA)                          | cancergenome.nih.gov            | This resource includes data from 11,350 individuals spanning 33 cancer types                                                                                                     |
+| Trans-Omics for Precision Medicine (TOPMed)             | www.nhlbiwgs.org        | The goal of this programme is to build a commons with omics data and associated clinical outcomes data across populations for research on heart, lung, blood and sleep disorders |
+
+Langmead, Ben, and Abhinav Nellore. “Cloud Computing for Genomic Data Analysis and Collaboration.” Nature Reviews Genetics, January 30, 2018. https://doi.org/10.1038/nrg.2017.113.
+]
+
+<!--
+## A comparison of genomics data types
+
+\tiny
+
+| NGS technology                       | Total bases | Compressed bytes | Equivalent size | Core hours to analyse 100 samples | Comments                                                              |
+|--------------------------------------|-------------|------------------|-----------------|-----------------------------------|-----------------------------------------------------------------------|
+| Single-cell RNA sequencing           | 725 million | 300 MB           | 50 MP3 songs    | 20                                | >100,000 such samples in SRA, >50,000 from humans                     |
+| Bulk RNA sequencing                  | 4 billion   | 2 GB             | 2 CD-ROMs       | 100                               | >400,000 such samples in SRA, >100,000 from humans                    |
+| Human reference genome (GRCh38)      | 3 billion   | 800 MB           | 1 CD-ROM        | NA                                |                                                                       |
+| Whole-exome sequencing               | 9.5 billion | 4.5 GB           | 1 DVD movie     | 4,000                             | \~1,300 human samples from 1000 Genomes Project alone                  |
+| Whole-genome sequencing of human DNA | 75 billion  | 25 GB            | 1 Blu-ray movie | 30,000                            | \~18,000 human samples with 30x coverage from the TOPMed project alone |
+-->
+

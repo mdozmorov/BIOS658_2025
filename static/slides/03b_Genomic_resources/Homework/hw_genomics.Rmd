@@ -1,0 +1,81 @@
+---
+output:
+  html_document:
+    df_print: paged
+---
+< -- from lab1-intro.pdf -->
+
+# Simple Genomic Data Analysis Using R 
+
+Make sure you have R/RStudio installed.
+
+---
+
+## 1. UCSC Genome Browser 
+
+Go to the UCSC Genome Browser webpage at [http://genome.ucsc.edu/](http://genome.ucsc.edu/). Click **"Genomes"** at the top left corner. This will take you to the Human Genome (*Homo sapiens*) Browser Gateway. From here, you can select genomes for a number of species; the default species is human.  
+
+From the **Human Assembly** pull-down menu, select **Dec. 2013 (GRCh38/hg38)**. Click **"View Sequences"**, review the page, save the data, and then write R code to answer the following questions:  
+
+1. How many chromosomes are in the human genome?  
+2. What is the longest chromosome, and what is its length?  
+3. What is the total length of the human genome, including all contigs?  
+4. Find the longest and shortest contigs and print their sequence names and lengths.  
+5. How many contigs are in the GRCh38/hg38 genome assembly? Parse their sequence names and calculate counts and proportions of contig categories (e.g., "alt", "fix", "random", "chrUn").  
+
+---
+
+Next, return to the Human Genome Browser Gateway and search for **"nanog"**. This will give you the search results for the Nanog gene. Answer the following questions based on the first search result under **UCSC Genes**:  
+
+1. What is the short description of the Nanog gene?  
+2. What is the genomic location of the gene (chromosome, start, and end)?  
+
+Now click the first search result to visualize the gene in the Genome Browser. Zoom in and out to explore nearby genomic features. Click on the Nanog gene track to open the gene description page. Briefly review the information there and answer:  
+
+1. What is the strand direction, coding size, and exon count of the gene?  
+2. What is the RefSeq Accession number for the gene?  
+
+---
+
+## 2. Download and Analyze hg38 RefSeq Genes 
+
+Go back to the UCSC Genome Browser home page. Under the **Tools** menu, select **Table Browser**.  
+
+On the Table Browser page, select:  
+- **Clade:** Mammal  
+- **Genome:** Human  
+- **Assembly:** Dec. 2013 (GRCh38/hg38)  
+- **Group:** Genes and Gene Prediction  
+- **Track:** NCBI RefSeq  
+- **Table:** UCSC RefSeq (refGene)  
+
+For **region**, select **genome** (to retrieve data for the entire genome). Note that you can also specify a chromosome or region to extract a subset of the data.  
+
+Scroll down and choose **all fields from selected table**. Then specify the output file name as **hg38genes.txt**, and set the **file type returned** to **plain text**. Click **Get Output**. (This may take a little time.) The downloaded text file will contain a list of human hg38 RefSeq genes.  
+
+Open the file to examine its structure. Each row corresponds to a gene, and columns represent gene properties. For example:  
+- **name** = RefSeq accession number  
+- **chrom** = chromosome  
+- **strand** = strand direction (+ or –)  
+- **txStart** / **txEnd** = transcription start and end positions  
+
+---
+
+### Exploratory Analysis in R  
+
+Write R code to perform a simple exploratory analysis of the human RefSeq genes. These are typical first steps when analyzing a new genome. Summarize your findings in a short report that addresses the following points:  
+
+1. **Number of genes**: total number of genes, number of genes per chromosome, and per strand. Plot the relationship between chromosome length (from Question 1 above) and gene counts. Which chromosome has the most/least genes?  
+2. **Gene length** (defined as *txEnd – txStart*): What is the distribution of gene lengths? Are gene lengths different between + and – strands? Plot overlapping density distributions.  
+3. **Longest and shortest genes**: provide short descriptions.  
+4. **Exon counts**: Are the numbers of exons per gene different between + and – strands? Plot overlapping density distributions.  
+5. **Correlation**: Are exon counts and gene length correlated?  
+6. **(Bonus)** **Gene density**: Calculate the average number of genes per million bases for each chromosome. Which chromosome is the most gene-dense?  
+
+## 3.  Submission 
+
+Submit your response as an RMarkdown knitted into an HTML document. Submit the source `.Rmd` file as well Name your files following the convention:
+
+```         
+hw03_lastname.docx
+```

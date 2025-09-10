@@ -417,6 +417,7 @@ knitr::include_graphics("img/big_data_sets.png")
 Langmead, Ben, and Abhinav Nellore. “Cloud Computing for Genomic Data Analysis and Collaboration.” Nature Reviews Genetics, January 30, 2018. https://doi.org/10.1038/nrg.2017.113.
 ]
 
+
 <!--
 ## A comparison of genomics data types
 

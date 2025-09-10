@@ -57,3 +57,9 @@ knitr::include_url('../../slides/03a_Genomic_technologies/02b_Human_Genome.html#
 ```{r echo=FALSE}
 knitr::include_url('../../slides/03b_Genomic_resources/01a_Genomic_formats.html#1')
 ```
+
+<a href="../../slides/03b_Genomic_resources/02a_Genomic_resources.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/03b_Genomic_resources/02a_Genomic_resources.html#1')
+```

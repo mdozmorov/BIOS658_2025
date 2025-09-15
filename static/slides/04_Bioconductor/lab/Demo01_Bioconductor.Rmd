@@ -1,0 +1,220 @@
+---
+title: "Getting Started with Bioconductor: Installation and Management"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      eval = FALSE)  # Set to TRUE when running
+```
+
+# Installing Bioconductor
+
+### Step 1: Install BiocManager
+
+BiocManager is the package manager for Bioconductor. It replaces the older `biocLite()` function.
+
+```{r install_biocmanager}
+# Check if BiocManager is already installed
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+# Load BiocManager
+library(BiocManager)
+```
+
+### Step 2: Verify Installation
+
+```{r verify_installation}
+# Check BiocManager version
+BiocManager::version()
+
+# Check if installation is valid
+BiocManager::valid()
+```
+
+### Step 3: Install Core Bioconductor Packages
+
+```{r install_core}
+# Install core Bioconductor packages
+BiocManager::install()
+
+# This installs the core set of Bioconductor packages
+# Including: BiocGenerics, S4Vectors, IRanges, GenomeInfoDb, etc.
+```
+
+# Using BiocManager
+
+## Installing Specific Packages
+
+```{r install_individual}
+# Install a single package
+BiocManager::install("DESeq2")
+
+# Install multiple packages
+BiocManager::install(c("edgeR", "limma", "GenomicRanges"))
+
+# Install with dependencies
+BiocManager::install("ComplexHeatmap", dependencies = TRUE)
+```
+
+### Installing from Different Sources
+
+```{r install_sources}
+# Install from Bioconductor
+BiocManager::install("Biostrings")
+
+# Install from CRAN (BiocManager can handle this too)
+BiocManager::install("ggplot2")
+
+# Install from GitHub
+BiocManager::install("jokergoo/ComplexHeatmap") # username/repository
+
+# Example: Installing a development version from GitHub
+BiocManager::install("Bioconductor/BiocGenerics")
+```
+
+## Checking Available Packages
+
+```{r check_packages}
+# List all available Bioconductor packages
+available_packages <- BiocManager::available()
+head(available_packages, 20)
+
+# Search for specific packages
+grep("RNA", available_packages, value = TRUE)[1:10]
+
+# Check if a package is available
+"DESeq2" %in% available_packages
+```
+
+## Package Information
+
+```{r package_info}
+# Get package version
+packageVersion("BiocManager")
+
+# Get detailed package information
+BiocManager::valid()  # Shows installed packages and their validity
+```
+
+# Upgrading and Maintaining Bioconductor
+
+## Updating Packages
+
+### Update All Packages
+
+```{r update_all}
+# Update all installed packages
+BiocManager::install(update = TRUE, ask = FALSE)
+
+# Interactive update (will prompt for each package)
+BiocManager::install(update = TRUE, ask = TRUE)
+```
+
+### Update Specific Packages
+
+```{r update_specific}
+# Update specific packages only
+BiocManager::install(c("DESeq2", "edgeR"), update = TRUE)
+
+# Force reinstallation
+BiocManager::install("limma", force = TRUE)
+```
+
+## Upgrading Bioconductor Version
+
+```{r upgrade_bioc}
+# Check current Bioconductor version
+BiocManager::version()
+
+# Upgrade to the latest Bioconductor release
+# This will upgrade R packages to match the new Bioconductor version
+BiocManager::install(version = "3.18")  # Specify version number
+```
+
+## Managing Package Versions
+
+```{r manage_versions}
+# Install a specific version of a package
+BiocManager::install("DESeq2", version = "1.38.0")
+
+# Check compatibility
+BiocManager::valid()
+
+# Fix invalid installations
+BiocManager::valid(fix = TRUE)
+```
+
+# Using Docker for Bioconductor Development
+
+First, install Docker from https://www.docker.com/
+
+## Bioconductor Docker Images
+
+### Official Bioconductor Images
+
+```{bash}
+# Pull the latest release image
+docker pull bioconductor/bioconductor_docker:RELEASE_3_18
+
+# Pull the development version
+docker pull bioconductor/bioconductor_docker:devel
+
+# Pull a specific version
+docker pull bioconductor/bioconductor_docker:RELEASE_3_17
+```
+
+### Running Bioconductor in Docker
+
+```{bash}
+# Run RStudio Server with Bioconductor
+docker run -e PASSWORD=bioc \
+    -p 8787:8787 \
+    -v ~/Documents:/home/rstudio/Documents \
+    bioconductor/bioconductor_docker:devel
+
+# Access RStudio at: http://localhost:8787
+# Username: rstudio
+# Password: bioc
+```
+
+## Getting Help
+
+```{r getting_help}
+# Package-specific help
+?BiocManager::install
+vignette("BiocManager")
+
+# Browse all vignettes for a package
+browseVignettes("DESeq2")
+
+library("Biobase")
+openVignette()
+```
+
+# Resources and Further Reading
+
+## Official Resources
+
+- **Bioconductor Website**: [https://www.bioconductor.org/](https://www.bioconductor.org/)
+- **BiocManager Documentation**: [https://cran.r-project.org/package=BiocManager](https://cran.r-project.org/package=BiocManager)
+- **Bioconductor Docker**: [https://www.bioconductor.org/help/docker/](https://www.bioconductor.org/help/docker/)
+- **Package Documentation**: [https://www.bioconductor.org/packages/](https://www.bioconductor.org/packages/)
+
+## Learning Resources
+
+- **Bioconductor Courses**: [https://www.bioconductor.org/help/courses/](https://www.bioconductor.org/help/courses/)
+- **Workflows**: [https://www.bioconductor.org/packages/release/BiocViews.html#___Workflow](https://www.bioconductor.org/packages/release/BiocViews.html#___Workflow)
+- **Support Forum**: [https://support.bioconductor.org/](https://support.bioconductor.org/)

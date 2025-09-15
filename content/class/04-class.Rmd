@@ -1,0 +1,40 @@
+---
+title: "Bioconductor"
+# linktitle: "1. Introduction to RStudio and Images"
+date: "2025-09-15"
+class_date: "2025-09-15"
+draft: false
+output:
+  blogdown::html_page:
+    toc: false
+menu:
+  class:
+    parent: Class sessions
+    weight: 4
+type: docs
+weight: 4
+# pdf: 
+# thumb: 
+editor_options: 
+  chunk_output_type: console
+---
+
+## The Biology and Genetics of Cells and Organisms
+
+<a href="../../slides/04_Bioconductor/04a_Bioconductor.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/04_Bioconductor/04a_Bioconductor.html#1')
+```
+
+<a href="../../slides/04_Bioconductor/BiocIntro_ExpressionSet_Overview.pdf" target="_blank">Lecture slides in PDF format</a>
+
+<iframe src="../../slides/04_Bioconductor/BiocIntro_ExpressionSet_Overview.pdf" width="100%" height="400px"></iframe>
+
+
+<a href="../../slides/04_Bioconductor/04b_Annotation.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/04_Bioconductor/04b_Annotation.html#1')
+```
+

@@ -1,0 +1,129 @@
+---
+title: "Gene annotation management in Bioconductor"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      eval = TRUE)  # Set to TRUE when running
+```
+
+## Introduction
+
+In genomic analyses, different databases and software tools use **different gene identifiers**.  
+Common types include:
+
+- **HGNC gene symbols** (e.g., *TP53*, *BRCA1*)  
+- **Entrez Gene IDs** (numeric, NCBI)  
+- **Ensembl Gene IDs** (e.g., ENSG00000141510)  
+
+For reproducibility and integration across datasets, we often need to **map between these identifiers**.
+
+The **Bioconductor package** `org.Hs.eg.db` (https://bioconductor.org/packages/org.Hs.eg.db/)  
+provides a comprehensive annotation database for the human genome.  
+It includes mappings between gene symbols, Entrez IDs, Ensembl IDs, UniProt, and more.  
+
+
+## Setup
+
+```{r libraries, message=FALSE}
+# Load required libraries
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+# Install annotation package if not already installed
+if (!requireNamespace("org.Hs.eg.db", quietly = TRUE))
+    BiocManager::install("org.Hs.eg.db")
+
+library(org.Hs.eg.db)
+library(dplyr)
+```
+
+## Example: Cancer-related genes
+
+Let’s take a small set of **well-known cancer genes**:
+
+```{r gene-list}
+genes <- c("TP53", "BRCA1", "BRCA2", "PTEN", "KRAS", "EGFR", "MYC")
+genes
+```
+
+## Convert Gene Symbols → Entrez IDs
+
+The function **`mapIds()`** allows flexible ID conversion:
+
+```{r symbol-to-entrez}
+entrez_ids <- mapIds(org.Hs.eg.db,
+                     keys = genes,
+                     column = "ENTREZID",
+                     keytype = "SYMBOL",
+                     multiVals = "first")
+entrez_ids
+```
+
+## Convert Gene Symbols → Ensembl IDs
+
+```{r symbol-to-ensembl}
+ensembl_ids <- mapIds(org.Hs.eg.db,
+                      keys = genes,
+                      column = "ENSEMBL",
+                      keytype = "SYMBOL",
+                      multiVals = "first")
+ensembl_ids
+```
+
+## Convert back: Entrez IDs → Gene Symbols
+
+```{r entrez-to-symbol}
+back_to_symbol <- mapIds(org.Hs.eg.db,
+                         keys = entrez_ids,
+                         column = "SYMBOL",
+                         keytype = "ENTREZID",
+                         multiVals = "first")
+back_to_symbol
+```
+
+## Combine results in a data frame
+
+```{r results-table}
+conversion_table <- data.frame(
+  Symbol = genes,
+  Entrez = unname(entrez_ids),
+  Ensembl = unname(ensembl_ids),
+  Symbol_back = unname(back_to_symbol)
+)
+
+conversion_table
+```
+
+## Adding gene description
+
+```{r}
+# Convert Gene Symbols → Entrez, Ensembl, Description
+results <- AnnotationDbi::select(org.Hs.eg.db,
+                                 keys = genes,
+                                 columns = c("ENTREZID", "ENSEMBL", "GENENAME"),
+                                 keytype = "SYMBOL")
+
+results
+
+```
+
+
+
+## Summary
+
+* **`org.Hs.eg.db`** is a key Bioconductor package for **gene ID mapping in humans**.
+* Using **`mapIds()`**, we can flexibly convert between **symbols, Entrez IDs, Ensembl IDs, UniProt IDs, etc.**
+* This is essential for **integrating data from different sources** (e.g., GEO, TCGA, Ensembl, KEGG).

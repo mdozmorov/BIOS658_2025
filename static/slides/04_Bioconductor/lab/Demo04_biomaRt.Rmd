@@ -1,0 +1,158 @@
+---
+title: "biomaRt"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      eval = TRUE)  # Set to TRUE when running
+```
+
+Example BioMart hosts (historical and alternative servers).
+In practice, most users connect to Ensembl’s BioMart (default host),
+but other institutions may host specialized BioMart
+
+
+```{r}
+# Load the biomaRt package for accessing biological databases via the BioMart API
+library(biomaRt)
+
+# host="caprica.caltech.edu"        # Example of a custom BioMart installation
+# host="www.sanger.ac.uk"           # Sanger Institute (Ensembl developer site)
+# host="biomart.informatics.jax.org" # Jackson Lab (mouse-specific resources)
+# host="biomart.intogen.org"        # IntOGen cancer genomics portal
+# host="ensembl.gramene.org"        # Gramene plant comparative genomics resource
+
+# Archived biomart version for mm9 
+# mart=useMart(host='may2009.archive.ensembl.org', biomart='ENSEMBL_MART_ENSEMBL', dataset="mmusculus_gene_ensembl")
+# or the latest biomart version for mm
+# mart <- useMart("ensembl", dataset="mmusculus_gene_ensembl") # rnorvegicus
+# or the latest for hs
+# mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl", host="www.biomart.org")
+
+mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+```
+
+## Information: Lists of Filters and Attributes in biomaRt
+
+When using **biomaRt** for gene ID conversion, we need to know:
+
+- **Datasets**: species- or genome-specific datasets available in the BioMart server  
+- **Filters**: the *input identifiers* we provide (e.g., Ensembl ID, Entrez ID, Illumina probe ID)  
+- **Attributes**: the *output identifiers or annotations* we want to retrieve (e.g., gene symbols, GO terms)  
+
+The following code demonstrates how to explore these:
+
+```{r}
+# List available datasets for the selected BioMart (e.g., human, mouse, etc.)
+db_list <- listDatasets(mart)
+head(db_list)
+
+# List available filters (possible input IDs)
+filters <- listFilters(mart)
+head(filters)
+
+# Example: find filters related to RefSeq identifiers
+filters[grep("refseq", filters[, "name"]),]
+
+# List available attributes (possible outputs to retrieve)
+attr <- listAttributes(mart)
+head(attr)
+
+# Example: find attributes related to gene symbols
+attr[grep("symbol", attr[,1]),]
+
+# Example: find attributes related to Gene Ontology (GO)
+attr[grep("^go_", attr[,1]),]
+```
+
+## Gene ID Conversions with biomaRt
+
+The `getBM()` function in **biomaRt** is the workhorse for converting between different gene identifiers.  
+By specifying the **attributes** (the information you want), the **filters** (the type of ID you are providing), and the **values** (your list of IDs), you can flexibly translate across databases.  
+
+Below are several examples demonstrating common conversions.
+
+### Convert from Ensembl Gene IDs to HGNC Symbols and Descriptions
+
+```{r}
+IDs <- c("ENSG00000205420", "ENSG00000206075")
+
+genes <- getBM(
+  attributes = c("ensembl_gene_id", "hgnc_symbol", "description"), 
+  filters = "ensembl_gene_id", 
+  values = IDs, 
+  mart = mart
+)
+
+genes
+```
+
+### Convert from HGNC Gene Symbols to Ensembl IDs and Descriptions
+
+```{r}
+IDs <- c("AKT1", "IFNG", "STAT1")
+
+genes <- getBM(
+  attributes = c("wikigene_name", "hgnc_symbol", "description", "ensembl_gene_id"), 
+  filters = "hgnc_symbol", 
+  values = IDs, 
+  mart = mart
+)
+
+genes
+```
+
+### Convert from Entrez Gene IDs to HGNC Symbols and Descriptions
+
+```{r}
+genes <- getBM(
+  attributes = c("hgnc_symbol", "description"),
+  filters = "entrezgene_id",
+  values = "1",
+  mart = mart,
+  uniqueRows = TRUE
+)
+genes
+```
+
+### 5. Convert from RefSeq mRNA IDs to HGNC Symbols and Descriptions
+
+```{r}
+IDs <- c("NM_001006946")
+
+genes <- getBM(
+  attributes = c("refseq_mrna", "hgnc_symbol", "description"), 
+  filters = "refseq_mrna", 
+  values = IDs, 
+  mart = mart
+)
+
+genes
+```
+
+### 6. Retrieve GO Annotations for Genes by Symbol
+
+```{r}
+IDs <- c("AKT1", "IFNG", "STAT1")
+
+go_annotations <- getBM(
+  attributes = c("hgnc_symbol", "go_id"), 
+  filters = "hgnc_symbol", 
+  values = IDs, 
+  mart = mart
+)
+
+go_annotations
+```

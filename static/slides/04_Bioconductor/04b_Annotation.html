@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Annotations</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-09-11" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Annotations
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-09-11
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## Common Gene Identifiers  
+
+- **Gene Symbols (HGNC / MGI / FlyBase, etc.)**  
+  - Short, human-readable names like **TP53**, **BRCA1**, **Act5C**  
+  - Species-specific naming conventions  
+
+
+- **Entrez Gene ID (NCBI)** - Numeric identifier for a gene record in NCBI  
+  - Example: **7157** → TP53  
+
+
+- **Ensembl Gene ID**  - Stable alphanumeric identifier for genes in Ensembl  
+  - Example: **ENSG00000141510** → TP53 (human)  
+
+
+- **RefSeq ID**  - Accession numbers for curated reference sequences (mRNA, protein, genomic)  
+  - Example: **NM_000546** (TP53 mRNA), **NP_000537** (TP53 protein)  
+
+---
+## Common Gene Identifiers  
+
+- **UniProt / SwissProt ID**  - Protein-centric identifier for curated protein entries  
+  - Example: **P04637** → TP53  
+
+
+- **Other species-specific IDs**  
+  - MGI (mouse): **MGI:98729**  
+  - FlyBase (Drosophila): **FBgn0000017**  
+  - WormBase (C. elegans): **WBGene00006711**  
+
+
+- **Key Notes**  
+  - IDs are often cross-referenced using databases or Bioconductor packages (e.g., `biomaRt`, `org.Hs.eg.db`)  
+  - Choosing the correct ID type is critical for data integration and reproducibility  
+
+---
+## Standardized gene identifiers
+
+### HUGO Gene Nomenclature Committee (HGNC) Gene Names
+
+This resource lists gene name synonyms, which is useful if you are conducting a comprehensive literature search and need to find articles about a gene that may have been called other names in the past.
+
+.small[ https://www.genenames.org/ ]
+
+### GeneCards
+
+Comprehensive **human gene database** providing Gene function and descriptions, Protein information,  Expression patterns across tissues, Related diseases, pathways, and drugs. Integrates data from multiple sources into a single searchable platform
+
+.small[ http://www.genecards.org/] 
+
+---
+## Gene ID Cross-Mapping  
+
+- **Many identifiers exist** for the same gene (Entrez, Ensembl, RefSeq, UniProt, species-specific IDs)  
+
+- **Software tools** typically support only a subset of ID types for analysis  
+
+- **Humans** often find **gene symbols** easier to read and interpret  
+
+- **Cross-mapping** is essential to integrate datasets, link annotations, and ensure reproducibility  
+
+- Tools for mapping: Bioconductor packages (`biomaRt`, `AnnotationDbi`), UniProt ID mapping, NCBI E-utilities  
+
+---
+## Gene ID Challenges
+
+- **Mapping errors**  
+  - Be careful with **1-to-many or many-to-1 mappings**  
+  - Cross-referencing across databases may not always be perfect  
+
+
+- **Gene name ambiguity**  
+  - Aliases can cause confusion (e.g., **FLJ92943**, **LFS1**, **TRP53**, **p53**)  
+  - Prefer using **official gene symbols** (e.g., **TP53**)  
+
+
+- **Spreadsheet pitfalls**  
+  - Excel may auto-convert names like **OCT4 → October 4**  
+  - Use “paste as text” or alternative tools to avoid data corruption  
+
+
+- **Incomplete cross-mapping**  
+  - Some IDs may be missing due to version mismatches or database updates  
+  - Combine multiple sources to maximize coverage and reliability  
+
+---
+## biomaRt — Accessing Bioinformatics Databases from R  
+
+- **What it is**  
+  - An R/Bioconductor package for querying Ensembl directly from R  
+  - Allows retrieval of gene, transcript, and protein annotations  
+  - Access a variety of datasets: human, mouse, and other species  
+
+- **Typical Use Cases**  
+  - Gene ID conversion  
+  - Annotating gene lists with functional information  
+  - Integrating multiple genomic datasets  
+
+.small[ https://bioconductor.org/packages/biomaRt/ ]
+
+---
+## biomaRt: `getBM()` function  
+
+The `getBM()` function requires three main arguments: **filters**, **attributes**, and **values**  
+
+- **Filters** → Define the type of input IDs  
+  - Tell biomaRt what identifiers you have (e.g., Ensembl IDs, gene symbols)  
+  - Use `listFilters()` to see all available filters for your dataset  
+
+- **Attributes** → Specify what information to retrieve  
+  - Which identifiers or annotations you want to map to (e.g., Entrez ID, gene symbol, UniProt ID)  
+  - Use `listAttributes()` to explore available attributes  
+
+- **Values** → Provide the actual input IDs  
+  - A vector of the gene/protein IDs you want to query or convert  
+
+---
+## biomaRt Gotchas
+
+- **Host / Database Version**  
+  - Defines which Ensembl version you are querying  
+  - For **gene ID conversion**, use the **latest database** to ensure up-to-date mappings  
+
+- **Genome Assembly Considerations**  
+  - For **genomic coordinates**, select the database that matches the **genome assembly version** of interest (e.g., GRCh38 vs GRCh37)  
+  - Mismatched assemblies can lead to incorrect coordinates or failed queries  
+
+**Always double-check your dataset’s genome assembly version and Ensembl version before retrieving data**
+
+---
+## AnnotationHub — Centralized Access to Genomic Annotations  
+
+- **What it is**  
+  - A Bioconductor resource providing **centralized access to a wide variety of genomic annotation data**  
+  - Supports multiple species and data types (e.g., genes, transcripts, regulatory regions, epigenomic marks)  
+  - Integrates data from sources such as Ensembl, UCSC, and GEO  
+
+- **Typical Use Cases**  
+  - Retrieve gene/genomic region annotation datasets
+  - Access epigenomic datasets for analysis  
+
+.small[https://bioconductor.org/packages/AnnotationHub/]
+
+---
+## ExperimentHub — Access Curated Experimental Data  
+
+- **What it is**  
+  - A Bioconductor resource providing **centralized access to curated datasets** from experiments, publications, and training materials  
+  - Each dataset includes **metadata, tags, and modification dates** for easy filtering and tracking  
+  - Interface and usage are **similar to AnnotationHub**, making it easy to learn  
+
+- **Use Cases**  
+  - Retrieve processed experimental data for reproducible analyses  
+  - Access curated training datasets for teaching or benchmarking  
+
+.small[https://bioconductor.org/packages/ExperimentHub/]
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

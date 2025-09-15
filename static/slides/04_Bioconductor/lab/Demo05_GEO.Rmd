@@ -1,0 +1,147 @@
+---
+title: "Gene Expression Omnibus (GEO)"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      eval = TRUE)  # Set to TRUE when running
+```
+
+# Reading the NCBI's GEO microarray SOFT files in R/BioConductor
+
+GEO expression omnibus, [https://www.ncbi.nlm.nih.gov/geo/](https://www.ncbi.nlm.nih.gov/geo/), is the largest repository of gene expression data. It may have the data you're looking for, saving you time and money to do the experiment yourself. 
+
+We will discuss how to load GEO SOFT format microarray data from the Gene Expression Omnibus database (GEO) (hosted by the NCBI) into R/BioConductor. SOFT stands for Simple Omnibus Format in Text. There are actually four types of GEO SOFT file available:
+
+- `GEO Platform (GPL)` - These files describe a particular type of microarray. They are annotation files.
+- `GEO Sample (GSM)` - Files that contain all the data from the use of a single chip. For each gene there will be multiple scores including the main one, held in the VALUE column.
+- `GEO Series (GSE)` - Lists of GSM files that together form a single experiment.
+- `GEO Dataset (GDS)` - These are curated files that hold a summarized combination of a GSE file and its GSM files. They contain normalized expression levels for each gene from each sample (i.e. just the VALUE field from the GSM file).
+
+## Installing GEOquery
+
+If you are running a recent version of R and Bioconductor, you can install `GEOquery` as follows:
+
+```{r eval=FALSE}
+# Install BiocManager if you don't already have it
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+# Install GEOquery using BiocManager
+BiocManager::install("GEOquery")
+```
+
+```{r}
+library(GEOquery)
+library(readr)
+library(stringr)
+library(writexl)
+```
+
+```{r}
+GSE <- "GSE89413"
+fileNameOut1 <- "results/Neuroblastoma_39_logTPM.xlsx"
+
+# URL of the GEO SOFT file
+url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE89nnn/GSE89413/soft/GSE89413_family.soft.gz"
+
+# Destination file name
+destfile <- "GSE89413_family.soft.gz"
+
+# Download the file
+download.file(url, destfile, mode = "wb")
+
+# Check if the file exists
+if (file.exists(destfile)) {
+  message("Download complete: ", destfile)
+} else {
+  warning("Download failed!")
+}
+
+# Download GSE89413.soft.gz using GEOquery
+gds <- getGEO(GSE, destdir = getwd(), GSEMatrix = FALSE, AnnotGPL = TRUE)
+# After it is downloaded, load directly from disk
+gds <- getGEO(GSE, destdir = getwd(), filename = "GSE89413.soft.gz", GSEMatrix = FALSE, AnnotGPL = TRUE)
+
+
+# Initialize empty vectors to store titles and geo_accessions
+titles <- c()
+geo_accessions <- c()
+
+# Loop through each GSM entry in the gds object
+for (gsm in names(gds@gsms)) {
+  titles <- c(titles, gds@gsms[[gsm]]@header$title)
+  geo_accessions <- c(geo_accessions, gds@gsms[[gsm]]@header$geo_accession)
+}
+
+# Create a data frame with the extracted information
+gds_df <- data.frame(
+  title = titles,
+  geo_accession = geo_accessions,
+  stringsAsFactors = FALSE
+)
+gds_df$title <- str_remove(gds_df$title, " RNA-Seq")
+```
+
+```{r}
+# Load normalized RNA-seq counts (TPM) for GSE89413 directly from GEO FTP
+mtx <- read_tsv(
+  "https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts&acc=GSE89413&format=file&file=GSE89413_norm_counts_TPM_GRCh38.p13_NCBI.tsv.gz"
+)
+
+# Check that the column names (samples) in the count matrix match the GEO sample accessions
+# Skip the first column because it contains gene IDs
+all.equal(colnames(mtx)[2:ncol(mtx)], gds_df$geo_accession)  
+# Returns TRUE if the column order matches the sample metadata
+
+# Load the gene annotation table for human (GRCh38.p13)
+gene_annotations <- read_tsv(
+  "https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts&file=Human.GRCh38.p13.annot.tsv.gz"
+)
+
+# Verify that the GeneID column in the expression matrix matches the annotation table
+all.equal(mtx$GeneID, gene_annotations$GeneID)  
+# Returns TRUE if the GeneIDs are identical and in the same order
+
+```
+
+
+```{r}
+# Make a copy of the TPM matrix to modify and save
+mtx_to_save <- mtx
+
+# Replace the GeneID column with gene symbols from the annotation table
+mtx_to_save$GeneID <- gene_annotations$Symbol
+
+# Replace column names (samples) with more descriptive titles from metadata
+colnames(mtx_to_save)[2:ncol(mtx_to_save)] <- gds_df$title
+
+# Apply log2 transformation to the expression values (add 1 to avoid log2(0))
+mtx_to_save[, 2:ncol(mtx_to_save)] <- log2(mtx_to_save[, 2:ncol(mtx_to_save)] + 1)
+
+# Combine data into a list for convenient export
+# - log2TPM: the transformed expression matrix
+# - samples: sample metadata (GEO titles, treatments, etc.)
+# - genes: gene annotation information
+x <- list(
+  log2TPM = mtx_to_save, 
+  samples = gds_df, 
+  genes = gene_annotations
+)
+
+# Write the list to an Excel file with multiple sheets
+write_xlsx(x, fileNameOut1)
+```
+

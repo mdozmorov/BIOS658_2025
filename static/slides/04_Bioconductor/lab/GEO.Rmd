@@ -1,0 +1,326 @@
+---
+title: "GEO"
+author: "Mikhail Dozmorov"
+date: '`r Sys.Date()`'
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: united
+    toc: yes
+---
+
+```{r setup, echo=FALSE}
+# Set up the environment
+library(knitr) 
+opts_chunk$set(cache.path='cache/', fig.path='img/', cache=T, tidy=T, fig.keep='high', echo=T, dpi=100, out.width=700, warning = FALSE)
+options(replace.assign=TRUE, width=220)
+options(stringsAsFactors = FALSE)
+set.seed(1)
+```
+
+# Reading the NCBI's GEO microarray SOFT files in R/BioConductor
+
+GEO expression omnibus, [https://www.ncbi.nlm.nih.gov/geo/](https://www.ncbi.nlm.nih.gov/geo/), is the largest repository of gene expression data. It may have the data you're looking for, saving you time and money to do the experiment yourself. 
+
+We will discuss how to load GEO SOFT format microarray data from the Gene Expression Omnibus database (GEO) (hosted by the NCBI) into R/BioConductor. SOFT stands for Simple Omnibus Format in Text. There are actually four types of GEO SOFT file available:
+
+- `GEO Platform (GPL)` - These files describe a particular type of microarray. They are annotation files.
+- `GEO Sample (GSM)` - Files that contain all the data from the use of a single chip. For each gene there will be multiple scores including the main one, held in the VALUE column.
+- `GEO Series (GSE)` - Lists of GSM files that together form a single experiment.
+- `GEO Dataset (GDS)` - These are curated files that hold a summarized combination of a GSE file and its GSM files. They contain normalized expression levels for each gene from each sample (i.e. just the VALUE field from the GSM file).
+
+## Installing GEOquery
+
+If you are running a recent version of R and Bioconductor, you can install `GEOquery` as follows:
+
+```{r eval=FALSE}
+# Install BiocManager if you don't already have it
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+# Install GEOquery using BiocManager
+BiocManager::install("GEOquery")
+```
+
+## Loading a GSE file with GEOquery. 
+
+## Loading a GSE file with GEOquery
+
+```{r}
+library(Biobase)
+library(GEOquery)
+
+# Download the GSE file from GEO and load it
+# GEOquery will automatically handle the SOFT file and caching
+gse51403 <- getGEO('GSE51403', GSEMatrix = FALSE, destdir = ".")[[1]]  # [[1]] selects the first ExpressionSet if multiple platforms
+
+# Alternatively, open an existing SOFT file (compressed or uncompressed):
+# gse51403 <- getGEO(filename = '../data/GSE51403_series_matrix.txt.gz')
+```
+
+```{r}
+# Load required libraries
+library(readr)
+library(dplyr)
+
+# Create a data directory
+dir.create("data", showWarnings = FALSE)
+
+# URLs for the files
+count_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE51nnn/GSE51403/suppl/GSE51403_count.matrix.byGene.round1.txt.gz"
+annot_url <- "https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts&file=Human.GRCh38.p13.annot.tsv.gz"
+
+# Local file paths
+count_file <- "data/GSE51403_count.matrix.byGene.round1.txt.gz"
+annot_file <- "data/Human.GRCh38.p13.annot.tsv.gz"
+
+# Download files (if not already present)
+if (!file.exists(count_file)) download.file(count_url, count_file)
+if (!file.exists(annot_file)) download.file(annot_url, annot_file, mode = "wb")
+
+# Load count matrix
+counts <- read_tsv(count_file)
+dim(counts)
+head(counts[, 1:5])  # show first 5 samples
+
+# Load annotation table
+annot <- read_tsv(annot_file)
+dim(annot)
+head(annot)
+
+```
+
+```{r}
+# Define the URL and local file path
+url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE51nnn/GSE51403/matrix/GSE51403_series_matrix.txt.gz"
+destfile <- "data/GSE51403_series_matrix.txt.gz"
+
+# Create a data directory if it doesn't exist
+if (!dir.exists("data")) dir.create("data")
+
+# Download the file
+download.file(url, destfile, mode = "wb")
+
+```
+
+
+```{r}
+# Load required libraries
+library(GEOquery)
+library(readr)
+library(dplyr)
+library(Biobase)
+
+# Create data directory
+dir.create("data", showWarnings = FALSE)
+
+# -----------------------------
+# 1. Download Series Matrix file (contains sample annotations)
+# -----------------------------
+series_matrix_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE51nnn/GSE51403/matrix/GSE51403_series_matrix.txt.gz"
+series_matrix_file <- "data/GSE51403_series_matrix.txt"
+
+if (!file.exists(series_matrix_file)) {
+  download.file(series_matrix_url, series_matrix_file, mode = "wb")
+}
+
+library(readr)
+library(dplyr)
+library(stringr)
+
+# File path
+series_matrix_file <- "data/GSE51403_series_matrix.txt"
+
+# Read all lines
+lines <- readLines(series_matrix_file)
+
+# -----------------------------
+# Extract !Sample_title
+# -----------------------------
+title_line <- grep("^!Sample_title", lines, value = TRUE)
+# Split by tab and remove the first element (!Sample_title)
+sample_titles <- str_split(title_line, "\t")[[1]][-1]
+sample_titles <- gsub('"', '', sample_titles) # remove quotes
+
+# -----------------------------
+# Extract !Sample_characteristics_ch1
+# There may be multiple lines for the same characteristic
+# -----------------------------
+char_lines <- grep("^!Sample_characteristics_ch1", lines, value = TRUE)
+
+# Split lines into fields
+char_split <- lapply(char_lines, function(x) {
+  str_split(x, "\t")[[1]][-1] %>% gsub('"', '', .)
+})
+
+# Combine characteristics (rows) into one data frame
+# Name columns according to characteristic
+char_df <- as.data.frame(do.call(rbind, char_split), stringsAsFactors = FALSE)
+
+# Optional: clean names
+char_names <- str_trim(sapply(char_split, function(x) str_split(x[1], ":")[[1]][1]))
+colnames(char_df) <- colnames(char_df) # keep as-is, we'll parse later
+
+# Transpose to have samples as rows
+char_df <- t(char_df) %>% as.data.frame(stringsAsFactors = FALSE)
+rownames(char_df) <- sample_titles
+
+# -----------------------------
+# Separate treatment and cell type from the characteristics
+# -----------------------------
+# For each column, split by ": " to extract values
+for (i in seq_len(ncol(char_df))) {
+  char_df[, i] <- sapply(char_df[, i], function(x) str_split(x, ":\\s*", simplify = TRUE)[,2])
+}
+
+# Rename columns (manual based on inspection)
+colnames(char_df) <- c("treatment", "cell_type")
+
+# -----------------------------
+# Final sample annotation table
+# -----------------------------
+sample_annotation <- char_df %>% 
+  mutate(title = rownames(char_df)) %>%
+  select(title, treatment, cell_type)
+
+# View results
+sample_annotation
+
+
+
+
+
+# Access sample annotations
+sample_annotations <- pData(gse)
+head(sample_annotations)
+
+# Access gene annotations in ExpressionSet (if present)
+gene_annotations_eset <- fData(gse)
+head(gene_annotations_eset)
+
+# Access expression data
+expression_data <- exprs(gse)
+dim(expression_data)
+head(expression_data[, 1:5])
+
+# -----------------------------
+# 2. Download submitter-supplied count matrix
+# -----------------------------
+count_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE51nnn/GSE51403/suppl/GSE51403_count.matrix.byGene.round1.txt.gz"
+count_file <- "data/GSE51403_count.matrix.byGene.round1.txt.gz"
+
+if (!file.exists(count_file)) download.file(count_url, count_file)
+
+# Load count matrix
+counts <- read_tsv(count_file)
+dim(counts)
+head(counts[, 1:5])
+
+# -----------------------------
+# 3. Download gene annotation table
+# -----------------------------
+annot_url <- "https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts&file=Human.GRCh38.p13.annot.tsv.gz"
+annot_file <- "data/Human.GRCh38.p13.annot.tsv.gz"
+
+if (!file.exists(annot_file)) download.file(annot_url, annot_file, mode = "wb")
+
+# Load gene annotation
+annot <- read_tsv(annot_file)
+dim(annot)
+head(annot)
+
+# -----------------------------
+# Optional: Merge count matrix with gene annotation
+# -----------------------------
+# Assuming 'GeneID' column exists in both count matrix and annotation table
+if ("GeneID" %in% colnames(counts) & "GeneID" %in% colnames(annot)) {
+  counts_annot <- counts %>% left_join(annot, by = "GeneID")
+  head(counts_annot[, 1:8])
+}
+
+```
+
+
+
+
+## Exploring a GEO RNA-seq Dataset with GEOquery
+
+The dataset is returned as an **ExpressionSet** object from the **Biobase** package, which integrates expression values, sample information, and annotation in a single object.
+
+```{r}
+# Expression matrix
+expr_matrix <- exprs(gse51403)
+dim(expr_matrix)
+head(expr_matrix[, 1:5])
+
+# Sample/phenotype metadata
+pheno_data <- pData(gse51403)
+head(pheno_data)
+
+# Experiment-level metadata
+experimentData(gse51403)
+
+# Platform / annotation
+annotation(gse51403)
+```
+
+Useful stuff, and now the expression data table:
+
+```{r}
+colnames(Table(gds858))
+Table(gds858)[1:10,1:6]
+```
+
+Now, lets turn this GDS object into an expression set object (using base 2 logarithms) and have a look at it:
+
+```{r}
+eset <- GDS2eSet(gds858, do.log2=TRUE)
+eset
+featureNames(eset)[1:10]
+sampleNames(eset)[1:10]
+```
+
+GEOquery does an excellent job of extracting the phenotype data, as you can see:
+
+```{r}
+pData(eset)
+pData(eset)$infection
+pData(eset)$"genotype/variation"
+```
+
+As with any expression set object, its easy to pull out a subset of the data:
+
+```{r}
+eset["1320_at", "GSM14504"]
+```
+
+In addition to loading a GDS file to get the expression levels, you can also load the associated platform annotation file. You can find this out from the GDS858 meta information:
+
+```{r}
+Meta(gds858)$platform # Which platform?
+```
+
+Now let's load up the GPL file and have a look at it (its a big file, about 12 MB, so this takes a while!):
+
+```{r}
+#Download GPL file, put it in the current directory, and load it:
+gpl96 <- getGEO('GPL96', destdir="../data/")
+# Or, open an existing GPL file:
+gpl96 <- getGEO(filename='../data/GPL96.soft', destdir="../data/")
+```
+
+As with the GDS object, we can use the Meta and Table functions to extract information:
+
+```{r}
+Meta(gpl96)$title
+colnames(Table(gpl96))
+```
+
+Lets look at the first four columns, for the first ten genes:
+
+```{r}
+Table(gpl96)[1:10,1:4]
+```
+
+You can also use Bioconductor annotation file for GPL96/HG-U133A by using `library(hgu133a)`.

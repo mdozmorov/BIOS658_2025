@@ -64,6 +64,7 @@ genes
 The function **`mapIds()`** allows flexible ID conversion:
 
 ```{r symbol-to-entrez}
+library(AnnotationDbi)
 entrez_ids <- mapIds(org.Hs.eg.db,
                      keys = genes,
                      column = "ENTREZID",

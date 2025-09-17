@@ -52,7 +52,7 @@ library(writexl)
 
 ```{r}
 GSE <- "GSE89413"
-fileNameOut1 <- "results/Neuroblastoma_39_logTPM.xlsx"
+fileNameOut1 <- "~/Downloads/GSE89413_2016-10-30-NBL-cell-line-STAR-fpkm.txt.gz"
 
 # URL of the GEO SOFT file
 url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE89nnn/GSE89413/soft/GSE89413_family.soft.gz"
@@ -141,6 +141,7 @@ x <- list(
   genes = gene_annotations
 )
 
+library(writexl)
 # Write the list to an Excel file with multiple sheets
 write_xlsx(x, fileNameOut1)
 ```

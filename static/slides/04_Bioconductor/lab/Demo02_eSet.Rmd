@@ -193,12 +193,13 @@ all_probes <- featureNames(withannoSet)
 # Remove spike-ins (those starting with "AFFX-")
 gene_probes <- all_probes[!grepl("^AFFX-", all_probes)]
 
+library(annotate)
 # Map symbols/Entrez IDs for actual genes
 gene_symbols <- getSYMBOL(gene_probes, "hgu95av2.db")
 gene_entrez  <- getEG(gene_probes, "hgu95av2.db")
 
 # Inspect first few
-head(gene_symbols)
+head(gene_symbols, n = 20)
 head(gene_entrez)
 ```
 

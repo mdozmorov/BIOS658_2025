@@ -19,7 +19,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-## The Biology and Genetics of Cells and Organisms
+## Genomics ecosystem
 
 <a href="../../slides/04_Bioconductor/04a_Bioconductor.html#1" target="_blank">Lecture slides in HTML format</a>
 
@@ -38,3 +38,10 @@ knitr::include_url('../../slides/04_Bioconductor/04a_Bioconductor.html#1')
 knitr::include_url('../../slides/04_Bioconductor/04b_Annotation.html#1')
 ```
 
+## Code examples
+
+- Demo01_Bioconductor, <a href="../../slides/04_Bioconductor/lab/Demo01_Bioconductor.Rmd" target="_blank">Rmd</a>, <a href="../../slides/04_Bioconductor/lab/Demo01_Bioconductor.html" target="_blank">HTML</a>
+- Demo02_eSet, <a href="../../slides/04_Bioconductor/lab/Demo02_eSet.Rmd" target="_blank">Rmd</a>, <a href="../../slides/04_Bioconductor/lab/Demo02_eSet.html" target="_blank">HTML</a>
+- Demo03_Annotation, <a href="../../slides/04_Bioconductor/lab/Demo03_Annotation.Rmd" target="_blank">Rmd</a>, <a href="../../slides/04_Bioconductor/lab/Demo03_Annotation.html" target="_blank">HTML</a>
+- Demo04_biomaRt, <a href="../../slides/04_Bioconductor/lab/Demo04_biomaRt.Rmd" target="_blank">Rmd</a>, <a href="../../slides/04_Bioconductor/lab/Demo04_biomaRt.html" target="_blank">HTML</a>
+- Demo05_GEO, <a href="../../slides/04_Bioconductor/lab/Demo05_GEO.Rmd" target="_blank">Rmd</a>, <a href="../../slides/04_Bioconductor/lab/Demo05_GEO.html" target="_blank">HTML</a>

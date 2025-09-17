@@ -11,7 +11,7 @@
 
 <meta name="author" content="Mikhail Dozmorov" />
 
-<meta name="date" content="2025-09-13" />
+<meta name="date" content="2025-09-17" />
 
 <title>ExpressionSet and SummarizedExperiment</title>
 
@@ -1558,7 +1558,7 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">ExpressionSet and SummarizedExperiment</h1>
 <h4 class="author">Mikhail Dozmorov</h4>
-<h4 class="date">2025-09-13</h4>
+<h4 class="date">2025-09-17</h4>
 
 </div>
 
@@ -1921,14 +1921,21 @@ annotation packages.</p>
 <span id="cb43-4"><a href="#cb43-4" tabindex="-1"></a><span class="co"># Remove spike-ins (those starting with &quot;AFFX-&quot;)</span></span>
 <span id="cb43-5"><a href="#cb43-5" tabindex="-1"></a>gene_probes <span class="ot">&lt;-</span> all_probes[<span class="sc">!</span><span class="fu">grepl</span>(<span class="st">&quot;^AFFX-&quot;</span>, all_probes)]</span>
 <span id="cb43-6"><a href="#cb43-6" tabindex="-1"></a></span>
-<span id="cb43-7"><a href="#cb43-7" tabindex="-1"></a><span class="co"># Map symbols/Entrez IDs for actual genes</span></span>
-<span id="cb43-8"><a href="#cb43-8" tabindex="-1"></a>gene_symbols <span class="ot">&lt;-</span> <span class="fu">getSYMBOL</span>(gene_probes, <span class="st">&quot;hgu95av2.db&quot;</span>)</span>
-<span id="cb43-9"><a href="#cb43-9" tabindex="-1"></a>gene_entrez  <span class="ot">&lt;-</span> <span class="fu">getEG</span>(gene_probes, <span class="st">&quot;hgu95av2.db&quot;</span>)</span>
-<span id="cb43-10"><a href="#cb43-10" tabindex="-1"></a></span>
-<span id="cb43-11"><a href="#cb43-11" tabindex="-1"></a><span class="co"># Inspect first few</span></span>
-<span id="cb43-12"><a href="#cb43-12" tabindex="-1"></a><span class="fu">head</span>(gene_symbols)</span></code></pre></div>
-<pre><code>##   31307_at   31308_at 31309_r_at   31310_at   31311_at   31312_at 
-##         NA         NA         NA    &quot;GLRA1&quot;         NA    &quot;KCNB2&quot;</code></pre>
+<span id="cb43-7"><a href="#cb43-7" tabindex="-1"></a><span class="fu">library</span>(annotate)</span>
+<span id="cb43-8"><a href="#cb43-8" tabindex="-1"></a><span class="co"># Map symbols/Entrez IDs for actual genes</span></span>
+<span id="cb43-9"><a href="#cb43-9" tabindex="-1"></a>gene_symbols <span class="ot">&lt;-</span> <span class="fu">getSYMBOL</span>(gene_probes, <span class="st">&quot;hgu95av2.db&quot;</span>)</span>
+<span id="cb43-10"><a href="#cb43-10" tabindex="-1"></a>gene_entrez  <span class="ot">&lt;-</span> <span class="fu">getEG</span>(gene_probes, <span class="st">&quot;hgu95av2.db&quot;</span>)</span>
+<span id="cb43-11"><a href="#cb43-11" tabindex="-1"></a></span>
+<span id="cb43-12"><a href="#cb43-12" tabindex="-1"></a><span class="co"># Inspect first few</span></span>
+<span id="cb43-13"><a href="#cb43-13" tabindex="-1"></a><span class="fu">head</span>(gene_symbols, <span class="at">n =</span> <span class="dv">20</span>)</span></code></pre></div>
+<pre><code>##      31307_at      31308_at    31309_r_at      31310_at      31311_at 
+##            NA            NA            NA       &quot;GLRA1&quot;            NA 
+##      31312_at      31313_at      31314_at      31315_at      31316_at 
+##       &quot;KCNB2&quot;       &quot;MGAT5&quot;        &quot;BMP3&quot;    &quot;IGLV2-14&quot;            NA 
+##    31317_r_at      31318_at      31319_at      31320_at      31321_at 
+##            NA       &quot;KITLG&quot; &quot;IGKV2OR22-4&quot;       &quot;GPR12&quot;            NA 
+##      31322_at    31323_r_at      31324_at      31325_at      31326_at 
+##      &quot;YME1L1&quot;      &quot;SLC1A2&quot;            NA            NA       &quot;KPLCE&quot;</code></pre>
 <div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" tabindex="-1"></a><span class="fu">head</span>(gene_entrez)</span></code></pre></div>
 <pre><code>##   31307_at   31308_at 31309_r_at   31310_at   31311_at   31312_at 
 ##         NA         NA         NA     &quot;2741&quot;         NA     &quot;9312&quot;</code></pre>
@@ -2208,7 +2215,7 @@ for the full description.</p>
 </tr>
 <tr class="odd">
 <td align="center"><strong>date</strong></td>
-<td align="center">2025-09-13</td>
+<td align="center">2025-09-17</td>
 </tr>
 <tr class="even">
 <td align="center"><strong>pandoc</strong></td>

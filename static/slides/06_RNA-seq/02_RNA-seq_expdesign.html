@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>RNA-seq experimental considerations</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-09-22" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# RNA-seq experimental considerations
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-09-22
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## Library preparation steps
+
+- **RNA isolation and QC**, to extract RNA relevant to the experimental question
+
+- **Fragmentation**, to recover short reads across full length of long genes
+
+- **Size selection**, suitable for RNA sequencing. 300-500bp - mRNA, 20-150bp - small/miRNA
+
+- **Amplification**, typically by PCR. Up to `\(0.5-10ng\)` of RNA
+
+- **Library normalization/Exome capture**
+
+- **Barcoding** and **multiplexing**
+
+- Optionally, add **External RNA Control Consortium (ERCC) spike-in controls**
+
+- **Single** or **paired end** sequencing. The latter is preferrable for the _de novo_ transcript discovery or isoform expression analysis
+
+.small[  Sample preparation and library construction strategies: http://journals.plos.org/ploscompbiol/article/file?type=supplementary&amp;id=info:doi/10.1371/journal.pcbi.1004393.s005 ]
+
+---
+## RNA isolation
+
+**Ribosomal RNA (rRNA) depletion**
+
+- `\(0.1-1\mu g\)` original total RNA (One cell contains ~10 picogram of total RNA)
+
+- rRNAs constitute over 90 % of total RNA in the cell, leaving the 1–2 % comprising messenger RNA (mRNA) that we are normally interested in (One cell contains ~0.1 picogram mRNA)
+
+- Enriches for mRNA + long noncoding RNA. 
+
+- Hybridization to bead-bound rRNA probes
+
+---
+## RNA isolation
+
+- **Poly(A) selection (for eukaryotes only)**
+    - Enrich for mRNA.
+    - Hybridization to oligo-dT beads
+
+
+- **Small RNA extraction**
+    - Specific kits required to retain small RNAs
+    - Optionally, size-selection by gel
+
+&amp;nbsp;
+
+.small[  Description of RNA-seq library enrichment strategies: http://journals.plos.org/ploscompbiol/article/file?type=supplementary&amp;id=info:doi/10.1371/journal.pcbi.1004393.s006 ]
+
+---
+## Poly-A selection or ribosome depletion protocol?
+
+- Poly-A excels at gene quantification for classification/prediction purposes, better represents total RNA content
+
+- Ribosomal depletion - more noncoding RNAs, better alignment of reads, more gene fusion events
+
+- Overall, comparable performance
+
+&amp;nbsp;
+
+.small[  Detailed comparison of RNA-seq library construction protocols: https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-017-4039-1 ]
+
+---
+## RNA quality
+
+Agilent 2100 bioanalyzer. RIN - RNA integrity number (should be &gt;7)
+
+&lt;img src="img/agilent.png" width="650px" style="display: block; margin: auto;" /&gt;
+
+---
+## Unstranded vs. Strand-Specific Libraries
+
+* **Unstranded**
+  * Random hexamer priming to reverse-transcribe mRNA.
+  * Cannot distinguish which DNA strand the transcript originated from.
+
+* **Strand-specific**
+  * **dUTP method:** During second-strand cDNA synthesis, dTTP is replaced with **dUTP (deoxyuridine triphosphate)**.
+  * The strand containing dUTP is selectively degraded by Uracil-DNA Glycosylase (UDG).
+  
+  * **RT-qPCR (Reverse Transcription quantitative PCR):** Uses tagged primers during reverse transcription to capture strand orientation.
+
+.small[  Strand-related settings for RNA-seq tools: http://journals.plos.org/ploscompbiol/article/file?type=supplementary&amp;id=info:doi/10.1371/journal.pcbi.1004393.s007 ]
+
+---
+## Unstranded vs. Strand-specific library
+
+&lt;img src="img/strand.png" width="800px" style="display: block; margin: auto;" /&gt;
+
+&lt;!--
+## External RNA Control Consortium (ERCC) spike-in controls
+
+- A set of RNA standards for RNA-seq
+    - 92 polyadenylated transcripts that mimic natural eukaryotic mRNAs
+    - Designed to have a wide range of lengths (250–2,000 nucleotides) and GC-contents (5–51%) and can be spiked into RNA samples before library preparation at various concentrations (106-fold range)
+
+- ERCC spike-in controls can be used for normalization in the context of a global expression shift
+    - Count the number of cells in each sample
+    - Add the ERCC spike-in sequences to each sample in proportion to the number of cells
+    - Normalize read counts based on cyclic loess robust local regression on the spike-in counts
+
+.small[  Baker, S.C. et al. The external RNA controls consortium: a progress report. Nat. Methods 2, 731–734 (2005).
+
+Jiang, L. et al. Synthetic spike-in standards for RNA-seq experiments. Genome Res. 21, 1543–1551 (2011).
+
+Loven, J. et al. Revisiting global gene expression analysis. Cell 151, 476–482
+(2012).
+--&gt;
+
+---
+class: center,middle
+
+# Experimental design
+
+---
+## Sources of variability in RNA-seq measures
+
+In RNA-seq, we have multiple levels of randomness:
+
+- Biological variability in samples
+
+- Stochasticity of RNA content
+
+- Randomness of fragments being sequenced
+
+- Technical variability
+
+&amp;nbsp;
+
+.small[   Auer, P.,RW Doerge. "Statistical Design and Analysis of RNA Sequencing Data." Genetics, 2010 https://doi.org/10.1534/genetics.110.114983 ]
+
+---
+## RNA-seq consideraations
+
+- **Replication**. It allows the experimenter to obtain an estimate of the experimental error
+
+- **Randomization**. It requires the experimenter to use a random choice of every factor that is not of interest but might influence the outcome of the experiment. Such factors are called nuisance factors
+
+- **Blocking**. Creating homogeneous blocks of data in which a nuisance factor is kept constant while the factor of interest is allowed to vary. Used to increase the accuracy with which the influence of the various factors is assessed in a given experiment
+
+- **Block what you can, randomize what you cannot**
+
+---
+## Experimental design: Multiplexing balances technical variability
+
+&lt;img src="img/rna-seq_design.jpg" width="600px" style="display: block; margin: auto;" /&gt;
+
+---
+## Sequencing length/depth
+
+- Longer reads improve mappability and transcript quantification
+
+- More transcripts will be detected and their quantification will be more precise as the sample is sequenced to a deeper level
+
+- Up to 100 million reads is needed to precisely quantify low expressed transcripts. 
+
+- In reality, 20-30 million reads is OK for human genome.
+
+&lt;!--
+## Power: effect size
+
+Statistical power to detect differential expression increases with increased effect size, sequencing depth and number of replicates
+
+| Replicates per group                 | 3    | 5    | 10    |
+|--------------------------------------|------|------|-------|
+| **Effect size (fold change)**            |      |      |       |
+| 1.25                                 | 17 % | 25 % | 44 %  |
+| 1.5                                  | 43 % | 64 % | 91 %  |
+| 2                                    | 87 % | 98 % | 100 % |
+
+&amp;nbsp;
+
+.small[  Source: http://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0881-8
+
+## Power: Sequencing depth
+
+Statistical power to detect differential expression increases with increased effect size, sequencing depth and number of replicates
+
+| Replicates per group                 | 3    | 5    | 10    |
+|--------------------------------------|------|------|-------|
+| **Sequencing depth (millions of reads)** |      |      |       |
+| 3                                    | 19 % | 29 % | 52 %  |
+| 10                                   | 33 % | 51 % | 80 %  |
+| 15                                   | 38 % | 57 % | 85 %  |
+
+&amp;nbsp;
+
+.small[  Source: http://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0881-8&lt;/div&gt;
+--&gt;
+
+---
+## RNASeqPower: Sample Size &amp; Power Analysis for RNA-seq
+
+- `RNASeqPower` is an R package designed to **calculate statistical power and sample size** for RNA-seq experiments.  
+
+- Compute **power for a given sample size**, effect size, and sequencing depth.  
+
+- Estimate **minimum sample size required** to achieve desired power.  
+
+- Accounts for **overdispersion** and variance typical of RNA-seq count data.  
+
+.small[ Bioconductor: https://bioconductor.org/packages/RNASeqPower/
+
+Svensson, V. et.al. "Power Analysis of Single-Cell RNA-Sequencing Experiments." _Nature Methods_ 2017 https://doi.org/10.1038/nmeth.4220 ]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

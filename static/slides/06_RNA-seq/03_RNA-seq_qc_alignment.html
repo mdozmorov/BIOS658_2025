@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>RNA-seq preprocessing</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-09-22" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# RNA-seq preprocessing
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-09-22
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+
+## Computational ecosystem of sequencing
+
+&lt;img src="img/SequencingEcosystem.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+.small[ Conesa, A., Madrigal, P., Tarazona, S. et al. A survey of best practices for RNA-seq data analysis. Genome Biol 17, 13 (2016). https://doi.org/10.1186/s13059-016-0881-8 ]
+
+---
+## RNA-seq analysis workflow
+
+&lt;img src="img/rnaseq_workflow.png" width="500px" style="display: block; margin: auto;" /&gt;
+
+.small[ Brazas, M. D., &amp; Ouellette, B. F. (2016). Continuing education workshops in bioinformatics positively impact research and careers. PLoS computational biology, https://doi.org/10.1371/journal.pcbi.1004916 ]
+
+---
+## FASTA/FASTQ format
+
+**FASTA**: text-based representation of nucleotide sequence
+
+&lt;img src="img/fasta.png" width="800px" style="display: block; margin: auto;" /&gt;
+
+**FASTQ**: sequence and quality info
+
+&lt;img src="img/fastq.png" width="800px" style="display: block; margin: auto;" /&gt;
+
+.small[ http://zhanglab.ccmb.med.umich.edu/FASTA/ ]
+
+---
+## Quality of base calling
+
+- **Phred quality score** is widely used to characterize the quality of base calling
+
+- Phred quality score = `\(-10*log_{10}(P)\)`, where P is probability that base-calling is wrong
+
+- Phred score of 30 means there is 1/1000 chance that the base-calling is wrong
+
+- The quality of the bases tend to drop at the end of the read, a pattern observed in sequencing-by-synthesis techniques
+
+---
+## Quality control
+
+- **FASTQC** - Quality of raw and aligned sequencing data
+    - Base quality per position
+    - Nucleotide per position
+    - GC content
+    - K-mer enrichment
+
+&lt;img src="img/fastqc.png" width="600px" style="display: block; margin: auto;" /&gt;
+
+.small[ http://www.bioinformatics.babraham.ac.uk/projects/fastqc/, Video tutorial how to interpret, https://www.youtube.com/watch?v=bz93ReOv87Y ]
+
+---
+## RNA-seq-specific quality control
+
+- **RNASeQC** - quality of mapped (aligned) data
+
+- **RSeQC** - Python-based table and graph QC reports
+
+- **MultiQC** - Summarization and visualization QC results for multiple samples in one report. Recognizes multiple QC tools
+
+.small[ https://github.com/getzlab/rnaseqc, Deluca DS, Levin JZ, Sivachenko A, Fennell T, Nazaire MD, Williams C, Reich M, Winckler W, Getz G. (2012) RNA- SeQC: RNA-seq metrics for quality control and process optimization. Bioinformatics https://doi.org/10.1093/bioinformatics/bts196
+
+http://rseqc.sourceforge.net/, Wang L, Wang S, Li W* RSeQC: quality control of RNA- seq experiments Bioinformatics (2012)  https://doi.org/10.1093/bioinformatics/bts356
+
+http://multiqc.info/ ]
+
+---
+## Adapter trimming
+
+- **Cutadapt** - full control over adapter trimming
+
+- **FASTX-Toolkit** - set of tools for low-level sequence trimming/cutting
+
+- **Trimmomatic** - well-documented and easy-to-use adapter trimmer using multiple algorithms. Handles single- and paired-end reads, accountss for read quality
+
+- **Flexbar**: similar to Trimmomatic by functionality
+
+.small[ https://cutadapt.readthedocs.io/en/latest/guide.html
+
+http://hannonlab.cshl.edu/fastx_toolkit/
+
+http://www.usadellab.org/cms/?page=trimmomatic
+
+https://github.com/seqan/flexbar/wiki/Manual ]
+
+---
+## Duplicates removal
+
+- Duplicates may correspond to biased PCR amplification of particular fragments
+- For highly expressed, short genes, duplicates are expected even if there is no amplification bias
+- Removing them may reduce the dynamic range of expression estimates
+
+Generally, do not remove duplicates from RNA-seq data
+
+- If you ultimately want to remove duplicates, use Picard tools' `MarkDuplicates` command
+
+.small[ https://broadinstitute.github.io/picard/command-line-overview.html#MarkDuplicates ]
+
+---
+## Alignment
+
+- RNA-seq aligners face an additional problem, not encountered in DNA-only alignment: many RNA-seq reads will span introns
+
+- The average human intron length is &gt;6,000 bp (some are &gt;1 Mbp in length)
+
+- In a typical human RNA-seq experiment using 100-bp reads, &gt;35% of the reads will span multiple exons - align over splice junctions
+
+- Aligners must be splice-aware, especially when aligning longer (&gt;50bp) reads
+
+---
+## Three types of reads: exonic-, junction- and poly(A) end-reads.
+
+&lt;img src="img/rna-seq2.png" width="650px" style="display: block; margin: auto;" /&gt;
+
+---
+## Strategies for gapped alignments of RNA-seq reads
+
+**Exon-first method**
+
+- Map full, unspliced reads (reads originating from a single exon) to exons
+
+- Divide the remaining reads into smaller pieces and map them to the genome
+
+- An extension process extends mapped smaller pieces to find candidate splice sites to support a spliced alignment.
+
+---
+## Strategies for gapped alignments of RNA-seq reads
+
+**Seed-and-extend methods**
+
+- Divide each RNA-seq read in small words (k-mers) of similar size
+
+- Store a map of all k-mers in the genome in an efficient lookup data structure
+
+- Map k-mers to the genome via the lookup structure
+
+- Mapped k-mers are extended into larger alignments, which may include gaps flanked by splice sites.
+
+---
+## Strategies for gapped alignments of RNA-seq reads
+
+&lt;img src="img/gapped_alignment.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+.small[ Garber, M., Grabherr, M., Guttman, M. et al. Computational methods for transcriptome annotation and quantification using RNA-seq. Nat Methods 8, 469–477 (2011). https://doi.org/10.1038/nmeth.1613 ]
+
+---
+## Alignment to the reference genome is the most frequently used for transcript quantification
+
+&lt;img src="img/alignment.png" width="600px" style="display: block; margin: auto;" /&gt;
+
+---
+## Alignment - Mapping RNA-seq reads to the genome
+
+* **General-purpose aligners**
+  * **BWA** – efficient, based on Burrows-Wheeler Transform
+  * **Bowtie** – ultrafast for short reads; originally paired with TopHat for RNA-seq
+  * **Bowtie2** – supports longer reads and gapped alignment; more flexible than Bowtie
+
+* **RNA-seq optimized (spliced) aligners**
+  * **STAR** – fast and accurate, detects splice junctions directly
+  * **subread / subjunc** – spliced alignment; integrated with `featureCounts` for counting
+
+
+.small[ http://bio-bwa.sourceforge.net/  https://github.com/alexdobin/STAR  https://bowtie-bio.sourceforge.net/bowtie2/index.shtml  http://subread.sourceforge.net/  
+Timeline and extensive comparison of aligners: https://www.ebi.ac.uk/~nf/hts_mappers/  ]
+
+---
+## De Novo assembly using De Bruijn Graph
+
+* **De Bruijn Graph** - A graph-based data structure used to assemble sequences from short reads.
+  * Break reads into **k-mers** (subsequences of length *k*).
+  * Nodes represent **(k-1)-mers**, edges connect nodes if the corresponding k-mers overlap by k-1 bases.
+  **Visual idea:** Each k-mer is a colored edge connecting two overlapping nodes (k-1-mers), forming a network that traces the sequence.  
+
+* Enables reconstruction of full-length sequences (contigs) from short fragments.
+
+&lt;img src="img/kallisto_deBruijn.png" width="350px" style="display: block; margin: auto;" /&gt;
+
+---
+## De Novo RNA-Seq Assembly Tools
+
+* **Trinity** - De Bruijn graph-based assembly.
+  * **Components**: Inchworm, Chrysalis, Butterfly.
+
+* **Trans-ABySS** - Parallelized de Bruijn graph assembler.
+
+* **rnaSPAdes** - Extension of SPAdes genome assembler tailored for RNA-Seq data.
+
+
+.small[ http://www.bcgsc.ca/platform/bioinfo/software/trans-abyss
+
+https://github.com/trinityrnaseq/trinityrnaseq/wiki ]
+
+&lt;!--
+## Trinity _de novo_ assembly 
+
+- Trinity combines three independent software modules: **Inchworm**, **Chrysalis**, and **Butterfly**
+- Trinity partitions the sequence data into many individual de Bruijn graphs, each representing the transcriptional complexity at a given gene or locus, and then processes each graph independently to extract full-length splicing isoforms and to tease apart transcripts derived from paralogous genes.
+
+`\begin{center}
+\includegraphics[height=60px]{img/TrinityCompositeLogo.png}
+\end{center}`
+
+.small[ Grabherr, Manfred G., Brian J. Haas, Moran Yassour, Joshua Z. Levin, Dawn A. Thompson, Ido Amit, Xian Adiconis, et al. “Full-Length Transcriptome Assembly from RNA-Seq Data without a Reference Genome.” Nature Biotechnology 29, no. 7 (May 15, 2011): 644–52. doi:10.1038/nbt.1883.
+--&gt;
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

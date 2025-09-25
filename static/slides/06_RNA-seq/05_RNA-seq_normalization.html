@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Gene/transcript quantification</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-09-24" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Gene/transcript quantification
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-09-24
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## Proper normalization is important
+
+- Transcripts with different lengths within a sample are NOT comparable
+
+- Transcripts with the same length between samples are NOT comparable
+
+- A combination of the two is even worse
+
+---
+## Data generative process for one sample
+
+The read counts from RNA-seq follow a sampling process. For gene `\(i\)`, `\(i=1,...,G\)`, let  
+  - `\(\mu\)` - the true expression (number of cDNA fragments)
+  - `\(L_i\)` - gene length
+
+
+- The probability of a read starting from gene `\(i\)` is: `\(p_i=\mu_i*L_i/\sum_{i=1}^G\mu_i*L_i\)`
+
+- If the total number of reads is `\(N\)`, the count for gene `\(i\)`, denoted by `\(Y_i\)`, can be modeled as a Poisson random variable. Let `\(\lambda_i=N*p_i\)`, `\(Y_i|\lambda_i \sim Poisson(\lambda_i)\)`
+
+- Downstream DE test between sample 1 and 2 is: `\(H_0:\mu_{1i}=\mu_{2i}\)` which is NOT equivalent to `\(H_0:\lambda_{1i}=\lambda_{2i}\)` without proper normalization
+  
+---
+## Concerns in RNA-seq data normalization
+
+- When comparing two samples, if the distributions of `\(p_i\)` are approximately the same, normalizing by `\(N\)` will be sufficient – this is what RPKM does.
+
+- However if that’s not true we will be in trouble.  
+    - A toy example: if there are only two genes in the genome, their read counts are 10 and 20 in one sample, and 10 and 100 in another one. We don’t know how to compare!  
+    - A real example: RNA-seq is often used to compare one tissue type to another, e.g., brain vs. liver. Many genes may be liver-specific and not transcribed in brain, causing difference in **library composition**.
+
+- The normalization procedure is to choose a proper “baseline” for different samples, then normalize data to the baseline so that the counts are comparable.
+
+---
+## Single factor normalization methods – One normalization factor per sample
+
+- Total or median counts, aka scaling to the library size
+
+- Intuition - it is expected that sequencing a sample to half the depth will give, on average, half the number of reads mapping to each gene
+
+- Problems - does not take into account the composition of RNA population being sequenced
+
+.small[ Anders, Simon, and Wolfgang Huber. “Differential Expression Analysis for Sequence Count Data.” Genome Biology 11, no. 10 (2010): R106. https://doi.org/10.1186/gb-2010-11-10-r106. ]
+
+---
+## Two-Sample Normalization
+
+* **Goal:** Remove expression-dependent bias between samples
+
+* **Approach:** Adjust values based on global gene expression trends
+
+* **Assumption:** Most genes are not differentially expressed, differences between conditions should be mostly zero
+
+* **MA (Bland–Altman) plots**: visualize bias (M = log fold-change, A = log average)
+
+* **Non-linear curve fitting**: correct systematic trends
+
+* **LOWESS/LOESS regression**: smooth, data-driven normalization
+
+---
+## LOWESS Normalization
+
+* **LOWESS** = *LOcally WEighted Scatterplot Smoothing* (Cleveland, 1979)
+* Adapted for microarrays (Yang et al., 2002) using a 40% local window
+
+**Key Assumptions**
+
+* Most genes are **not differentially expressed**
+* Up- and down-regulation are **balanced**
+* Bias can be modeled as an **gene expression-dependent trend**
+
+**Purpose**
+
+* Removes systematic gene expression bias
+* Ensures fair comparison across samples
+
+---
+## LOESS Normalization
+
+- Loess normalization is based on MA plots.
+
+- Skewing reflects experimental artifacts such as the contamination of one RNA source with genomic DNA or rRNA, the use of unequal sample concentrations.
+
+&lt;img src="img/lowess.png" width="1000px" style="display: block; margin: auto;" /&gt;
+
+---
+## LOESS Normalization
+
+- Skewing can be corrected with local smoother: fitting a local regression curve to the data and subtracting the predicted value from the
+observed values
+
+- Goal: minimize the standard deviation and place the mean log ratio at 0
+
+&lt;img src="img/lowess.png" width="1000px" style="display: block; margin: auto;" /&gt;
+
+---
+## LOWESS Normalization
+
+&lt;img src="img/loess_gif.gif" width="500px" style="display: block; margin: auto;" /&gt;
+
+---
+## Two-Sample LOWESS Normalization
+
+* **Compute log-ratio (M) and average (A):**
+
+`$$M_i = \log_2(Y_{i1}) - \log_2(Y_{i2}), 
+\quad
+A_i = \tfrac{1}{2}\big(\log_2(Y_{i1}) + \log_2(Y_{i2})\big)$$`
+
+* **Fit a smooth curve** of `\(M_i\)` vs. `\(A_i\)` using LOWESS: `\(M_i \approx f(A_i)\)`
+
+* **Adjust log-ratios** by removing systematic bias: `\(M_i^{adj} = M_i - f(A_i)\)`
+
+* **Reconstruct normalized log-intensities:**
+
+`$$\log_2(Y_{i1}^{norm}) = A_i + \tfrac{1}{2}M_i^{adj}$$`
+
+`$$\log_2(Y_{i2}^{norm}) = A_i - \tfrac{1}{2}M_i^{adj}$$`
+
+* Result: Intensities corrected for **intensity-dependent bias**.
+
+
+---
+## Multi-Sample Normalization: Cyclic LOESS
+
+* **Extension of LOWESS** to &gt;2 samples
+* Normalizes **pairs** of samples at any one time
+* Repeated in a **cyclic fashion** until convergence
+
+**Steps**
+
+1. Choose a reference sample (initially arbitrary)
+2. Apply LOWESS normalization **sample vs. reference**
+3. Update reference to the **average of normalized samples**
+4. Repeat pairwise normalizations until stable
+
+**Purpose**
+
+* Removes intensity-dependent biases across multiple samples
+* Ensures distributions are comparable across all samples
+
+---
+## Full-quantile normalization
+
+- The quantiles of the distributions of the gene-level read counts are matched across samples
+    - Use counts from cousekeeping genes
+    - Use a certain quantile (75th) for all counts
+
+&lt;img src="img/quantile.png" width="500px" style="display: block; margin: auto;" /&gt;
+
+&lt;!-- - Implemented in `limma::normalizeBetweenArrays(method="quantile")` --&gt;
+
+.small[ Bullard, James H, Elizabeth Purdom, Kasper D Hansen, and Sandrine Dudoit. “Evaluation of Statistical Methods for Normalization and Differential Expression in MRNA-Seq Experiments.” BMC Bioinformatics 11, no. 1 (2010): 94. https://doi.org/10.1186/1471-2105-11-94. ]
+
+---
+## Quantile normalization 
+
+1. Given `\(n\)` samples with gene expression number `\(p\)`, form matrix `\(X\)` of dimension `\(p × n\)` where each array is a column.
+
+2. Sort each column of `\(X\)` to get `\(X_{sort}\)`. Remember to original order
+
+3. Take the means across rows of `\(X_{sort}\)` and replace the values of `\(X\)` by those means. The resulting matrix is `\(X_{sort}'\)`.
+
+4. Get `\(X_{normalized}\)` by rearranging each column of `\(X_{sort}'\)` to have the same ordering as original `\(X\)`.
+
+Quantile normalization changes expression over many slides i.e. changes the correlation structure of the data, may affect subsequent analysis.
+
+---
+## Quantile normalization 
+
+&lt;img src="img/quantile1.png" width="900px" style="display: block; margin: auto;" /&gt;
+
+---
+## Comparison of normalization techniques
+
+&lt;img src="img/norm_comparison.png" width="900px" style="display: block; margin: auto;" /&gt;
+
+---
+## TMM: Trimmed mean of M values
+
+- Compute `\(M(log\ fold\ changes)\)` and `\(A(log\ total\ counts)\)` for all genes
+
+- Discard genes with extreme `\(M\)` and `\(A\)` values (30% and 5%), and compute a weighted mean of M’s for the rest of genes. The weights as the inverse of the approximate asymptotic variances
+
+- Underlying assumption is that most genes are not DE
+
+- Implemented in `edgeR::calcNormFactors()`
+
+.small[ Robinson, Mark D., and Alicia Oshlack. “A Scaling Normalization Method for Differential Expression Analysis of RNA-Seq Data.” Genome Biology 11, no. 3 (2010): R25. https://doi.org/10.1186/gb-2010-11-3-r25. ]
+
+---
+## Gene-specific normalization – each gene has a different normalization factor
+
+- The gene-specific biases (from GC content, gene length, etc.) need to be considered. Model the observed counts `\(Y_{g,i}\)` for gene `\(g\)` in sample `\(i\)`
+
+`$$Y_{g,i}|\mu_{g,i} \sim Poisson(\mu_{g,i})$$`
+`$$\mu_{g,i}=exp{h_i(\theta_{g,i}) + \sum_{j=1}^pf_{i,j}(X_{g,j}) + log(m_i)}$$`
+
+- `\(h_i(\theta_{g,i})\)` - function that captures non-linearity of counts distribution across samples (technical variability)
+- `\(f_{i,j}(X_{g,j})\)` - sample-dependent biases, e.g., GC content
+- `\(m_i\)` - sequencing depth
+- Estimate `\(h\)` and `\(f\)` and `\(\theta\)` using conditional quantile normalization  
+
+.small[ Hansen, K. D., Irizarry, R. A., &amp; Wu, Z. (2012). Removing technical variability in RNA-seq data using conditional quantile normalization. Biostatistics, https://doi.org/10.1093/biostatistics/kxr054 ] 
+
+---
+## voom - making RNA-seq counts look like microarray measures
+
+- log-counts per million - capture relative changes in expression
+
+- Model the coefficient of variation (CV) of RNA-seq counts as a decreasing function of count size.
+`$$CV^2=1/\lambda + \phi$$`
+- `\(\lambda\)` - the expected size of the count
+- `\(\phi\)` - biological variation
+- Captures mean-variance trend for lower counts
+- Used as weights in `limma` model  
+
+.small[ Law, C.W., Chen, Y., Shi, W. et al. voom: precision weights unlock linear model analysis tools for RNA-seq read counts. Genome Biol 15, R29 (2014). https://doi.org/10.1186/gb-2014-15-2-r29 ]
+
+---
+## Variance stabilizing normalization (VSN) 
+
+&lt;img src="img/vsn.png" width="600px" style="display: block; margin: auto;" /&gt;
+
+Inverse hyperbolic sine function `\(ashin\ x\ = ln(x + \sqrt{1 + x^2})\)`. Has the compressing effect on large values like regular `\(ln\ x\)`, but has much less of a compressing effect for small values. Defined on the entire real number line, no need to add an offset like for regular log-transformation.
+
+
+---
+## Summary
+
+- RNA-seq normalization is difficult!
+
+- Still an open statistical problem.
+
+- The goal is to find a proper “baseline” to normalize data to.
+
+- Single factor methods provide comparable results.
+
+- Gene-specific normalization is promising, but be careful of over-fitting.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

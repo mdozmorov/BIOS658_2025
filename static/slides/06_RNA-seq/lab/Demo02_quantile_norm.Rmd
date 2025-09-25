@@ -1,0 +1,188 @@
+---
+title: "Quantile Normalization — Step-by-step Demo"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE, fig.width=7, fig.height=4)
+set.seed(123)
+```
+
+# Overview
+
+This document demonstrates quantile normalization on RNA-seq–like data. Steps:
+
+1. simulate count data with library-size and composition differences
+2. convert to log2(CPM + 1) (common starting point for applying quantile normalization)
+3. visualize raw distributions (boxplots, density)
+4. implement **manual quantile normalization** (showing the core algorithm)
+5. visualize normalized data and compare to `limma::normalizeBetweenArrays(method="quantile")`
+
+# Load packages
+
+```{r packages}
+# Install packages if needed (uncomment to install)
+# install.packages(c("ggplot2","reshape2","pheatmap"))
+# if (!requireNamespace("BiocManager", quietly=TRUE)) install.packages("BiocManager")
+# BiocManager::install("limma")
+
+library(ggplot2)
+library(reshape2)
+library(limma)     # for normalizeBetweenArrays (quantile)
+library(pheatmap)
+```
+
+# Simulate RNA-seq like counts
+
+We simulate 1,000 genes and 6 samples. We include differing library sizes and a compositional bias in one sample to mimic real-world distributional differences.
+
+```{r simulate-data}
+set.seed(42)
+G <- 1000   # genes
+S <- 6      # samples
+
+# baseline gene expression means (per-gene)
+base_means <- rgamma(G, shape = 2, scale = 50)  # varying baseline abundances
+
+# sample-specific library size factors
+libsize_factors <- c(1.0, 0.9, 1.2, 1.1, 0.8, 1.5)
+
+# create matrix of counts using NB (mu scaled by libsize)
+dispersion <- 10  # NB size parameter (higher => lower overdispersion)
+counts <- matrix(0, nrow=G, ncol=S)
+for (s in seq_len(S)) {
+  mu_s <- base_means * libsize_factors[s]
+  counts[,s] <- rnbinom(G, mu = mu_s, size = dispersion)
+}
+
+colnames(counts) <- paste0("Sample", 1:S)
+rownames(counts) <- paste0("Gene", seq_len(G))
+
+# introduce compositional bias: in sample 6, amplify a small set of genes
+set.seed(3)
+highly_expressed <- sample(1:G, 25)
+counts[highly_expressed, 6] <- counts[highly_expressed, 6] * 20
+
+# quick summary
+library_sizes <- colSums(counts)
+round(library_sizes / 1e6, 4)  # in millions
+```
+
+# Convert counts → CPM → log2(CPM + 1)
+
+Quantile normalization is typically applied to continuous intensity-like data (e.g., log2 scale). We'll compute counts per million (CPM) then log2(CPM + 1).
+
+```{r cpm-log}
+# compute CPM
+cpm <- sweep(counts, 2, colSums(counts), FUN="/") * 1e6
+log2cpm <- log2(cpm + 1)
+
+# show head
+head(log2cpm)[,1:6]
+```
+
+# Visualize raw (log2CPM) distributions
+
+Boxplots and density plots to visualize per-sample distributional differences.
+
+```{r raw-visuals}
+df_raw <- melt(log2cpm)
+colnames(df_raw) <- c("Gene", "Sample", "log2CPM")
+
+# boxplot
+p1 <- ggplot(df_raw, aes(x=Sample, y=log2CPM)) +
+  geom_boxplot(outlier.size = 0.8) + ggtitle("Raw log2(CPM+1) per sample (boxplot)") +
+  theme_minimal()
+p1
+
+# density
+p2 <- ggplot(df_raw, aes(x=log2CPM, color=Sample)) +
+  geom_density() + ggtitle("Raw log2(CPM+1) densities") + theme_minimal()
+p2
+```
+
+*Interpretation:* note sample-to-sample distribution differences (library size & composition effects), particularly the sample with amplified genes.
+
+# Manual implementation of Quantile Normalization
+
+Algorithm (conceptual):
+
+1. For each sample (column) sort values in ascending order.
+2. Compute the row-wise mean across the sorted columns (this gives the target quantiles).
+3. For each column, replace its sorted values by the target quantile means, and then undo the sorting to restore original ordering.
+
+Below is a straightforward implementation and demonstration.
+
+```{r quantile-function}
+quantile_normalize_manual <- function(mat) {
+  # mat: numeric matrix with genes as rows and samples as columns
+  stopifnot(is.matrix(mat))
+  # 1) sort each column
+  sorted_mat <- apply(mat, 2, sort, decreasing = FALSE)
+  # 2) row means across sorted values (target quantiles)
+  target_quantiles <- rowMeans(sorted_mat, na.rm = TRUE)
+  # 3) map target quantiles back to original ranks
+  result <- mat * NA
+  for (j in seq_len(ncol(mat))) {
+    ord <- order(mat[, j], na.last = NA)         # indices of sorted values ascending
+    result[ord, j] <- target_quantiles
+  }
+  return(result)
+}
+
+# apply manual quantile normalization
+log2cpm_qn_manual <- quantile_normalize_manual(log2cpm)
+```
+
+# Visualize manual quantile-normalized data
+
+```{r qn-visuals}
+df_qn <- melt(log2cpm_qn_manual)
+colnames(df_qn) <- c("Gene", "Sample", "log2CPM_qn")
+
+# boxplot after QN
+p3 <- ggplot(df_qn, aes(x=Sample, y=log2CPM_qn)) +
+  geom_boxplot(outlier.size = 0.8) + ggtitle("Quantile-normalized (manual) log2(CPM+1) per sample") +
+  theme_minimal()
+p3
+
+# density after QN
+p4 <- ggplot(df_qn, aes(x=log2CPM_qn, color=Sample)) +
+  geom_density() + ggtitle("Quantile-normalized (manual) densities") + theme_minimal()
+p4
+```
+
+*Interpretation:* after quantile normalization, per-sample marginal distributions are identical (by construction). This can remove unwanted technical differences but also may remove true global biological differences.
+
+# Compare with limma's quantile normalization
+
+We use `limma::normalizeBetweenArrays()` which implements a standard quantile normalization.
+
+```{r limma-qn-compare}
+log2cpm_qn_limma <- normalizeBetweenArrays(log2cpm, method = "quantile")
+
+# check equality up to numerical tolerance
+max_abs_diff <- max(abs(log2cpm_qn_manual - log2cpm_qn_limma))
+max_abs_diff
+```
+
+```{r qn-visuals2}
+df_qn <- melt(log2cpm_qn_limma)
+colnames(df_qn) <- c("Gene", "Sample", "log2CPM_qn")
+
+# boxplot after QN
+p3 <- ggplot(df_qn, aes(x=Sample, y=log2CPM_qn)) +
+  geom_boxplot(outlier.size = 0.8) + ggtitle("Quantile-normalized (manual) log2(CPM+1) per sample") +
+  theme_minimal()
+p3
+
+# density after QN
+p4 <- ggplot(df_qn, aes(x=log2CPM_qn, color=Sample)) +
+  geom_density() + ggtitle("Quantile-normalized (manual) densities") + theme_minimal()
+p4
+```

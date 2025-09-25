@@ -1,0 +1,341 @@
+---
+title: "LOWESS Normalization Demo"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE, fig.width=7, fig.height=4)
+set.seed(123)
+```
+
+## Introduction
+
+In RNA-seq (and originally microarrays), **intensity-dependent bias** can occur, where the log-ratio of expression values (`M`) depends on the average intensity (`A`).  
+
+This creates a curvature in the **MA plot**.  
+
+We can remove such bias using **parametric regression** or more commonly **LOWESS normalization**.  
+
+## Simulate RNA-seq MA data with bias
+
+```{r}
+set.seed(123)
+
+# Simulate average expression (A values, log2 scale ~ 3–16 typical range)
+x <- runif(50, 0, 16)
+
+# Simulate M values (log fold-changes), with nonlinear bias + random noise
+y <- 1 + 0.5 * exp(-0.5 * x) + rnorm(50, 0, 0.1)
+
+# Organize into data frame
+data <- data.frame(A = x, M = y)
+data <- data[order(data$A), ]
+
+head(data)
+```
+
+## Visualize the biased MA plot
+
+```{r}
+plot(data$A, data$M,
+     main = "Simulated MA plot with dye bias",
+     xlab = "A (average log2 expression)",
+     ylab = "M (log2 fold-change)")
+curve(1 + 0.5*exp(-0.5*x), add = TRUE, col = "blue", lwd = 2)
+```
+
+The curve shows the **systematic non-linear bias** added to the simulated data.
+
+## Parametric nonlinear fit
+
+In real data, we usually don’t know the exact functional form of the bias.
+Here, we attempt to **recover the curve** using **nonlinear least squares (NLS)**.
+
+```{r}
+# Fit a parametric exponential decay model
+fit <- nls(M ~ a + b * exp(-c * A),
+           data = data,
+           start = list(a = 1, b = 1, c = 1))
+
+summary(fit)
+
+plot(data$A, data$M,
+     main = "Simulated MA plot with dye bias",
+     xlab = "A (average log2 expression)",
+     ylab = "M (log2 fold-change)")
+# Add fitted curve
+lines(data$A, predict(fit), col = "red", lwd = 2)
+```
+
+## Bias correction
+
+We subtract the fitted curve from the observed M values to remove the intensity-dependent bias.
+
+```{r}
+# Corrected M values
+M.norm <- data$M - predict(fit)
+
+plot(data$A, M.norm,
+     main = "Normalized MA plot (parametric fit)",
+     xlab = "A (average log2 expression)",
+     ylab = "M (bias-corrected log2 fold-change)")
+abline(h = 0, col = "darkgreen", lwd = 2)
+```
+
+Now, the corrected values are **centered around zero**, as expected if most genes are **not differentially expressed**.
+
+## Why LOWESS instead of a parametric model?
+
+* Parametric models require specifying a functional form.
+* In practice, RNA-seq biases are not known in advance.
+* **LOWESS (Locally Weighted Scatterplot Smoothing)** provides a flexible, **non-parametric fit** to remove systematic curvature in MA plots.
+* Implemented in many normalization tools (e.g., `limma`, cyclic loess).
+
+# Understanding LOESS Smoothing Step by Step
+
+## Introduction
+
+LOESS (**Locally Estimated Scatterplot Smoothing**) is a **non-parametric regression** method.  
+It works by:  
+- Selecting a **local neighborhood** of points around the target.  
+- Assigning **weights** (closer points get higher weight).  
+- Fitting a **weighted linear regression**.  
+- Repeating for each point of interest.  
+
+Here we illustrate the procedure "by hand" using the `wine` dataset.  
+
+## Load data
+
+```{r}
+# install.packages("HDclassif") # if not already installed
+library(HDclassif)
+
+# Load wine dataset
+data(wine)
+
+# Rename some variables for clarity
+colnames(wine)[colnames(wine) == "V1"] <- "Alcohol"
+colnames(wine)[colnames(wine) == "V10"] <- "Color"
+
+head(wine[, c("Alcohol", "Color")])
+```
+
+## Step 1: Pick a target observation
+
+```{r}
+attach(wine)
+
+plot(Color, Alcohol,
+     main = "Alcohol vs. Color (wine dataset)",
+     xlab = "Color Intensity",
+     ylab = "Alcohol")
+
+# Pick observation 50
+points(Color[50], Alcohol[50], pch=16, col="red")
+
+Color[50]   # x value
+Alcohol[50] # y value
+```
+
+## Step 2: Compute distances
+
+We compute distances along the **x-axis (Color)** to all other points.
+
+```{r}
+distance <- abs(Color - Color[50])
+head(distance)
+```
+
+## Step 3: Define neighborhood
+
+Let’s choose the **50 nearest neighbors**.
+
+```{r}
+neighbor <- ifelse(rank(distance) <= 50, 1, 0)
+
+plot(Color, Alcohol,
+     main = "Alcohol vs. Color (wine dataset)",
+     xlab = "Color Intensity",
+     ylab = "Alcohol")
+# Plot neighbors
+points(Color[neighbor == 1], Alcohol[neighbor == 1], pch = 19)
+```
+
+## Step 4: Scale distances and compute weights
+
+Weights are assigned using the **tricube kernel**:
+
+$$
+w_i = \begin{cases}
+(1 - u_i^3)^3, & 0 \le u_i < 1 \\
+0, & \text{otherwise}
+\end{cases}
+$$
+
+where $u_i = \frac{\text{distance to target}}{\text{max distance in neighborhood}}$.
+
+```{r}
+delta.50 <- max(distance[neighbor == 1])
+u <- ifelse(neighbor == 1, distance / delta.50, NA)
+
+weight <- ifelse(u >= 0 & u < 1, (1 - u^3)^3, 0)
+
+# Combine into table
+combined_data <- data.frame(distance, neighbor, u, weight)
+combined_data[45:55, ]
+```
+
+## Step 5: Weighted regression
+
+We fit a **local weighted linear regression** around observation 50.
+
+```{r}
+plot(Color, Alcohol,
+     main = "Alcohol vs. Color (wine dataset)",
+     xlab = "Color Intensity",
+     ylab = "Alcohol")
+
+local.50 <- lm(Alcohol ~ Color, weights = weight)
+abline(local.50, col="red")
+```
+
+## Step 6: Repeat for another observation
+
+Let’s repeat for observation 30.
+
+```{r}
+plot(Color, Alcohol,
+     main = "Alcohol vs. Color (wine dataset)",
+     xlab = "Color Intensity",
+     ylab = "Alcohol")
+# Mark observation 30
+points(Color[30], Alcohol[30], pch=16, col="green")
+
+# Distances
+distance.30 <- abs(Color - Color[30])
+neighbor.30 <- ifelse(rank(distance.30) <= 50, 1, 0)
+
+# Plot neighbors
+points(Color[neighbor.30 == 1], Alcohol[neighbor.30 == 1], pch = 19, col="blue")
+
+# Compute weights
+delta.30 <- max(distance.30[neighbor.30 == 1])
+u.30 <- ifelse(neighbor.30 == 1, distance.30 / delta.30, NA)
+weight.30 <- ifelse(u.30 >= 0 & u.30 < 1, (1 - u.30^3)^3, 0)
+
+# Local regression
+local.30 <- lm(Alcohol ~ Color, weights = weight.30)
+abline(local.30, lty=2, col="green")
+```
+
+## Step 7: Built-in LOESS
+
+Of course, we usually use the built-in `loess()` function rather than computing by hand.
+
+```{r}
+out <- loess(Alcohol ~ Color, data = wine, span = 0.4, degree = 1)
+
+# Plot original data
+plot(Color, Alcohol, main="LOESS fit vs. raw data",
+     xlab="Color Intensity", ylab="Alcohol")
+
+# Add LOESS smoothed line
+lines(sort(out$x), out$fitted[order(out$x)], col="red", lwd=2)
+
+# Try larger span (smoother curve)
+out2 <- loess(Alcohol ~ Color, data = wine, span = 0.7, degree = 1)
+lines(sort(out2$x), out2$fitted[order(out2$x)], col="blue", lwd=2)
+legend("topright", legend=c("Span 0.4","Span 0.7"),
+       col=c("red","blue"), lwd=2)
+```
+
+## Summary
+
+* LOESS is a **non-parametric regression** that fits weighted linear regressions in local neighborhoods.
+* We manually computed distances, neighbors, and weights to see how it works.
+* The built-in `loess()` function automates this process, with the `span` parameter controlling smoothness.
+
+# Autoloess
+
+```{r}
+# autoloess.R: compute loess metaparameters automatically
+# Kyle Gorman <gormanky@ohsu.edu>
+
+aicc.loess <- function(fit) {
+    # compute AIC_C for a LOESS fit, from:
+    # 
+    # Hurvich, C.M., Simonoff, J.S., and Tsai, C. L. 1998. Smoothing 
+    # parameter selection in nonparametric regression using an improved 
+    # Akaike Information Criterion. Journal of the Royal Statistical 
+    # Society B 60: 271–293.
+    # 
+    # @param fit        loess fit
+    # @return           'aicc' value
+    stopifnot(inherits(fit, 'loess'))
+    # parameters
+    n <- fit$n
+    trace <- fit$trace.hat
+    sigma2 <- sum(resid(fit) ^ 2) / (n - 1)
+    return(log(sigma2) + 1 + (2 * (trace + 1)) / (n - trace - 2))
+}
+
+autoloess <- function(fit, span=c(.1, .9)) {
+    # compute loess fit which has span minimizes AIC_C
+    # 
+    # @param fit        loess fit; span parameter value doesn't matter
+    # @param span       a two-value vector representing the minimum and 
+    #                   maximum span values
+    # @return           loess fit with span minimizing the AIC_C function
+    stopifnot(inherits(fit, 'loess'), length(span) == 2)
+    # loss function in form to be used by optimize
+    f <- function(span) aicc.loess(update(fit, span=span))
+    # find best loess according to loss function
+    return(update(fit, span=optimize(f, span)$minimum))
+}
+```
+
+```{r}
+# https://stat.ethz.ch/pipermail/r-help/2005-November/082853.html
+
+loess.aic <- function (x) {
+  if (!(inherits(x,"loess"))) stop("Error: argument must be a loess object")
+  # extract values from loess object
+  span <- x$pars$span
+  n <- x$n
+  traceL <- x$trace.hat
+  sigma2 <- sum( x$residuals^2 ) / (n-1)
+  delta1 <- x$one.delta
+  delta2 <- x$two.delta
+  enp <- x$enp
+  
+  aicc <- log(sigma2) + 1 + 2* (2*(traceL+1)) / (n-traceL-2)
+  #	aicc1<- n*log(sigma2) + n* ((delta1/(delta2*(n+enp)))/(delta1^2/delta2)-2 )
+  aicc1<- n*log(sigma2) + n* ((delta1/delta2)*(n+enp)/(delta1^2/delta2)-2 )
+  gcv  <- n*sigma2 / (n-traceL)^2
+  
+  result <- list(span=span, aicc=aicc, aicc1=aicc1, gcv=gcv)
+  return(result)
+}
+
+bestLoess <- function(model, criterion=c("aicc", "aicc1", "gcv"), spans=c(.05, .95)){
+  criterion <- match.arg(criterion)
+  f <- function(span) {
+    mod <- update(model, span=span)
+    loess.aic(mod)[[criterion]]
+  }
+  result <- optimize(f, spans)
+  list(span=result$minimum, criterion=result$objective)
+} 
+
+
+cars.lo <- loess(dist ~ speed, cars)
+
+(values <- loess.aic(cars.lo))
+
+```
+

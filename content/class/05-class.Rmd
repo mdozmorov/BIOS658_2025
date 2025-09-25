@@ -44,3 +44,18 @@ knitr::include_url('../../slides/06_RNA-seq/03_RNA-seq_qc_alignment.html#1')
 ```{r echo=FALSE}
 knitr::include_url('../../slides/06_RNA-seq/04_RNA-seq_quantification.html#1')
 ```
+
+## Normalization
+
+<a href="../../slides/06_RNA-seq/05_RNA-seq_normalization.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/06_RNA-seq/05_RNA-seq_normalization.html#1')
+```
+
+### Code examples
+
+- Demo00_log2, <a href="../../slides/04_Bioconductor/lab/Demo00_log2.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo00_log2.html" target="_blank">HTML</a>
+- Demo01_loess, <a href="../../slides/04_Bioconductor/lab/Demo01_loess.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo01_loess.html" target="_blank">HTML</a>
+- Demo02_quantile_norm, <a href="../../slides/04_Bioconductor/lab/Demo02_quantile_norm.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo02_quantile_norm.html" target="_blank">HTML</a>
+

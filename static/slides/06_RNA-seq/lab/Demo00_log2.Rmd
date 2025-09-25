@@ -1,0 +1,180 @@
+---
+title: "Log2 Transformation in RNA-seq"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE, fig.width=7, fig.height=4)
+set.seed(123)
+```
+
+
+## Example: Raw RNA-seq counts
+
+We simulate raw counts for two samples (e.g., Control and Treatment).
+
+```{r}
+set.seed(123)
+n_genes <- 1000
+
+# Skewed distribution of mean expression (many low, few high)
+lambdas <- round(rlnorm(n_genes, meanlog = 1, sdlog = 1.2))
+
+# Simulate counts for two samples
+counts <- data.frame(
+  Gene = paste0("Gene", 1:n_genes),
+  Control = rpois(n_genes, lambdas),
+  Treatment = rpois(n_genes, lambdas * runif(n_genes, 0.8, 1.2)) # add noise
+)
+
+head(counts, 10)
+
+
+```
+
+## Raw counts are highly skewed
+
+RNA-seq counts vary over several orders of magnitude.
+Let’s visualize:
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Reshape to long format
+counts_long <- counts %>%
+  pivot_longer(cols = c("Control", "Treatment"),
+               names_to = "Sample",
+               values_to = "Counts")
+
+# Density plot (log scale helps with skewed counts)
+ggplot(counts_long, aes(x = Counts, fill = Sample)) +
+  geom_density(alpha = 0.4) +
+  scale_fill_manual(values = c("steelblue", "tomato")) +
+  # scale_x_log10() +
+  theme_bw() +
+  labs(title = "Distribution of RNA-seq counts",
+       x = "Counts",
+       y = "Density")
+
+
+```
+
+## Log2 transformation
+
+We use `log2(x + 1)` to avoid taking log of zero.
+
+```{r}
+log_counts <- counts
+log_counts$Control <- log2(counts$Control + 1)
+log_counts$Treatment <- log2(counts$Treatment + 1)
+head(log_counts)
+```
+
+## Effect of log2 transformation
+
+Compare the distribution of counts before and after transformation.
+
+```{r}
+par(mfrow = c(1,2))
+boxplot(counts$Control, counts$Treatment,
+        names = c("Control","Treatment"),
+        main = "Raw counts", col = "lightgray")
+boxplot(log_counts$Control, log_counts$Treatment,
+        names = c("Control","Treatment"),
+        main = "Log2-transformed counts", col = "lightgreen")
+```
+
+
+* **Raw counts**: dominated by very large values.
+* **Log2 counts**: compresses large values, highlights smaller changes.
+
+## Fold changes
+
+Compute fold changes before and after log2 transformation.
+
+```{r}
+counts$FoldChange <- counts$Treatment / (counts$Control + 1)
+log_counts$Log2FC <- log_counts$Treatment - log_counts$Control
+
+head(counts[, c("Gene","Control","Treatment","FoldChange")])
+head(log_counts[, c("Gene","Control","Treatment","Log2FC")])
+```
+
+* **Fold change (FC)**: ratio of raw counts.
+* **Log2 fold change (log2FC)**: difference between log2-transformed counts.
+
+  * Easier to interpret:
+
+    * log2FC = 1 → 2-fold increase
+    * log2FC = -1 → 2-fold decrease
+
+## Visualization of fold changes
+
+```{r}
+plot(counts$FoldChange, log_counts$Log2FC,
+     xlab = "Fold Change (ratio)",
+     ylab = "Log2 Fold Change",
+     pch = 19, col = "purple")
+abline(h = c(-1,0,1), lty = 2, col = "gray")
+```
+
+## Square root transformation
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# log2-transform (+1 to avoid log(0))
+log_counts <- counts %>%
+  mutate(Control = log2(Control + 1),
+         Treatment = log2(Treatment + 1))
+
+# sqrt-transform
+sqrt_counts <- counts %>%
+  mutate(Control = sqrt(Control),
+         Treatment = sqrt(Treatment))
+
+# Convert to long format
+counts_long <- counts %>%
+  select(Control, Treatment) %>%
+  pivot_longer(cols = everything(), names_to = "Sample", values_to = "Counts") %>%
+  mutate(Type = "Raw")
+
+log_counts_long <- log_counts %>%
+  select(Control, Treatment) %>%
+  pivot_longer(cols = everything(), names_to = "Sample", values_to = "Counts") %>%
+  mutate(Type = "Log2 (+1)")
+
+sqrt_counts_long <- sqrt_counts %>%
+  select(Control, Treatment) %>%
+  pivot_longer(cols = everything(), names_to = "Sample", values_to = "Counts") %>%
+  mutate(Type = "Sqrt")
+
+# Combine all
+all_counts_long <- bind_rows(counts_long, log_counts_long, sqrt_counts_long)
+
+# Plot densities
+ggplot(all_counts_long, aes(x = Counts, fill = Sample)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~Type, scales = "free", ncol = 3) +
+  scale_fill_manual(values = c("steelblue", "tomato")) +
+  theme_bw() +
+  labs(title = "Effect of transformations on RNA-seq counts",
+       x = "Counts",
+       y = "Density")
+
+```
+
+**Conclusion:**
+
+* Log2 transformation stabilizes variance.
+* Makes fold changes symmetric and easier to interpret.
+* Standard step in RNA-seq differential expression analysis.

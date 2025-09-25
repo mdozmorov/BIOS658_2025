@@ -1,0 +1,282 @@
+---
+title: "MA plot and TMM normalization — step-by-step demo"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 5)
+set.seed(123)
+```
+
+# Overview
+
+This document:
+
+* Builds a small simulated RNA-seq count matrix (mostly non-DE genes with a few large differences to mimic composition bias).
+* Shows how to compute an **MA plot** (M = log fold change, A = average log abundance).
+* Implements the **TMM** algorithm step-by-step for one sample vs a reference (M/A calculation, trimming by M & A, delta-method weights, weighted trimmed mean → log2 factor → linear factor).
+* Computes TMM factors for all samples (manual) and compares to `edgeR::calcNormFactors()`.
+* Shows MA plot before and after TMM normalization.
+
+## Packages
+
+```{r packages}
+# Install if needed:
+# if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+# BiocManager::install("edgeR")
+
+library(edgeR)
+library(ggplot2)
+library(gridExtra)
+```
+
+## Simulate counts (mostly non-DE; add a compositional bias)
+
+```{r simulate}
+set.seed(2024)
+G <- 10000   # genes
+S <- 6       # samples
+
+# baseline expression (varying gene means)
+base_means <- rgamma(G, shape = 2, scale = 50)
+
+# library size multipliers
+lib_factors <- c(1.0, 0.9, 1.1, 1.2, 0.95, 1.4)
+lib_sizes <- round(lib_factors * 10e6)  # raw sequencing depths
+
+# simulate counts per-sample via NB (some overdispersion)
+dispersion <- 20
+counts <- matrix(0, nrow = G, ncol = S)
+for (s in 1:S){
+  mu <- base_means * lib_factors[s]
+  counts[,s] <- rnbinom(G, mu = mu, size = dispersion)
+}
+colnames(counts) <- paste0("S", 1:S)
+rownames(counts) <- paste0("gene", seq_len(G))
+
+# inject composition bias: sample 6 has a small set of hugely expressed genes
+set.seed(999)
+hi <- sample(1:G, 100)
+counts[hi, 6] <- counts[hi, 6] * 50
+
+# quick library sizes
+lib_summary <- colSums(counts)
+lib_summary
+```
+
+## MA plot: definition and plotting function
+
+* For two libraries (k and r) we compute:
+
+  * $M_g = \log_2\!\big( (y_{gk}/N_k) / (y_{gr}/N_r) \big)$  — log fold change (sample k relative to ref r)
+  * $A_g = \tfrac12\log_2\!\big( (y_{gk}/N_k)\cdot(y_{gr}/N_r) \big)$ — average log abundance
+* Genes with zero counts in either library are omitted for the plot/for TMM calculation.
+
+```{r helpers}
+# helper: compute log2-CPM avoiding -Inf (using edgeR::cpm with prior.count)
+log2cpm_mat <- function(counts_mat, lib_sizes = colSums(counts_mat), prior.count = 0.5){
+  # use edgeR cpm (returns counts-per-million)
+  cpm_mat <- edgeR::cpm(counts_mat, lib.size = lib_sizes, prior.count = prior.count)
+  log2(cpm_mat + 1e-6)  # tiny offset for numerical safety (visualization)
+}
+
+# helper: make MA data (M, A) for two columns k and r
+make_MA <- function(counts, k, r, lib_sizes = colSums(counts), prior.count = 0.5){
+  yk <- counts[, k]; yr <- counts[, r]
+  Nk <- lib_sizes[k]; Nr <- lib_sizes[r]
+  # remove genes with zero in either (TMM trims these anyway)
+  valid <- (yk > 0) & (yr > 0)
+  yk_v <- yk[valid]; yr_v <- yr[valid]
+  M <- log2( (yk_v / Nk) / (yr_v / Nr) )
+  A <- 0.5 * log2( (yk_v / Nk) * (yr_v / Nr) )
+  data.frame(gene = rownames(counts)[valid], M = M, A = A, yk = yk_v, yr = yr_v)
+}
+
+# plotting function
+plot_MA <- function(ma_df, title = "MA plot", highlight = NULL){
+  p <- ggplot(ma_df, aes(x = A, y = M)) +
+    geom_hex(bins = 80) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    labs(title = title, x = "A = 0.5 * log2( (p_k)*(p_r) )", y = "M = log2( p_k / p_r )") +
+    theme_minimal()
+  if (!is.null(highlight)) {
+    p <- p + geom_point(data = ma_df[rownames(ma_df) %in% highlight, , drop = FALSE],
+                        aes(x = A, y = M), color = "orange", size = 1)
+  }
+  p
+}
+```
+
+## Example MA plot (sample 6 vs chosen reference)
+
+Pick a reference sample. edgeR chooses the sample whose upper quartile CPM is closest to the mean upper quartile; we replicate that to pick the ref.
+
+```{r pick-ref-and-ma, fig.height=5}
+# choose reference as edgeR would (upper-quartile closeness)
+uq <- apply(edgeR::cpm(counts, prior.count = 0.5), 2, function(x) quantile(x, 0.75))
+ref <- which.min(abs(uq - mean(uq)))
+ref
+
+# plot MA: sample 6 vs reference
+ma_6_vs_ref <- make_MA(counts, k = 6, r = ref)
+p_ma_before <- plot_MA(ma_6_vs_ref, title = paste0("MA: sample 6 vs ref (S", ref, ") — BEFORE TMM"))
+p_ma_before
+```
+
+*Interpretation:* See a global shift away from $M=0$ if composition bias exists (we injected such bias into sample 6).
+
+
+## TMM: manual implementation for one sample vs reference
+
+Steps implemented below (mirrors the algorithm in Robinson & Oshlack, 2010):
+
+1. Compute $M_g$ and $A_g$ for genes with positive counts in both libraries.
+2. Trim genes with extreme $M$ (default 30% at each tail) and extreme $A$ (default 5% at each tail). The *double trim* keeps genes that survive both trims.
+3. Compute approximate variance of $M_g$ by delta method (for a binomial proportion):
+
+   $$
+     \operatorname{Var}(M_g) \approx \left(\frac{1}{y_{gk}} - \frac{1}{N_k}\right) + \left(\frac{1}{y_{gr}} - \frac{1}{N_r}\right).
+   $$
+
+   Then weights = inverse variance.
+4. Weighted mean of kept $M_g$ gives the *log2* normalization factor for sample $k$ vs reference $r$:
+   $\widehat{\log_2 f_k} = \dfrac{\sum_{g\in G^*} w_g M_g}{\sum_{g\in G^*} w_g}$.
+   Then $f_k = 2^{\widehat{\log_2 f_k}}$.
+
+```{r tmm-manual}
+# parameters
+trim.M <- 0.30  # 30% trimming for M
+trim.A <- 0.05  # 5% trimming for A
+
+# function to compute manual TMM factor for sample k relative to ref r
+calc_TMM_manual <- function(counts, k, r, lib_sizes = colSums(counts),
+                            trim.M = 0.30, trim.A = 0.05){
+  yk <- counts[,k]; yr <- counts[,r]
+  Nk <- lib_sizes[k]; Nr <- lib_sizes[r]
+  valid <- (yk > 0) & (yr > 0)
+  yk_v <- yk[valid]; yr_v <- yr[valid]
+  M <- log2( (yk_v / Nk) / (yr_v / Nr) )
+  A <- 0.5 * log2( (yk_v / Nk) * (yr_v / Nr) )
+  # compute delta-method approximate variance of M
+  varM <- (1 / yk_v - 1 / Nk) + (1 / yr_v - 1 / Nr)
+  wg <- 1 / varM
+  # trimming
+  m_low <- quantile(M, probs = trim.M); m_high <- quantile(M, probs = 1 - trim.M)
+  a_low <- quantile(A, probs = trim.A); a_high <- quantile(A, probs = 1 - trim.A)
+  keep <- (M > m_low) & (M < m_high) & (A > a_low) & (A < a_high) & is.finite(wg)
+  # weighted mean of M over kept genes
+  w <- wg[keep]
+  wm <- if (sum(w) > 0) sum( w * M[keep] ) / sum(w) else NA_real_
+  # log2 factor -> linear factor
+  list(log2_factor = wm, factor = 2^wm, keep_indices = which(valid)[keep],
+       M = M, A = A, wg = wg)
+}
+
+# compute for sample 6 relative to chosen ref
+tmm6 <- calc_TMM_manual(counts, k = 6, r = ref, lib_sizes = colSums(counts),
+                        trim.M = trim.M, trim.A = trim.A)
+tmm6$log2_factor
+tmm6$factor
+```
+
+Print the result and show the trimmed genes on the MA plot (orange):
+
+```{r ma-with-trim}
+# highlight trimmed genes on MA plot (showing kept genes)
+kept_genes <- rownames(counts)[tmm6$keep_indices]
+p_ma_before + geom_point(data = subset(ma_6_vs_ref, gene %in% kept_genes),
+                         aes(x = A, y = M), color = "cyan", size = 0.6) +
+  ggtitle(sprintf("MA: S6 vs S%d — BEFORE TMM\nmanual log2 factor = %.4f (factor %.3f)",
+                  ref, tmm6$log2_factor, tmm6$factor))
+```
+
+## Compute TMM factors for all samples (manual) and compare to edgeR
+
+* We will compute a manual TMM factor for every sample relative to the same reference `ref` and then scale the manual factors to have geometric mean = 1 so they are comparable to `edgeR` output.
+* Then call `edgeR::calcNormFactors()` and compare.
+
+```{r tmm-all}
+# manual factors for all samples relative to ref
+manual_log2 <- numeric(S)
+manual_fac <- numeric(S)
+keep_list <- vector("list", S)
+for (k in 1:S){
+  if (k == ref){
+    manual_log2[k] <- 0
+    manual_fac[k] <- 1
+    keep_list[[k]] <- integer(0)
+  } else {
+    res <- calc_TMM_manual(counts, k = k, r = ref, lib_sizes = colSums(counts),
+                           trim.M = trim.M, trim.A = trim.A)
+    manual_log2[k] <- res$log2_factor
+    manual_fac[k] <- res$factor
+    keep_list[[k]] <- rownames(counts)[res$keep_indices]
+  }
+}
+
+# scale manual factors so that geometric mean = 1 (edgeR reports factors with geo mean ~1)
+gm <- exp(mean(log(manual_fac)))
+manual_norm_factors <- manual_fac / gm
+
+# edgeR calcNormFactors (specify refColumn to match our chosen ref if desired)
+dge <- DGEList(counts = counts)
+dge$samples$lib.size <- colSums(counts)
+# specify refColumn so edgeR computes factors relative to that ref (for close comparability)
+edgef <- calcNormFactors(dge, method = "TMM", refColumn = ref)
+edge_factors <- edgef$samples$norm.factors
+
+# report
+data.frame(sample = colnames(counts),
+           lib.size = colSums(counts),
+           manual_factor = manual_norm_factors,
+           edgeR_factor = edge_factors)
+```
+
+*Interpretation:* The `manual_factor` and `edgeR_factor` are very close. Small differences can arise due to tie handling and small numeric details.
+
+## MA plot AFTER applying TMM normalization
+
+To visualize the effect of normalization on MA, we compute CPM using **effective library sizes**: `effective_libsize = lib.size * norm.factor`. We'll use `edgeR`'s normalized factors for this visualization.
+
+```{r ma-after}
+# effective library sizes using edgeR's factors
+eff_libsizes_edgeR <- colSums(counts) * edge_factors
+
+# MA between sample 6 and ref after applying TMM (via effective lib sizes)
+ma_after <- make_MA(counts, k = 6, r = ref, lib_sizes = eff_libsizes_edgeR)
+p_ma_after <- plot_MA(ma_after, title = paste0("MA: sample 6 vs ref (S", ref, ") — AFTER TMM (edgeR factors)"))
+grid.arrange(p_ma_before, p_ma_after, ncol = 2)
+```
+
+*Interpretation:* After TMM normalization, the bulk of M values should be centered near zero (dashed red line), demonstrating removal of the global composition bias.
+
+## Quick check: normalized log-CPM boxplots (before/after)
+
+```{r boxplots}
+log2cpm_before <- log2(edgeR::cpm(counts, lib.size = colSums(counts), prior.count = 0.5) + 1e-6)
+log2cpm_after  <- log2(edgeR::cpm(counts, lib.size = eff_libsizes_edgeR, prior.count = 0.5) + 1e-6)
+
+df_before <- data.frame(value = as.vector(log2cpm_before), sample = rep(colnames(counts), each = nrow(counts)), stage = "before")
+df_after  <- data.frame(value = as.vector(log2cpm_after),  sample = rep(colnames(counts), each = nrow(counts)), stage = "after")
+df_both <- rbind(df_before, df_after)
+
+ggplot(df_both, aes(x = sample, y = value, fill = sample)) +
+  geom_boxplot(outlier.size = 0.4) +
+  facet_wrap(~stage) +
+  theme_minimal() +
+  labs(title = "log2-CPM distributions: before vs after TMM", y = "log2(CPM)")
+```
+
+## Notes & caveats
+
+* **What TMM assumes:** Most genes are not differentially expressed (or that the majority of genes are balanced between conditions).
+* **Trim settings:** The defaults (trim M by 30% and A by 5%) are usually robust; they remove extreme log-fold-changes and extreme intensities that would otherwise bias the scaling factor.
+* **Weights:** We used the delta-method approximate variance for log ratios and applied inverse-variance weighting — this matches the approach in Robinson & Oshlack (2010) and the implementation in `edgeR`.
+* **edgeR:** Use `calcNormFactors()` in practice. Manual implementation is useful for teaching and validation.
+* **Effect on downstream DE:** The normalization changes effective library sizes and therefore the offsets in GLM-based differential testing (or the CPMs used in t/voom workflows).
+

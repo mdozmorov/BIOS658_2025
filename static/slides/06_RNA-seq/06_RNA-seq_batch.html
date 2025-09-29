@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>RNA batch effect removal</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-09-29" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# RNA batch effect removal
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-09-29
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## Batch effects
+
+- Batch effects are widespread in high-throughput biology. They are artifacts not related to the biological variation of scientific interests. 
+
+- For instance, two experiments on the same technical replicates processed on two different days might present different results due to factors such as room temperature or the two technicians who did the two experiments. 
+
+- Batch effects can substantially confound the downstream analysis, especially meta-analysis across studies. 
+
+---
+## Batch sources
+
+&lt;img src="img/batch_sources.png" width="900px" style="display: block; margin: auto;" /&gt;
+
+---
+## Design matrices
+
+- **Design matrices** are fundamental to the use of linear models. 
+
+- A design matrix encodes the experimental design into a numerical format that statistical models can interpret. 
+
+- It defines the relationship between samples and experimental conditions (e.g., treatment, control, batch effects, interactions). 
+
+- The design matrix is the bridge between biological hypotheses and statistical inference.
+
+---
+## Design matrices
+
+- **Rows** correspond to samples.
+
+- **Columns** correspond to predictors (experimental conditions, covariates, intercepts).
+
+- The values in the matrix indicate how each sample contributes to each predictor.
+
+Design matrices are central to packages like **ComBat**, **sva**, **limma**, **edgeR**, and **DESeq2**, which rely on linear modeling frameworks.
+
+---
+## Constructing Design Matrices
+
+The general form of a design matrix is:
+
+$$ Y = X\beta + \epsilon $$
+
+where:
+- `\(Y\)` is the expression matrix (genes × samples),
+- `\(X\)` is the design matrix (samples × predictors),
+- `\(\beta\)` are the coefficients (effects of predictors),
+- `\(\epsilon\)` is the residual error.
+
+R provides the function `model.matrix()` to automatically construct design matrices.
+
+---
+## Example: One Factor (Treatment)
+
+Suppose we have samples from two conditions: **control** and **treatment**.
+
+.pull-left[
+
+``` r
+# Example phenotype data
+samples &lt;- data.frame(
+  sample_id = paste0("S", 1:6),
+  condition = c("control", "control", "control", "treatment", "treatment", "treatment")
+)
+samples
+```
+
+```
+##   sample_id condition
+## 1        S1   control
+## 2        S2   control
+## 3        S3   control
+## 4        S4 treatment
+## 5        S5 treatment
+## 6        S6 treatment
+```
+]
+.pull-right[
+
+``` r
+# Build design matrix
+X &lt;- model.matrix(~ condition, data = samples)
+X
+```
+
+```
+##   (Intercept) conditiontreatment
+## 1           1                  0
+## 2           1                  0
+## 3           1                  0
+## 4           1                  1
+## 5           1                  1
+## 6           1                  1
+## attr(,"assign")
+## [1] 0 1
+## attr(,"contrasts")
+## attr(,"contrasts")$condition
+## [1] "contr.treatment"
+```
+]
+
+- The first column (`(Intercept)`) represents the baseline (control).
+- The second column encodes the treatment effect relative to control.
+
+---
+## Example: Adding Batch Effects
+
+In real-world data, samples often come from different **batches**, which may introduce systematic variation. We include batch as an additional factor.
+
+.pull-left[
+
+``` r
+samples$batch &lt;- c("batch1", "batch1", "batch2", "batch2", "batch3", "batch3")
+samples
+```
+
+```
+##   sample_id condition  batch
+## 1        S1   control batch1
+## 2        S2   control batch1
+## 3        S3   control batch2
+## 4        S4 treatment batch2
+## 5        S5 treatment batch3
+## 6        S6 treatment batch3
+```
+
+- Now, the design matrix adjusts for differences between batches in addition to treatment effects.
+]
+.pull-right[
+
+``` r
+X_batch &lt;- model.matrix(~ condition + batch, data = samples)
+X_batch
+```
+
+```
+##   (Intercept) conditiontreatment batchbatch2 batchbatch3
+## 1           1                  0           0           0
+## 2           1                  0           0           0
+## 3           1                  0           1           0
+## 4           1                  1           1           0
+## 5           1                  1           0           1
+## 6           1                  1           0           1
+## attr(,"assign")
+## [1] 0 1 2 2
+## attr(,"contrasts")
+## attr(,"contrasts")$condition
+## [1] "contr.treatment"
+## 
+## attr(,"contrasts")$batch
+## [1] "contr.treatment"
+```
+]
+
+---
+## Custom Coding of Factors
+
+By default, R uses **treatment coding** (baseline vs. effect). Alternative codings (e.g., sum contrasts) may be useful.
+
+
+``` r
+# Change contrast settings
+options(contrasts = c("contr.sum", "contr.poly"))
+X_sum &lt;- model.matrix(~ condition + batch, data = samples)
+X_sum %&gt;% as.data.frame()
+```
+
+```
+##   (Intercept) condition1 batch1 batch2
+## 1           1          1      1      0
+## 2           1          1      1      0
+## 3           1          1      0      1
+## 4           1         -1      0      1
+## 5           1         -1     -1     -1
+## 6           1         -1     -1     -1
+```
+
+This changes the interpretation of coefficients: now they represent deviations from the grand mean instead of the baseline.
+
+
+
+---
+## ComBat: Removing known batch effects
+
+**ComBat - Location-scale method**
+
+The core idea of ComBat was that the observed measurement `\(Y_{ijg}\)` for the expression value of gene `\(g\)` for sample `\(j\)` from batch `\(i\)` can be expressed as 
+
+`$$Y_{ijg}=\alpha_g+X\beta_g+\gamma_{ig}+\delta_{ig}\epsilon_{ijg}$$`
+
+where the design matrix `\(X\)` consists of covariates of scientific interests, while `\(\gamma_{ig}\)` and `\(\delta_{ig}\)` characterize the additive and multiplicative batch effects of batch `\(i\)` for gene `\(g\)`. 
+
+.small[ https://www.bu.edu/jlab/wp-assets/ComBat/Abstract.html
+
+https://github.com/brentp/combat.py ]
+
+---
+## ComBat: Removing known batch effects
+
+After obtaining the estimators from the above linear regression, the raw data `\(Y_{ijg}\)` can be adjusted to `\(Y_{ijg}^*\)`:
+
+`$$Y_{ijg}^*=\frac{Y_{ijg}-\hat{\alpha_g}-X\hat{\beta_g}-\hat{\gamma_{ig}}}{\hat{\delta_{ig}}}+\hat{\alpha_g}+X\hat{\beta_g}$$`
+
+Where `\(\hat{\alpha_g}\)`, `\(\hat{\beta_g}\)`, `\(\hat{\gamma_{ig}}\)` are estimated parameters using an empirical Bayes method.
+
+.small[ Johnson, W. Evan, Cheng Li, and Ariel Rabinovic. “Adjusting Batch Effects in Microarray Expression Data Using Empirical Bayes Methods.” Biostatistics (Oxford, England) 8, no. 1 (2007): 118–27. https://doi.org/10.1093/biostatistics/kxj037. ]
+
+---
+## SVA: Removing unknown batch effects
+
+- When batches were unknown, the surrogate variable analysis (SVA) was developed. 
+- The main idea was to separate the effects caused by covariates of our primary interests from the artifacts not modeled.
+- Now the raw expression value `\(Y_{jg}\)` of gene `\(g\)` in sample `\(j\)` can be formulated as:
+
+`$$Y_{jg}=\alpha_g+X\beta_g+\sum_{k=1}^K{\lambda_{kg}\eta_{kj}}+\epsilon_{jg}$$`
+
+where `\(\eta_{kj}\)` represent the unmodeled factors and are called as “surrogate variables”. 
+
+---
+## SVA
+
+- Once again, the basic idea was to estimate `\(\eta_{kj}\)` and adjust them accordingly. 
+
+- An iterative algorithm based on singular value decomposition (SVD) was derived to iterate between estimating the main effects `\(\hat{\alpha_g}+X\hat{\beta_g}\)` given the estimation of surrogate variables and estimating surrogate variables from the residuals `\(r_{jg}=Y_{jg}-\hat{\alpha_g}-X\hat{\beta_g}\)`
+
+.small[ Leek, Jeffrey T., Robert B. Scharpf, Héctor Corrada Bravo, et al. “Tackling the Widespread and Critical Impact of Batch Effects in High-Throughput Data.” Nature Reviews. Genetics 11, no. 10 (2010): 733–39. https://doi.org/10.1038/nrg2825. ]
+
+---
+## `sva` package in Bioconductor
+
+- Contains `ComBat` function for removing effects of known batches. 
+
+- Assume we have:
+    * `edata`: a matrix for raw expression values 
+    * `batch`: a vector named for batch numbers. 
+
+
+``` r
+# Design matrix containing all covariates but not batch
+modcombat = model.matrix(~1, data=as.factor(batch)) 
+
+combat_edata = ComBat(dat=edata, batch=batch, mod=modcombat, 
+                      par.prior=TRUE, prior.plot=FALSE)
+```
+
+.small[ https://bioconductor.org/packages/sva/ ]
+
+---
+## SVASEQ
+
+- `svaseq`, the version of SVA algorithm adapted to sequencing data
+
+- Goal: Capture hidden batch effects / latent variables in RNA-seq data
+
+- Suggests applying a moderated log transformation to the count data or fragments per kilobase of exon per million fragments mapped (FPKM) to account for the nature of discrete distributions 
+
+.small[ Leek, J. T. (2014). Svaseq: removing batch effects and other unwanted noise from sequencing data. Nucleic acids research, 42(21), e161-e161. https://doi.org/10.1093/nar/gku864  
+
+https://bioconductor.org/packages/sva/ ]
+
+---
+## SVASEQ
+
+
+``` r
+# Get normalized counts from DESeq2 object
+dat &lt;- counts(dds, normalized = TRUE)
+
+# Filter out lowly expressed genes (mean count ≤ 1)
+idx &lt;- rowMeans(dat) &gt; 1
+dat &lt;- dat[idx, ]
+
+# Full design matrix (biological variable of interest: dex)
+mod &lt;- model.matrix(~ dex, colData(dds))
+
+# Null design matrix (no biological effect)
+mod0 &lt;- model.matrix(~ 1, colData(dds))
+
+# Estimate surrogate variables (n.sv = 2 here)
+svseq &lt;- svaseq(dat, mod, mod0, n.sv = 2)
+# Output: Number of significant surrogate variables is: 2
+
+# Add surrogate variables to DESeq2 object
+ddssva &lt;- dds
+ddssva$SV1 &lt;- svseq$sv[, 1]
+ddssva$SV2 &lt;- svseq$sv[, 2]
+
+# Updated design formula
+design(ddssva) &lt;- ~ SV1 + SV2 + dex
+```
+
+---
+## RUVSeq: Remove Unwanted Variation from RNA-Seq Data
+
+- Instead of a direct transformation on the raw counts or FPKM, remove unwanted variation (RUV) adopted a generalized linear model. For `\(n\)` samples and `\(J\)` genes,
+
+`$$log\ E[Y|W,X,O] = W\alpha + X\beta + O$$`
+
+- `\(Y\)` is an `\(n \times J\)` matrix of the observed gene-level read counts,
+- `\(X\)` is an `\(n \times p\)` matrix of the `\(p\)` covariates of interest (wanted variation),
+- `\(\beta\)` is a `\(p \times J\)` matrix of parameters of interest
+- `\(W\)` is an `\(n \times k\)` matrix corresponding to hidden factors (unwanted variation),
+- `\(\alpha\)` is a `\(k \times J\)` matrix of nuisance parameters,
+- `\(O\)` is an `\(n \times J\)` matrix of offsets
+- Goal - estimate the unwanted factors `\(W\)`
+
+.small[ https://www.bioconductor.org/packages/devel/bioc/html/RUVSeq.html
+
+Risso, Davide, John Ngai, Terence P Speed, and Sandrine Dudoit. “Normalization of RNA-Seq Data Using Factor Analysis of Control Genes or Samples.” Nature Biotechnology 32, no. 9 (August 24, 2014): 896–902. https://doi.org/10.1038/nbt.2931. https://www.nature.com/articles/nbt.2931  
+https://bioconductor.org/packages/release/bioc/html/RUVSeq.html
+
+---
+## RUVSeq: Remove Unwanted Variation from RNA-Seq Data
+
+Three approaches: 
+
+- **RUVg** uses negative control genes, assumed not to be differentially expressed with respect to the covariates of interest, estimates `\(\hat{W}\)` from this subset,
+- **RUVs** uses negative control samples for which the covariates of interest are constant 
+- **RUVr** uses residuals from a first-pass GLM regression of the unnormalized counts on the covariates of interest.
+
+.small[ https://github.com/drisso/RUVSeq https://github.com/drisso/peixoto2015_tutorial
+
+Risso, D., Ngai, J., Speed, T. et al. Normalization of RNA-seq data using factor analysis of control genes or samples. Nat Biotechnol 32, 896–902 (2014). https://doi.org/10.1038/nbt.2931
+
+Peixoto, L., Risso, D., Poplawski, S. G., Wimmer, M. E., Speed, T. P., Wood, M. A., &amp; Abel, T. (2015). How data analysis affects power, reproducibility and biological insight of RNA-seq studies in complex datasets. Nucleic acids research, 43(16), 7664-7674. https://doi.org/10.1093/nar/gkv736. ]
+
+
+&lt;!--
+## BatchQC - Batch Effects Quality Control
+
+- A Bioconductor package with a GUI (shiny app)
+- Allows for interactive visualization of batch effects via clustering, dimensionality reduction
+- Applies ComBat or SVA to remove batches and observe the effect
+
+.small[ https://github.com/mani2012/BatchQC
+--&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

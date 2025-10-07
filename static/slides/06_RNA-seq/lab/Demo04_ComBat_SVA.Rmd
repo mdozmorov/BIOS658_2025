@@ -1,0 +1,506 @@
+---
+title: "Batch effect removal demo: ComBat and SVA"
+author: "Mikhai Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = TRUE, warning = TRUE, fig.width = 8, fig.height = 5)
+```
+
+<!-- Create an Rmd demonstrating batch effect removal with ComBat and SVA. Input data in the folder /Users/mdozmorov/Documents/Work/VCU_work/Tony/misc/2025-09-20.Tony_GEO:
+E-MTAB-1361_processed.xlsx
+GSE12102_processed.xlsx
+GSE13433_processed.xlsx
+GSE20196_processed.xlsx
+GSE32569_processed.xlsx
+GSE66533_processed.xlsx
+
+Each file has "Expression" sheet with gene expression measures. Each dataset has variable number of samples, but the last two columns are always "probe_id" and "gene_symbol". Merge the data by probe_id. Samples from different datasets are considered from different batches. Visualize the boxplots of the merged dataset (log2 + 1), colored by batch. Create a correlogram using top 1000 most variable genes, print summary statistics of all correlations. Then use ComBat to correct for batch effect and visualize the boxplots after correction, also colored by batch. And correlogram. Do the same for SVA. Use the SVA R package tutorial, it has ComBat function, https://www.bioconductor.org/packages/release/bioc/vignettes/sva/inst/doc/sva.pdf -->
+
+# Purpose
+
+This document:
+
+* Loads multiple processed expression Excel files (sheet `"Expression"`) and merges them by `probe_id`.
+* Treats each file as a separate **batch**.
+* Visualizes distributions (boxplots) and correlogram (top 1000 most variable genes).
+* Applies **ComBat** (sva::ComBat) and visualizes the results.
+* Applies **SVA** (svaseq + remove surrogate variables) and visualizes the results.
+
+# 0. Packages & paths
+
+```{r packages}
+# Install packages if you don't have them (uncomment)
+# install.packages(c("readxl","tidyverse","matrixStats","corrplot","pheatmap","reshape2"))
+# if (!requireNamespace("BiocManager", quietly=TRUE)) install.packages("BiocManager")
+# BiocManager::install(c("sva","limma"))
+
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(matrixStats)
+library(corrplot)
+library(pheatmap)
+library(reshape2)
+library(sva)
+library(limma)
+```
+
+Set path to your folder (update if needed):
+
+```{r path}
+base_dir <- "/Users/mdozmorov/Documents/Work/VCU_work/Tony/misc/2025-09-20.Tony_GEO"
+files <- c("E-MTAB-1361_processed.xlsx",
+           "GSE12102_processed.xlsx",
+           "GSE13433_processed.xlsx",
+           "GSE20196_processed.xlsx",
+           "GSE32569_processed.xlsx",
+           "GSE66533_processed.xlsx")
+files <- file.path(base_dir, files)
+files
+```
+
+# 1. Read files and extract expression matrices
+
+Each file is expected to have a sheet named `"Expression"`, with the last two columns `probe_id` and `gene_symbol`. We will:
+
+* Read each file,
+* Move `probe_id` to first column,
+* Keep sample columns (everything except probe\_id/gene\_symbol),
+* Prefix sample names with dataset id so columns are unique,
+* Save batch assignment for each sample.
+
+```{r read-merge, message=TRUE}
+read_expr <- function(path) {
+  # Read the "Expression" sheet
+  df <- readxl::read_excel(path, sheet = "Expression")
+  df <- as.data.frame(df) # ensure data.frame
+  # Expect last two cols to be probe_id and gene_symbol:
+  n <- ncol(df)
+  probe_col <- names(df)[n-1]
+  gene_symbol_col <- names(df)[n]
+  if (!all(c(probe_col, gene_symbol_col) %in% c("probe_id","gene_symbol"))) {
+    # if columns are named differently, attempt to rename them accordingly:
+    # We assume user said last two columns are probe_id and gene_symbol
+    names(df)[(n-1):n] <- c("probe_id","gene_symbol")
+  }
+  # Move probe_id to first column (for easier merges)
+  # Sample columns: everything except last two
+  sample_df <- df[, setdiff(names(df), c("probe_id","gene_symbol")), drop = FALSE]
+  # Convert sample columns to numeric (in case they are character)
+  sample_df <- as.data.frame(lapply(sample_df, function(x) as.numeric(as.character(x))))
+  # Add probe_id
+  out <- cbind(probe_id = df$probe_id, sample_df)
+  # Return: data.frame with probe_id and sample columns, and gene_symbol for later mapping
+  attr(out, "gene_symbol") <- df$gene_symbol
+  out
+}
+
+# Read all datasets into list
+datasets <- list()
+dataset_names <- basename(files) %>% tools::file_path_sans_ext()
+for (i in seq_along(files)) {
+  message("Reading: ", files[i])
+  datasets[[ dataset_names[i] ]] <- read_expr(files[i])
+}
+
+# Build a merged table by probe_id (full join)
+merged <- datasets[[1]]
+for (i in 2:length(datasets)) {
+  merged <- full_join(merged, datasets[[i]], by = "probe_id")
+}
+
+# mergedf <- function(x, y) { merge(x, y, by = "probe_id") }
+# merged <- Reduce(mergedf, datasets)
+# 
+# merged <- Reduce(function(x, y) merge(x, y, by = "probe_id") , datasets)
+
+# Inspect merged structure
+cat("Merged dimensions (rows probes x cols samples+probe):", dim(merged), "\n")
+head(merged[,1:6])
+```
+
+# 2. Build expression matrix (genes × samples) and batch vector
+
+We will:
+
+* Use `probe_id` as rownames,
+* Drop any non-sample columns,
+* Construct `batch` vector: sample columns originating from same Excel file share batch label.
+
+```{r build-matrix}
+# probe ids
+probes <- merged$probe_id
+
+# expression matrix: all columns except probe_id (there may be NA columns if different datasets had different sample names)
+expr_df <- merged %>% select(-probe_id)
+
+# Keep only numeric columns (some merges may produce non-numeric columns)
+is_num <- sapply(expr_df, is.numeric)
+expr_df <- expr_df[, is_num, drop = FALSE]
+
+# Set colnames: may currently be duplicate or NA if two datasets used same sample names.
+# We'll ensure uniqueness by prefixing with dataset name where necessary:
+# Build vector of original sample names by scanning each dataset and recording their source
+sample_names <- c()
+sample_batches <- c()
+for (nm in dataset_names) {
+  d <- datasets[[nm]]
+  # sample columns in d (excluding probe_id)
+  sn <- names(d)[names(d) != "probe_id"]
+  # prefix with dataset short name to avoid collisions
+  sn_pref <- paste0(nm, "_", sn)
+  sample_names <- c(sample_names, sn_pref)
+  sample_batches <- c(sample_batches, rep(nm, length(sn)))
+}
+
+# If sample_names length doesn't match expr_df columns, try to align by position:
+if (length(sample_names) != ncol(expr_df)) {
+  # fallback: assign generic sample names
+  sample_names <- paste0("Sample", seq_len(ncol(expr_df)))
+  sample_batches <- rep("batch_unknown", length(sample_names))
+  warning("Could not derive sample names from datasets; using generic names. Check merging logic.")
+}
+
+colnames(expr_df) <- sample_names
+rownames(expr_df) <- probes
+
+# Convert to matrix
+expr_mat <- as.matrix(expr_df)
+mode(expr_mat) <- "numeric"
+
+# Build batch factor matching columns
+batch <- factor(sample_batches)
+names(batch) <- colnames(expr_mat)
+
+cat("Expression matrix dims:", dim(expr_mat), "\n")
+table(batch)
+```
+
+# 3. Filter rows (optional) and log2 transform for visualization
+
+Remove probes with all NA or zero, then log2(x + 1) transform for downstream visualization.
+
+```{r filter-log}
+# Remove probes with all NA or zero across samples
+valid <- rowSums(!is.na(expr_mat)) >= 1 & rowSums(expr_mat, na.rm = TRUE) > 0
+expr_mat_filt <- expr_mat[valid, , drop = FALSE]
+
+# Replace remaining NAs with small value (0) for visualization (but keep note)
+expr_mat_filt[is.na(expr_mat_filt)] <- 0
+
+# Log2 transform (+1)
+log2_mat <- log2(expr_mat_filt + 1)
+
+dim(log2_mat)
+```
+
+# 4. Boxplots colored by batch (raw / log2)
+
+We melt the matrix and plot sample-wise boxplots, coloring boxes by batch.
+
+```{r boxplots-raw, fig.height=5}
+library(tidyr)
+library(dplyr)
+
+df_long <- log2_mat %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("probe_id") %>%
+  pivot_longer(
+    cols = -probe_id,
+    names_to = "sample",
+    values_to = "log2expr"
+  ) %>%
+  mutate(batch = batch[match(sample, names(batch))])
+
+# attach batch info
+df_long$batch <- batch[match(df_long$sample, names(batch))]
+
+# order samples by batch for easier visual grouping
+# sample_order <- names(batch)[order(batch)]
+# df_long$sample <- factor(df_long$sample, levels = sample_order)
+
+ggplot(df_long, aes(x = sample, y = log2expr, color = batch, fill = batch)) +
+  geom_boxplot(outlier.size = 0.3) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),   # remove sample labels
+    axis.ticks.x = element_blank()   # remove ticks if you also want them gone
+  ) +
+  labs(
+    title = "Log2(expression + 1) — raw merged data",
+    x = "Sample",
+    y = "log2(expr + 1)"
+  )
+```
+
+# 5. Correlogram (top 1000 most variable genes)
+
+Compute per-gene variance, select top 1000 variable genes, compute sample–sample Pearson correlation, display correlogram and print summary stats (off-diagonal correlations).
+
+```{r correlogram, message=FALSE}
+# compute row variances
+rv <- matrixStats::rowVars(log2_mat)
+ord <- order(rv, decreasing = TRUE)
+topN <- min(1000, sum(!is.na(rv)))
+top_idx <- ord[1:topN]
+
+mat_top <- log2_mat[top_idx, , drop = FALSE]
+
+# sample-sample correlation
+cor_mat <- cor(mat_top, use = "pairwise.complete.obs", method = "pearson")
+
+# correlogram
+corrplot::corrplot(cor_mat, method = "color", type = "upper", 
+                   tl.pos = 'n', addgrid.col = NA, outline = FALSE, add = FALSE,
+                   tl.cex = 0.7, tl.col = "black", addCoef.col="black", number.cex=0.6)
+
+pheatmap::pheatmap(
+  cor_mat,
+  cluster_rows = FALSE, cluster_cols = FALSE, # no clustering
+  show_rownames = FALSE, show_colnames = FALSE, # no labels
+  color = colorRampPalette(c("blue", "white", "red"))(100)
+)
+
+# summary statistics of off-diagonal correlations
+off_diag <- cor_mat[upper.tri(cor_mat)]
+cat("Correlation summary (top", topN, "genes):\n")
+summary(off_diag)
+```
+
+# 6. ComBat batch correction
+
+We will use `sva::ComBat()` to adjust for known batches. We do not provide an explicit model matrix `mod` (i.e. mod = NULL) because we have no additional biological covariates here. If you have biological covariates (e.g., condition) you should include them in `mod`.
+
+```{r combat-correct, message=TRUE}
+# Prepare data for ComBat: ComBat expects genes x samples (matrix)
+combat_input <- as.matrix(log2_mat)  # currently genes × samples
+
+# Use ComBat (parametric empirical Bayes) to adjust for batch
+batch_vec <- as.character(batch)
+mod <- NULL  # no biological covariates in this example; modify if you have them
+
+combat_corrected <- sva::ComBat(dat = combat_input, batch = batch_vec, mod = mod, par.prior = TRUE, prior.plots = FALSE)
+
+# sanity check dims
+dim(combat_corrected)
+```
+
+# 7. Visualize ComBat results: boxplots and correlogram
+
+```{r combat-vis, fig.height=5}
+library(tidyr)
+library(dplyr)
+
+df_combat <- combat_corrected %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("probe_id") %>%
+  pivot_longer(
+    cols = -probe_id,
+    names_to = "sample",
+    values_to = "log2expr"
+  ) %>%
+  mutate(batch = batch[match(sample, names(batch))])
+
+# Boxplots after ComBat
+ggplot(df_combat, aes(x = sample, y = log2expr, fill = batch)) +
+  geom_boxplot(outlier.size = 0.3) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),   # remove sample labels
+    axis.ticks.x = element_blank()   # remove ticks if you also want them gone
+  ) +
+  labs(title = "Log2(expr + 1) — after ComBat", x = "Sample", y = "log2(expr + 1)")
+
+# Correlogram after ComBat
+mat_top_combat <- combat_corrected[top_idx, , drop = FALSE]
+cor_mat_combat <- cor(mat_top_combat, use = "pairwise.complete.obs", method = "pearson")
+corrplot::corrplot(
+  cor_mat_combat,
+  method = "color",
+  type = "upper",
+  tl.pos = "n",          # disable text labels
+  addCoef.col = "black",
+  number.cex = 0.6
+)
+
+pheatmap::pheatmap(
+  cor_mat_combat,
+  cluster_rows = FALSE, cluster_cols = FALSE, # no clustering
+  show_rownames = FALSE, show_colnames = FALSE, # no labels
+  color = colorRampPalette(c("blue", "white", "red"))(100)
+)
+
+off_diag_combat <- cor_mat_combat[upper.tri(cor_mat_combat)]
+cat("ComBat-corrected correlation summary (top", topN, "genes):\n")
+summary(off_diag_combat)
+```
+
+# 8. SVA: estimate surrogate variables and remove their effects
+
+We will estimate surrogate variables with `sva::svaseq()` and then remove them via `limma::removeBatchEffect()` (which regresses out covariates / surrogate variables). In a typical analysis you would include known biological variables in the `mod` matrix so that svaseq finds variation orthogonal to your variables of interest.
+
+```{r sva-correct, message=TRUE}
+# Prepare data and design matrices for svaseq
+dat_for_sva <- as.matrix(expr_mat_filt)  # use non-log counts ideally for svaseq; but svaseq can accept log-scale too in tutorial
+# For svaseq, the function expects (genes x samples) on a scale where counts make sense.
+# If you have raw counts, consider using voom/limma or the recommendation in sva vignette.
+# Here we'll use the log2-transformed data as a demonstration.
+
+# dat_for_sva <- combat_input  # use the previously log2 matrix (genes x samples)
+
+# Create a treatment variable by splitting each batch
+treatment <- unlist(lapply(split(seq_along(batch), batch), function(idx) {
+  n <- length(idx)
+  half <- floor(n / 2)
+  
+  # Assign "control" to the first half, "treatment" to the rest
+  group <- rep("control", n)
+  group[(half + 1):n] <- "treatment"
+  
+  group
+}))
+
+# Known biological covariates
+mod <- model.matrix(~treatment, data = data.frame(treatment = treatment))
+
+mod0 <- model.matrix(~1, data = data.frame(batch = batch))  # null model (intercept-only)
+# Estimate number of surrogate variables automatically (Leek method)
+n.sv <- num.sv(dat_for_sva, mod, method = "leek")
+cat("Estimated number of surrogate variables:", n.sv, "\n")
+
+# Run svaseq to estimate surrogate variables
+svseq <- svaseq(dat = dat_for_sva, mod = mod, mod0 = mod0, n.sv = n.sv)
+str(svseq$sv)
+
+# Remove surrogate variable effects using limma::removeBatchEffect (treat sv's as covariates)
+sv_mat <- svseq$sv
+sva_corrected <- limma::removeBatchEffect(dat_for_sva, covariates = sv_mat)
+
+# Visualize boxplots after SVA correction
+df_sva <- sva_corrected %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("probe_id") %>%
+  pivot_longer(
+    cols = -probe_id,
+    names_to = "sample",
+    values_to = "log2expr"
+  ) %>%
+  mutate(batch = batch[match(sample, names(batch))])
+
+ggplot(df_sva, aes(x = sample, y = log2expr, fill = batch)) +
+  geom_boxplot(outlier.size = 0.3) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),   # remove sample labels
+    axis.ticks.x = element_blank()   # remove ticks if you also want them gone
+  ) +
+  labs(title = sprintf("Log2(expr + 1) — after SVA correction (n.sv=%d)", n.sv),
+       x = "Sample", y = "log2(expr + 1)")
+
+# Correlogram after SVA
+mat_top_sva <- sva_corrected[top_idx, , drop = FALSE]
+cor_mat_sva <- cor(mat_top_sva, use = "pairwise.complete.obs", method = "pearson")
+corrplot::corrplot(cor_mat_sva, method = "color", type = "upper", tl.cex = 0.7, tl.pos = "n")
+
+pheatmap::pheatmap(
+  cor_mat_sva,
+  cluster_rows = FALSE, cluster_cols = FALSE, # no clustering
+  show_rownames = FALSE, show_colnames = FALSE, # no labels
+  color = colorRampPalette(c("blue", "white", "red"))(100)
+)
+
+off_diag_sva <- cor_mat_sva[upper.tri(cor_mat_sva)]
+cat("SVA-corrected correlation summary (top", topN, "genes):\n")
+summary(off_diag_sva)
+```
+
+# 9. Summary table of correlation summaries
+
+```{r summary-table}
+summary_df <- data.frame(
+  stage = c("raw", "ComBat", "SVA"),
+  mean_cor = c(mean(off_diag), mean(off_diag_combat), mean(off_diag_sva)),
+  median_cor = c(median(off_diag), median(off_diag_combat), median(off_diag_sva)),
+  min_cor = c(min(off_diag), min(off_diag_combat), min(off_diag_sva)),
+  max_cor = c(max(off_diag), max(off_diag_combat), max(off_diag_sva))
+)
+summary_df
+```
+
+# 10. Notes & recommendations
+
+* **ComBat** is very effective when **batch labels are known** and you want to remove batch-specific shifts. If you have biological covariates, include them in `mod` (so you don't remove biological signal).
+* **SVA** finds **unknown latent factors**; estimated surrogate variables should be interpreted carefully. If you include the biological variable(s) of interest in `mod`, `svaseq` will try to find variation orthogonal to those variables.
+* In practice, apply these corrections on appropriately preprocessed data (e.g., after filtering low counts). For RNA-seq differential expression workflows, consider pipelines such as `edgeR`/`DESeq2` with appropriate normalization (TMM, median ratios) and then use `svaseq`/`ComBat` as needed on transformed expression values (e.g., `voom` output or log-CPM).
+* Always visualize results (boxplots, PCA, correlograms) and verify that biological signal of interest is preserved.
+
+<!-- back to batch corrected task. First, take combat_corrected object
+> dim(combat_corrected)
+[1] 54675   173
+And add gene_symbol column from attributes of one dataset:
+datasets[[1]] %>% attr(., "gene_symbol")
+
+Add it to the list and name this element "combat_corrected". Recall Input data in the folder /Users/mdozmorov/Documents/Work/VCU_work/Tony/misc/2025-09-20.Tony_GEO:
+E-MTAB-1361_processed.xlsx
+GSE12102_processed.xlsx
+GSE13433_processed.xlsx
+GSE20196_processed.xlsx
+GSE32569_processed.xlsx
+GSE66533_processed.xlsx
+
+Each has "Phenodata" sheet. Read them in the same order like the "Expression" data,  append to the list with names like "E-MTAB-1361".  Save the full list into the file "combat_corrected.xlsx" in the data folder, use writexl. -->
+
+```{r}
+library(readxl)
+library(dplyr)
+library(writexl)
+
+# Folder with data
+data_folder <- "/Users/mdozmorov/Documents/Work/VCU_work/Tony/misc/2025-09-20.Tony_GEO"
+
+files <- c(
+  "E-MTAB-1361_processed.xlsx",
+  "GSE12102_processed.xlsx",
+  "GSE13433_processed.xlsx",
+  "GSE20196_processed.xlsx",
+  "GSE32569_processed.xlsx",
+  "GSE66533_processed.xlsx"
+)
+
+# Dataset names (same order)
+dataset_names <- c("E-MTAB-1361", "GSE12102", "GSE13433", "GSE20196", "GSE32569", "GSE66533")
+
+# 1. Add gene_symbol column back to combat_corrected
+gene_symbols <- attr(datasets[[1]], "gene_symbol")
+combat_corrected_df <- as.data.frame(combat_corrected)
+combat_corrected_df$gene_symbol <- gene_symbols
+
+# Add to the list
+datasets[["combat_corrected"]] <- combat_corrected_df
+
+# 2. Read Phenodata sheets
+phenodata_list <- lapply(files, function(f) {
+  readxl::read_excel(file.path(data_folder, f), sheet = "Phenodata")
+})
+
+# Name phenodata list by dataset names
+names(phenodata_list) <- dataset_names
+
+# Append to datasets list
+datasets <- c(datasets, phenodata_list)
+
+# 3. Save full list into Excel
+writexl::write_xlsx(datasets, path = file.path(data_folder, "combat_corrected.xlsx"))
+
+```
+

@@ -65,4 +65,5 @@ knitr::include_url('../../slides/06_RNA-seq/06_RNA-seq_batch.html#1')
 - Demo01_loess, <a href="../../slides/06_RNA-seq/lab/Demo01_loess.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo01_loess.html" target="_blank">HTML</a>
 - Demo02_quantile_norm, <a href="../../slides/06_RNA-seq/lab/Demo02_quantile_norm.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo02_quantile_norm.html" target="_blank">HTML</a>
 - Demo03_MA_TMM, <a href="../../slides/06_RNA-seq/lab/Demo03_MA_TMM.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo03_MA_TMM.html" target="_blank">HTML</a>
+- Demo04_ComBat_SVA, <a href="../../slides/06_RNA-seq/lab/Demo04_ComBat_SVA.Rmd" target="_blank">Rmd</a>, <a href="../../slides/06_RNA-seq/lab/Demo04_ComBat_SVA.html" target="_blank">HTML</a>
 

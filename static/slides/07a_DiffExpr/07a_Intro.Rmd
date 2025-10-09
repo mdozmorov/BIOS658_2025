@@ -1,0 +1,677 @@
+---
+title: "Supervised Learning: Methods for Analyzing Gene Expression Data"
+# subtitle: "Using ggplot2 and dplyr"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+library(dplyr)
+library(ggplot2)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## Taxonomy of Data Analysis Methods
+
+**Supervised Learning**
+
+- Class or group labels are known *a priori* (e.g., treatment vs. control, diseased vs. healthy)
+
+- Goals of statistical analysis:
+  - Identify differentially expressed genes between known groups (differential expression analysis)
+  - Build predictive models using gene expression profiles to classify samples into predefined categories
+  - Select informative gene features that distinguish between biological conditions
+
+---
+## Taxonomy of Data Analysis Methods
+
+**Unsupervised Learning**
+
+- No predefined class labels or group assignments
+
+- Goals of statistical analysis:
+  - Discover hidden patterns and structure in RNA-seq data
+  - Identify natural groupings of samples based on expression profiles (clustering)
+  - Reduce dimensionality while preserving biological variation (e.g., PCA, t-SNE, UMAP)
+  - Detect outliers or batch effects
+  - Generate hypotheses about underlying biological relationships
+
+---
+## Supervised Learning
+
+**Class Comparison / Differential Expression Analysis**
+
+- **DESeq2**: Negative binomial model for count data
+- **edgeR**: Empirical Bayes methods with exact tests or generalized linear models
+- **limma-voom**: Linear modeling with precision weights for RNA-seq counts
+- **Wilcoxon rank-sum test**: Non-parametric alternative for two groups
+- **Kruskal-Wallis test**: Non-parametric test for multiple groups (>2)
+
+
+- **Multiple testing correction** (essential due to testing thousands of genes):
+  - Benjamini-Hochberg FDR (False Discovery Rate)
+  - Bonferroni correction
+  - q-values
+
+---
+## Supervised Learning
+
+**Class Prediction / Sample Classification**
+
+- Build predictive models to classify samples based on gene expression profiles (Machine learning approaches)
+  - **K-nearest neighbors (KNN)**: Simple distance-based classification
+  - **Random forests**: Ensemble tree-based methods
+  - **Support vector machines (SVM)**: Maximum margin classifiers
+  - **Elastic net / LASSO**: Regularized regression with feature selection
+  - **Neural networks / Deep learning**: For complex, high-dimensional patterns
+  - **Naive Bayes classifiers**: Probabilistic approach assuming feature independence
+
+---
+## Hypothesis Testing in Differential Expression Analysis
+
+- The **null hypothesis** $H_0$: two group means $\mu_1$ and $\mu_2$ are equal
+  - Written as: $H_0: \mu_1 = \mu_2$ 
+  - For RNA-seq: no difference in mean gene expression between conditions
+
+- The **alternative hypothesis** ($H_A$) states the means differ
+  - Two-sided: $H_A: \mu_1 \neq \mu_2$ (expression differs in either direction)
+  - One-sided: $H_A: \mu_1 > \mu_2$ or $H_A: \mu_1 < \mu_2$ (directional hypothesis
+
+- For RNA-seq count data, we need to account for:
+  - **Overdispersion**: Variance often exceeds the mean in count data
+  - **Library size differences**: Samples have varying sequencing depths
+  - **Biological variability**: Within-group variation across replicates
+  
+---
+## Statistical Testing Framework
+
+- A hypothesis test assesses if observed data are compatible with $H_0$
+
+- If sample means are identical, this supports $H_0$
+
+- Even when $H_0$ is true, sample means rarely match exactly due to **biological and technical variation**:
+  - Random sampling of RNA molecules during library preparation
+  - Biological variability between replicates
+  - Technical noise in sequencing
+
+- We conclude $H_0$ is plausible if the observed difference does not exceed what we'd expect from random variation alone
+  - Rule of thumb: differences within ~2 standard errors suggest compatibility with $H_0$
+  - Larger differences provide evidence for $H_A$
+
+---
+## Hypothesis Testing
+
+- **Type I error**: The probability of rejecting a null hypothesis when it is true. (e.g., a gene is declared to be differentially expressed when it is not.)
+
+- **Type II error**: The probability of accepting a null hypothesis when it is false. (e.g., a gene is declared to not be differentially expressed when it actually is.)
+
+```{r, out.width = "450px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/2x2_table.png")
+```
+
+---
+## P-value
+
+- The **p-value** is the probability, assuming $H_0$ is true, of observing a test statistic at least as extreme as the one actually obtained from the data
+
+- **Large p-value** (close to 1): Test statistic falls near the center of the null distribution
+  - If p-value ≥ $\alpha$: Fail to reject $H_0$, insufficient evidence for differential expression
+
+- **Small p-value** (close to 0): Test statistic falls in the extreme tails of the null distribution
+  - If p-value < $\alpha$: Reject $H_0$, conclude gene is differentially expressed
+
+
+
+---
+## Hypothesis Testing: Key Statistical Concepts
+
+- The **mean** $\mu_X$ of a random variable $X$ measures the central location of its distribution
+  
+- The **variance** of $X$ measures the spread or dispersion around the mean
+  - $Var(X) = E[(X-\mu)^2] = \frac{\sum(X_i-\mu)^2}{n-1} = \sigma^2$
+  - Sample variance uses $n-1$ (degrees of freedom correction)
+
+- The **standard deviation** $\sigma = \sqrt{Var(X)}$ expresses variability in original units
+
+
+<!---
+## Two-sample comparison
+
+Let us consider the simplest case: two-sample comparison. Our goal is to find the list of genes that are differentially expressed. Suppose we have:
+
+- $n_1$ samples in group 1
+
+- $n_2$ samples in group 2
+
+- For each gene, $n_1 + n_2$ expression levels are recorded for all the samples
+
+Determine which genes have differential expression between the two groups of samples.
+-->
+
+---
+## Differential Expression Analysis
+
+**Goal of RNA-seq Experiments**
+- Identify genes that are **differentially expressed between two (or more) biological conditions**
+  - Examples: treated vs. control, diseased vs. healthy, different cell types or time points
+
+- **Two-sample comparison**: Simple fold-change cutoffs (e.g., 2-fold) without statistical testing
+  - Problematic: ignores biological variability and statistical significance
+  - No way to distinguish true changes from random noise
+
+- **Multi-sample comparison**: Statistical testing with proper handling of count data
+  - Requires biological replicates (minimum 3 per group recommended)
+  - Accounts for within-group variability and sequencing depth differences
+  - Provides p-values and adjusted p-values (FDR) for significance assessment
+
+---
+## DE by Average Fold-Change (M)
+
+- Simple fold-change rules give no assessment of statistical significance.
+
+- Need to construct test statistics incorporating variability estimates (from replicates). 
+
+```{r, out.width = "400px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/de_by_fc.png")
+```
+
+---
+## Variability and gene expression
+
+- Simplest method, fold change, does not take gene variability into account. 
+
+```{r, out.width = "400px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/de_by_fc_variability.png")
+```
+
+---
+## Two-sample comparison, T-test
+
+Let the mean and standard deviation expression levels for samples in two groups be
+
+$\bar{x_i}=\frac{1}{n_i}\sum_{j=1}^{n_i}{x_{ij}}$, and $s_i^2=\frac{1}{n_i-1}\sum_{j=1}^{n_i}{(x_{ij}-\bar{x_i})^2}$
+
+The two-sample pooled $t$-statistics is given by 
+
+$$t=\frac{\bar{x_2}-\bar{x_1}}{s_p\sqrt{1/n_1+1/n_2}}$$
+
+where $s_p^2$ is the pooled estimate of the standard deviation.
+
+$$s_p^2=\frac{(n_1-1)s_1^2+(n_2-1)s_2^2}{n_1+n_2-2}$$
+
+---
+## Properties of the t-Statistic
+
+* When the number of replicates is large, the t-statistic approximately follows a **standard normal distribution** with mean 0 and standard deviation 1.
+
+* When the data are normally distributed, the t-statistic follows a **t-distribution**, regardless of sample size.
+
+* From the t-distribution, we can compute the **probability (p-value)** of observing a t-statistic as extreme or more extreme under the null hypothesis.
+
+* **Where does this probability come from?** — it’s derived from the theoretical t-distribution under $H_0$.
+
+* However, using the t-statistic directly can be **problematic for RNA-seq data** when the number of replicates (N) is small.
+ 
+---
+## T-test assumptions
+
+- Data must be independent random samples from their respective populations
+
+- Sample size should either be large or, in the case of small sample sizes, the population distributions must be approximately normally distributed.
+
+- When assumptions are not met, non-parametric alternatives are available (Wilcoxon Rank Sum/Mann-Whitney Test)
+
+---
+## Welch’s t-test
+
+When testing equality of means between two independent samples:
+
+* Sample 1: mean $\bar{x}_1$, variance $s_1^2$, size $n_1$
+* Sample 2: mean $\bar{x}_2$, variance $s_2^2$, size $n_2$
+
+Welch's T-test (1947) does not assume equal variances for each group
+
+$$t_g^{Welch}=\frac{\bar{x_{g1.}}-\bar{x_{g2.}}}{\sqrt{\frac{S_{g1}^2}{n_1}+\frac{S_{g2}^2}{n_2}}}$$
+
+It’s not exactly Student’s t, but Welch showed it’s approximately a t distribution with a modified number of degrees of freedom (df) given by **Satterthwaite’s approximation**.
+
+
+---
+## Satterthwaite’s formula
+
+$$df=\frac{\left(\frac{s_1^2}{n_1}+\frac{s_2^2}{n_2}\right)^2}{\frac{1}{n_1-1}\left(\frac{s_1^2}{n_1}\right)^2+\frac{1}{n_2-1}\left(\frac{s_2^2}{n_2}\right)^2}$$
+**Where it comes from**
+
+* The denominator of $t$ is $\sqrt{ \frac{s_1^2}{n_1} + \frac{s_2^2}{n_2} }$. This is a **linear combination of variances**.
+* Each sample variance $s_i^2$ has a scaled chi-squared distribution: $\frac{(n_i-1)s_i^2}{\sigma_i^2} \sim \chi^2_{n_i-1}$
+* Because it’s a sum of scaled chi-squared random variables, it doesn’t follow an exact chi-squared distribution.
+
+---
+## Satterthwaite’s formula
+
+$$df=\frac{\left(\frac{s_1^2}{n_1}+\frac{s_2^2}{n_2}\right)^2}{\frac{1}{n_1-1}\left(\frac{s_1^2}{n_1}\right)^2+\frac{1}{n_2-1}\left(\frac{s_2^2}{n_2}\right)^2}$$
+
+* Satterthwaite’s trick was to **approximate this sum by a single scaled chi-squared distribution**, which leads to an approximate t distribution with an *effective* df.
+
+.small[ Derivation: https://secure-media.collegeboard.org/apc/ap05_stats_allwood_fin4prod.pdf ]
+
+---
+## Satterthwaite’s Intuition
+
+$$df=\frac{\left(\frac{s_1^2}{n_1}+\frac{s_2^2}{n_2}\right)^2}{\frac{1}{n_1-1}\left(\frac{s_1^2}{n_1}\right)^2+\frac{1}{n_2-1}\left(\frac{s_2^2}{n_2}\right)^2}$$
+
+* The numerator of the formula is the **square of the total variance estimate**.
+
+* The denominator represents the **variance of that variance estimate** (using the chi-squared properties).
+
+* Taking the ratio gives the “effective” degrees of freedom.
+
+* The formula balances:
+  * Large sample sizes → df increases.
+  * Unequal variances / sample sizes → df decreases (more uncertainty).
+
+---
+## Satterthwaite’s Intuition
+
+1. **Equal variances and equal sample sizes**: The formula simplifies and $df \approx n_1+n_2-2$, the classical Student’s t-test df.
+
+2. **Very large samples**: $df \to \infty$, so the Welch t-test approaches a standard normal distribution.
+
+---
+## When there are few replicates...
+
+- **Fold change using averages** $\bar{M}$ can be driven by **outliers**
+  - A single aberrant replicate can skew the mean expression estimate
+
+- **T-statistics** $\frac{\bar{M}}{se(\bar{M})}$ can be driven by **tiny variances**
+  - Genes with artificially low variance appear highly significant
+  - Unstable variance estimates with few replicates lead to false positives
+
+---
+## Solutions for Robust Analysis
+
+*Option 1: Robust Statistics (for very small samples)*
+
+- Replace **mean** with **median** (resistant to outliers)
+
+- Replace **standard deviation** with **median absolute deviation (MAD)**
+
+- Produces more stable estimates when replicates are scarce
+
+*Option 2: Modern RNA-seq Methods (preferred)*
+
+- **DESeq2** and **edgeR** share information across genes to stabilize variance estimates
+
+- Shrink gene-level variances toward a common trend
+
+- More powerful and appropriate for count data than robust statistics
+
+---
+## Problems with the t-Statistic in RNA-seq
+
+* **Problem 1:** The t-statistic is larger for genes with smaller estimated standard errors.
+
+  * **Implication:** Ranking genes by t-statistic alone may not be optimal.
+
+* **Problem 2:** The t-statistic does not actually follow a t-distribution.
+
+  * **Implication:** Resulting *p*-values and statistical inferences may be unreliable.
+
+---
+## Estimating the Variance
+
+* When genes vary in their levels of variability, using simple average log ratios is not appropriate — even if significance is not the goal.
+
+* The **t-test** divides by this SE, but with few replicates, SE estimates are unstable.
+
+* This instability reduces the **power** of the t-test.
+
+* Various methods have been proposed to improve variance estimation, often by **borrowing strength across genes**.
+
+* **Empirical Bayes** approaches (e.g., *limma*) are widely used.
+
+* These approaches are often referred to as **“moderated” t-tests**.
+
+---
+## Empirical Bayes method
+
+* The **Empirical Bayes (EB)** method stabilizes these variance estimates by **borrowing information across all genes**.
+
+* The idea:
+  * Each gene’s observed variance is “shrunk” toward a **pooled prior variance**, estimated from all genes.
+  * Genes with unreliable (highly variable) variance estimates are adjusted more strongly.
+
+* This results in **moderated t-statistics**, which have:
+  * **Improved power** for detecting differential expression.
+  * **Better control** of false positives.
+
+* Practically, *limma* fits a linear model for each gene and then applies the EB adjustment to compute moderated statistics.
+* This approach is especially effective when **replicates are few** or **expression variability is high**.
+
+---
+## Permutation Testing for Differential Expression
+
+* **Motivation:**  When assumptions of classical tests (e.g., t-tests, ANOVA) may not hold, **permutation tests** provide a non-parametric alternative.
+
+
+* **Idea:**
+  * Shuffle (permute) the **sample labels** many times (e.g., case/control).
+  * For each permutation, recalculate the test statistic (e.g., mean difference or t-statistic) for every gene.
+  * The resulting distribution represents the **null hypothesis** (no group difference).
+
+
+* **Inference:**
+  * Compare the observed statistic to this null distribution.
+  * Compute **empirical p-values** as the proportion of permutations producing a statistic as extreme or more extreme.
+
+---
+## Permute labels and recalculate t-statistics
+
+```{r, out.width = "900px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/permute01.png")
+```
+
+Leaves the relationship between genes unchanged.
+
+---
+## Recalculate the Statistic And Compare
+
+```{r, out.width = "900px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/permute02.png")
+```
+
+---
+## Calculating a p-value
+
+```{r, out.width = "900px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/permute03.png")
+```
+$$p\text{-value} = \frac{\text{number}(|S_{\text{perm}}| \ge |S_{\text{obs}}|)}{\text{number of permutations}}$$
+---
+## Permutation Testing for Differential Expression
+
+The p-value equals the proportion of permutations where the absolute value of the permuted statistic is greater than or equal to the observed statistic.
+
+* **Advantages:**
+  * Makes **no parametric assumptions** about data distribution.
+  * Naturally controls for multiple testing.
+
+* **Challenges:**
+  * Computationally expensive for large RNA-seq matrices.
+  * Requires sufficient sample size to produce valid permutations.
+
+---
+## P-values
+
+```{r, out.width = "900px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/p-values.png")
+```
+
+---
+## Long Lists of Differentially Expressed Genes ≠ Biological Understanding
+
+**What happens next?**
+
+* Select a subset of genes for experimental validation?
+
+* Perform follow-up functional studies?
+
+* Publish a large results table?
+
+* Try to interpret all genes on the list — reading hundreds of papers?
+
+* We'll talk more about it in the functional enrichment analysis section.
+
+<!--
+## T-test: Probe set 208680_at {.smaller}
+
+| Genechip |   Day 1  |   Day 2  |
+|:--------:|:--------:|:--------:|
+|     1    |  2013.7  |  1974.6  |
+|     2    |  2141.9  |  2027.6  |
+|     3    |  2040.2  |  1914.8  |
+|     4    |  1973.3  |  1955.8  |
+|     5    |  2162.2  |   1963   |
+|     6    |  1994.8  |  2025.5  |
+|     7    |  1913.3  |  1865.1  |
+|     8    |  2068.7  |  1922.4  |
+| $\bar{y}$ |  2038.5  |  1956.1  |
+| $\bar{\sigma^2}$  | 7051.284 | 3062.991 |
+|     n    |     8    |     8    |
+
+## T-test: Probe set 208680_at
+
+$$t_g=\frac{(\bar{y_1}-\bar{y_2})-0}{SE_{(\bar{y_1}-\bar{y_2})}}$$
+
+$$t_g=\frac{(2038.5-1965.1)-0}{\sqrt{\frac{7051.3}{8}+\frac{3062.66}{8}}}=2.317$$
+
+$$df=\frac{(7051.3+3062.99)^2}{\frac{7051.3^2}{8-1}+\frac{3062.99^2}{8-1}}=12.116$$
+
+- p=0.039
+-->
+
+---
+## ANOVA: Analysis of Variance (multiple groups)
+
+* Comparing groups with multiple two-sample t-tests inflates the chance of a Type I error (false positives).
+
+* ANOVA allows testing whether all group means are equal in one unified model.
+
+* Especially useful when comparing 3 or more groups.
+
+---
+## Types of ANOVA models
+
+- Fixed-effects: treatments or groups of interest are specifically chosen.
+
+- Random-effects: treatments are randomly sampled from a larger population.
+
+- Mixed-effects: include both fixed and random factors (common in biological data, e.g., RNA-seq with batch effects).
+
+---
+## ANOVA: Analysis of Variance (multiple groups)
+
+**Purpose:** Compare group means by partitioning variability into **between-group** and **within-group** components.
+
+* **One-way ANOVA**: Tests whether means differ across ≥ 2 independent groups.
+  * For 2 groups, ANOVA and the two-sample t-test are equivalent: $F = t^2$
+
+* **Factorial ANOVA**: Tests effects of multiple factors and their interactions.
+  * Example: treatment × time effects in RNA-seq.
+
+* **Repeated measures ANOVA**: Used when the same samples are measured under multiple conditions (e.g., longitudinal RNA-seq).
+
+**Key idea:** ANOVA doesn’t test *which* means differ — only whether **at least one group mean differs**.
+The **F-test** is the formal statistical test.
+
+---
+## Muultiple group comparisons: F-test
+
+We want to test whether the mean expression of a gene is the same across multiple conditions.
+
+$H_0: \mu_1 = \mu_2 = \dots = \mu_k$ 
+
+vs. 
+
+$H_A: \text{Not all group means are equal}$
+
+---
+## The F-statistic
+
+$$F = \frac{\text{between-group variability}}{\text{within-group variability}}$$
+
+* **Between-group variability**: how much group means differ from the overall mean
+
+* **Within-group variability**: how much samples differ within each group
+
+If groups differ more than we’d expect by chance → **large F** → reject $H_0$.
+
+---
+## F-test Formula
+
+For a given gene $g$ and the number of experimental conditions $k$:
+$$F_g = \frac{\frac{SS_{\text{group}}}{df_{\text{group}}}}{\frac{SS_{\text{error}}}{df_{\text{error}}}}$$
+.pull-left[ where sum of squares:
+* $SS_{\text{group}} = \sum_{i=1}^k n_i (\bar{y}_{i\cdot} - \bar{y}_{\cdot\cdot})^2$
+* $SS_{\text{error}} = \sum_{i=1}^k \sum_{j=1}^{n_i} (y_{ij} - \bar{y}_{i\cdot})^2$
+]
+.pull-right[and degrees of freedom:
+* $df_{\text{group}} = k-1$
+* $df_{\text{error}} = \sum_{i=1}^k (n_i-1)$
+]
+
+* $n_i$: number of samples in condition $i$.
+
+---
+## Interpretation in RNA-seq
+
+* For each gene, we compute an $F_g$.
+
+* Large $F_g$ = strong evidence that at least one group has different expression.
+
+* Small $F_g$ = variation mostly explained by noise.
+
+This is the basis of **ANOVA-like tests** in RNA-seq packages (e.g., **edgeR**, **DESeq2**, **limma-voom**).
+
+* F-test only tells us that *at least one mean differs*.
+
+* To know *which groups differ*, we need **post-hoc contrasts** (e.g., pairwise comparisons).
+
+
+
+---
+## Non-parametric tests
+
+- Non-normally distributed data
+
+- More robust to outliers
+
+- Less power
+
+- Used when t-test assumptions cannot be met
+
+---
+## Non-parametric tests
+
+- **Mann-Whitney test (or Wilcoxon rank-sum test)**
+    - differences in the sums of ranks between 2 populations
+    - even if the medians are the same, there can be a statistically significant difference from the distribution of ranks
+
+**When to Use Non-parametric Tests**
+
+- No assumptions about underlying distribution (distribution-free methods)
+
+- Useful when data violate normality assumptions or have extreme outliers
+
+- Generally **less powerful** than parametric methods for RNA-seq count data
+
+---
+## Mann-Whitney Test (Wilcoxon Rank-Sum Test)
+
+- Compares **distributions of ranks** between two groups rather than means
+
+- Tests whether one group tends to have larger values than the other
+
+- Key insight: Detects differences in the **entire distribution**, not just location
+  <!-- Can identify significant differences even when medians are similar
+  - Sensitive to differences in spread, skewness, or shape of distributions -->
+
+```{r, out.width = "550px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/wilcoxon.png")
+```
+
+
+---
+## Volcano plot
+
+.pull-left[
+- A diagnostic plot to visualize the differential analysis results.
+
+- Scatter plot of the statistical significance (-log10 p-values) vs. biological significance (log2 fold change).
+
+- Cutoffs can be used to filter genes by significance AND fold change.
+]
+.pull-right[
+```{r, out.width = "650px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/volcano.png")
+```
+]
+
+---
+## Sample Size Calculation for RNA-seq
+
+**Why Sample Size Matters**
+
+- Adequate replicates are essential for detecting differential expression with statistical power
+
+- Underpowered studies waste resources and miss true biological signals
+
+- Overpowered studies are unnecessarily expensive
+
+---
+## Sample Size Calculation for RNA-seq
+
+**Key Parameters**
+
+- **Effect size (Δ)**: Fold-change or log fold-change to detect (e.g., 2-fold = log₂FC of 1)
+
+- **Significance level (α)**: Type I error rate (typically 0.05, adjusted for FDR)
+
+- **Power (1-β)**: Probability of detecting true differential expression (typically 0.8 or 0.9)
+
+- **Variability (σ²)**: Biological variability within groups (dispersion in RNA-seq)
+
+---
+## Sample size and power calculations
+
+```{r, out.width = "950px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/power_analysis_overview.png")
+```
+
+---
+## Sample Size Formula (per group)
+$$n \approx \frac{2(Z_{\alpha/2} + Z_{\beta})^2 \sigma^2}{\Delta^2}$$
+
+Where:
+- $Z_{\alpha/2}$ = critical value for two-sided test (1.96 for α=0.05)
+- $Z_{\beta}$ = critical value for power (0.84 for 80% power, 1.28 for 90% power)
+- $\sigma^2$ = variance of log expression levels
+- $\Delta$ = minimum detectable log fold-change
+
+**Practical Tools**
+- **RNASeqPower** and **ssizeRNA** R packages for RNA-seq-specific calculations
+- Pilot data helps estimate dispersion parameters for accurate calculations
+- **Rule of thumb**: Minimum 3 replicates per group; 5-6 recommended
+
+<!---
+## Sample Size calculations
+
+```{r, out.width = "550px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/power_analysis_plot.png")
+```
+-->

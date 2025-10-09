@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Supervised Learning: Methods for Analyzing Gene Expression Data</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-10-08" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Supervised Learning: Methods for Analyzing Gene Expression Data
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-10-08
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+
+## Linear regression overview
+
+We measure tumor grade and expression of gene 1. We are interested in:
+
+1. How useful was expression of gene 1 for predicting tumor grade? `\(R^2\)`
+2. Was that relationship due to chance? `\(p-value\)`
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-1-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## T-test
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-2-1.png" style="display: block; margin: auto;" /&gt;
+
+The goal of t-test is to compare means and see if they are significantly different from each other.
+
+---
+## T-test in terms of linear regression
+
+- Calculate the overall mean
+- Calculate the sum of squared residuals around the mean `\(SS_{mean}\)`
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-3-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## T-test in terms of linear regression
+
+- Fit a line to the data, separately for each group (mean = the least squares fit to the group of data)
+- For each group, we can calculate `\(SS_{fit}\)`
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-4-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## T-test in terms of linear regression
+
+- Combine two lines into a single equation. 
+
+- This will make the steps for computing F-statistics exactly the same as for the regression
+
+
+``` r
+# Combines both lines for the first group
+y_11 = 1 * mu_1 + 0 * mu_2 + residual_11
+y_12 = 1 * mu_1 + 0 * mu_2 + residual_12
+y_13 = 1 * mu_1 + 0 * mu_2 + residual_13
+y_14 = 1 * mu_1 + 0 * mu_2 + residual_14
+# Combines both lines for the second group
+y_21 = 0 * mu_1 + 1 * mu_2 + residual_21
+y_22 = 0 * mu_1 + 1 * mu_2 + residual_22
+y_23 = 0 * mu_1 + 1 * mu_2 + residual_23
+y_24 = 0 * mu_1 + 1 * mu_2 + residual_24
+```
+
+---
+## Design matrix
+
+- 1's and 0's serve as "switches" for each group. 
+
+- This is our design matrix `\(X\)`, one column per group.
+
+```
+1  0
+1  0
+1  0
+1  0
+0  1
+0  1
+0  1
+0  1
+```
+
+---
+## Connecting Design Matrices and F-statistics
+
+We can express the model as
+
+`$$Y = X \mu + \varepsilon$$`
+
+Then calculate
+
+`$$F = \frac{(SS_{\text{mean}} - SS_{\text{fit}})/(p_{\text{fit}} - p_{\text{mean}})}{SS_{\text{fit}}/(n - p_{\text{fit}})}$$`
+
+where:
+
+* `\(p_{\text{mean}} = 1\)` (overall mean)
+* `\(p_{\text{fit}} = 2\)` (two group means)
+
+This generalizes naturally to **ANOVA** when `\(k &gt; 2\)` groups.
+
+---
+## A more common design matrix
+
+```
+1  0
+1  0
+1  0
+1  0
+1  1
+1  1
+1  1
+1  1
+```
+
+- In this setup, all measurements contribute to the mean for the first group
+
+- But only the measurements from the second group contribute to the _difference_ between the first and the second group
+
+- So the second column serves as a switch for the offset from the mean for the second group
+
+---
+## A more common design matrix
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-6-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## A more common design matrix
+
+
+``` r
+# Combines both lines for the first group
+y_11 = 1 * mu_1 + 0 * difference_{mu_2 - mu_1} + residual_11
+y_12 = 1 * mu_1 + 0 * difference_{mu_2 - mu_1} + residual_12
+y_13 = 1 * mu_1 + 0 * difference_{mu_2 - mu_1} + residual_13
+y_14 = 1 * mu_1 + 0 * difference_{mu_2 - mu_1} + residual_14
+# Combines both lines for the second group
+y_21 = 1 * mu_1 + 1 * difference_{mu_2 - mu_1} + residual_21
+y_22 = 1 * mu_1 + 1 * difference_{mu_2 - mu_1} + residual_22
+y_23 = 1 * mu_1 + 1 * difference_{mu_2 - mu_1} + residual_23
+y_24 = 1 * mu_1 + 1 * difference_{mu_2 - mu_1} + residual_24
+```
+
+- Same way to calculate `\(SS_{mean}\)` and `\(SS_{fit}\)`
+
+- Same number of equations
+
+- Same number of parameters
+
+---
+## Power of design matrices
+
+- Say, in addition to group 1 and group 2, you have age variable.
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-8-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Power of design matrices
+
+- We need to expand our model like `\(y = group1\_intercept + group2\_offset + slope\)` - full model
+
+- So, in our design matrix, first columns of 1's mean that both lines intercept the Y-axis, and specify the intercept for group 1
+
+- The second column indicates the offset of group 2 measures
+
+- The third column is the Age variable for each group
+
+```
+1  0  1
+1  0  2
+1  0  3
+1  0  4
+1  1  1
+1  1  2
+1  1  3
+1  1  4
+```
+
+---
+## Power of design matrices
+
+- We need to expand our model like `\(y = group1\_intercept + group2\_offset + slope\)` - full model
+
+- So, in our design matrix, first columns of 1's mean that both lines intercept the Y-axis, and specify the intercept for group 1
+
+- The second column indicates the offset of group 2 measures
+
+- The third column is the Age variable for each group
+
+- Compare with the simple model `\(y = overall\_mean\)`
+
+- Calculate how much better is the full model: `\(F = \frac{ (SS_{simple} - SS_{full}) / (p_{full} - p_{simple}) }{SS_{full} / (n - p_{simple})}\)` 
+
+---
+## Batch effect
+
+- Suppose you have measurements from two labs
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Batch effect
+
+- First, add a term for the first lab normal group mean
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Batch effect
+
+- Second, add a term for the offset in measurements by the second lab
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-11-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Batch effect
+
+- Third, add a term for the offset of the tumor measurements
+
+&lt;img src="07b_design_matrices_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Batch effect
+
+- The final model:
+`$$y = lab1\_normal\_mean + lab2\_offset + difference_{tumor - normal}$$` 
+and the design matrix:
+
+```
+1  0  0
+1  0  0
+1  0  0
+1  0  0
+1  0  1
+1  0  1
+1  0  1
+1  0  1
+1  1  0
+1  1  0
+1  1  0
+1  1  0
+1  1  1
+1  1  1
+1  1  1
+1  1  1
+```
+
+---
+## Batch effect
+
+- The final model:
+`$$y = lab1\_normal\_mean + lab2\_offset + difference_{tumor - normal}$$` 
+
+- Does the lab effect matter? 
+
+- Compare the final model with a simpler one `\(y = lab1\_normal\_mean + difference_{tumor - normal}\)`
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

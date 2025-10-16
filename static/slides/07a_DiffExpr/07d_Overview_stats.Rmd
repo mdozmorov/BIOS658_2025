@@ -1,0 +1,154 @@
+---
+title: "RNA-seq differential expression"
+subtitle: "Overview"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+library(dplyr)
+library(ggplot2)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## Data generative model for replicated RNA-seq
+
+- Assume data are properly normalized.
+
+- For a sample with M replicates, the counts for gene $i$ replicate $j$ is often modeled by following hierarchical model: $Y_{i,j}|\lambda_i \sim Poisson(\lambda_i), \lambda_i \sim Gamma(\alpha,\beta$)
+
+- Marginally, the Gamma-Poisson compound distribution is Negative binomial. So the counts for a gene from multiple replicates is often modeled as Negative binomial: $Y_{i,j} \sim NB(r,p)$.
+
+---
+## Negative Binomial distribution
+
+The Negative Binomial Distribution is a discrete probability distribution that models the number of events (often called "failures") that occur in a sequence of independent and identically distributed Bernoulli trials before a specified, fixed number of "successes" is reached.
+
+It is a more general form of the **Geometric distribution**, which is the special case where the fixed number of successes is $r=1$.
+
+The negative binomial distribution is defined by two parameters:
+
+1.  $r$: The predetermined number of **successes** until the experiment stops ($r > 0$).
+2.  $p$: The probability of **success** on each individual trial ($0 \le p \le 1$).
+
+---
+## NB Characteristics
+
+* **Discrete:** The random variable (the number of failures, $k$) can only take on integer values ($\{0, 1, 2, 3, \dots\}$).
+
+* **Independent Trials:** The outcome of one trial does not affect the outcome of any other trial.
+  - Think of each read as an independent observation — each read is mapped to a gene without being influenced by where the previous read landed.
+
+* **Fixed Success Probability:** The probability of success, $p$, is the same for every trial.
+  - Each gene has its own underlying probability of generating a read (its expression level). This probability is fixed for a given condition or sample but differs across genes.
+
+* **Fixed Successes:** The experiment continues until a fixed number of successes ($r$) is achieved. The total number of trials is therefore a random variable.
+
+---
+## Probability Mass Function (PMF)
+
+The probability of having exactly $k$ failures before the $r$-th success:
+
+$$
+P(X=k) = \binom{k+r-1}{r-1} p^r (1-p)^k \quad \text{for } k=0, 1, 2, \dots
+$$
+
+* The term $\binom{k+r-1}{r-1}$ (the binomial coefficient) counts the number of ways to arrange the $k$ failures (extra variability) and $r-1$ successes (dispersion parameter) in the first $k+r-1$ trials.
+
+* The last trial (the $(k+r)$-th trial) must be the $r$-th success, which has probability $p$ (the underlying probability of observing a read from that gene).
+
+* The overall probability of the specific sequence is $p^r (1-p)^k$.
+.small[ https://www.youtube.com/watch?v=BPlmjp2ymxw ]
+
+---
+## A little more about the NB distribution
+
+- NB is over-dispersed Poisson  
+    - Poisson: $var=\mu$
+    - NB: $var=\mu + \mu^2\phi$
+-
+Dispersion parameter $\phi$ approximates the squared coefficient of variation: $\phi=\frac{var - \mu}{\mu^2} \approx \frac{var}{\mu^2}$
+
+- Dispersion $\phi$ represents the biological variance, so shrinkage should be done for $\phi$
+
+- NB distribution can be parameterized by mean and dispersion, but there's no conjugate prior for $\phi$
+
+---
+## Warnings about the use of negative binomial
+
+Some transcript data does NOT fit the negative binomial model
+
+- Transcripts which have zero counts in some samples and moderate counts in others from the SAME treatment
+
+- Transcripts that are particularly prevalent in some tissues
+
+- These that have high dispersion - possibly should be analyzed separately but not filtered
+
+**RPKM/FPKM and TPM are not supported statistically for differential expression analysis - use counts only!**
+
+---
+## Differential expression analysis
+
+- `limma` - Linear Models for Microarray Data
+
+- `voom` - variance modeling at the observational level transformation. Uses the variance of genes to create weights for use in linear models
+
+- After `voom` transformation, the RNA-seq data can be analyzed using `limma`
+
+.small[ https://bioconductor.org/packages/limma/
+
+Law, Charity W, Yunshun Chen, Wei Shi, and Gordon K Smyth. “Voom: Precision Weights Unlock Linear Model Analysis Tools for RNA-Seq Read Counts.” Genome Biology 15, no. 2 (2014): R29. https://doi.org/10.1186/gb-2014-15-2-r29. ]
+
+---
+## edgeR
+
+- From a series of papers by Robinson et al. (the same group developed limma): 2007 Bioinformatics, 2008 Biostatistics, 2010 Bioinformatics.
+
+- Uses Empirical Bayes methods to "shrink" gene-specific over-dispersion ($\phi$), which controls the within-group variances.
+
+- There is no conjugate prior so shrinkage is not straightforward.
+
+- Employs a conditional weighted likelihood approach to establish an approximate Empirical Bayes estimator for $\phi$.
+
+.small[Chen, Yunshun, Lizhong Chen, Aaron T L Lun, Pedro L Baldoni, and Gordon K Smyth. “edgeR v4: Powerful Differential Analysis of Sequencing Data with Expanded Functionality and Improved Support for Small Counts and Larger Datasets.” Nucleic Acids Research 53, no. 2 (2025): gkaf018. https://doi.org/10.1093/nar/gkaf018.
+]
+
+---
+## DESeq2
+
+- Counts are assumed to follow Negative Binomial distribution, parameterized by mean and variance $K_{ij} \sim NB(\mu_{ij},\sigma_{ij}^2)$
+
+- The variance is the sum of shot noise and raw variance $\sigma_{ij}^2=\mu_{ij} + s_j^2\nu_{i,p(i)}$
+
+- The raw variance is a smooth function of the mean: assumes that genes with same means will have the same variances
+
+- "This assumption allows us to pool the data from genes with similar expression strength for the purpose of variance estimation"
+
+- DESeq pulls the low dispersions towards the common value, but leaves the high dispersions, which is more conservative
+
+.small[ Anders, S., Huber, W. Differential expression analysis for sequence count data. Genome Biol 11, R106 (2010). https://doi.org/10.1186/gb-2010-11-10-r106 ]

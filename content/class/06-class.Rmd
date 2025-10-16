@@ -41,10 +41,19 @@ knitr::include_url('../../slides/07a_DiffExpr/07c_multipletesting.html#1')
 
 <a href="../../slides/07a_DiffExpr/07c_multipletesting.html#1" target="_blank">Lecture slides in HTML format</a>
 
-<!--
+
 ```{r echo=FALSE}
-knitr::include_url('../../slides/07a_DiffExpr/04_RNA-seq_quantification.html#1')
+knitr::include_url('../../slides/07a_DiffExpr/07d_Overview_stats.html#1')
 ```
+
+<a href="../../slides/07a_DiffExpr/07d_Overview_stats.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/07a_DiffExpr/07e_limma.html#1')
+```
+
+<a href="../../slides/07a_DiffExpr/07e_limma.html#1" target="_blank">Lecture slides in HTML format</a>
+
 
 ## Normalization
 

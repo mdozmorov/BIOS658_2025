@@ -1,0 +1,579 @@
+---
+title: "limma"
+subtitle: "Linear Models for Microarray and Omics Data"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+library(dplyr)
+library(ggplot2)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## General Framework for Differential Expression
+
+- The **linear model** is the foundational tool for differential expression.
+
+- The model expresses the measured expression of a gene as a linear combination of experimental factors plus random error:
+
+$$
+\mathbf{y} = \mathbf{X}\mathbf{\beta} + \mathbf{\epsilon}
+$$
+
+* $\mathbf{y}$ **(Observed Data)**: A vector containing the measured expression levels (e.g., log-transformed normalized intensities or counts) for a **single gene** across all samples.
+
+* $\mathbf{X}$ **(Design Matrix)**: A matrix that mathematically encodes the experimental setup. It specifies which treatment group or combination of factors (like dose, time point, etc.) each sample belongs to. **This matrix is identical for all genes.**
+
+---
+## General Framework for Differential Expression
+
+- The **linear model** is the foundational tool for differential expression.
+
+- The model expresses the measured expression of a gene as a linear combination of experimental factors plus random error:
+
+$$
+\mathbf{y} = \mathbf{X}\mathbf{\beta} + \mathbf{\epsilon}
+$$
+
+* $\mathbf{\beta}$ **(Parameter Vector)**: The vector of coefficients (parameters) to be estimated. These coefficients represent the effects of the groups or treatments on the gene's expression (e.g., the mean expression level of a group or the log-fold-change between groups). **This vector is unique for each gene.**
+
+* $\mathbf{\epsilon}$ **(Residual Error)**: A vector representing the unexplained random error or noise for each sample.
+
+---
+## Example of a design matrix
+
+```{r, out.width = "850px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/design_martix.png")
+```
+
+---
+## Example of a design matrix
+
+```{r, out.width = "850px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/design_martix1.png")
+```
+
+<!--
+## Linear model parameter estimation 
+
+Model is specified – how do we find the coefficients? 
+$$y=X\beta + \epsilon$$
+
+- Minimize squared error $\epsilon'\epsilon = (Y - X\beta)'(Y-X\beta)$
+
+- Take derivative $\frac{d}{d\beta}((Y - X\beta)'(Y - X\beta)) = -2X'(Y - X\beta)$
+
+- Set to 0, $-2X'(Y - X\beta) = 0$
+
+- Solve $X'Y = (X'X)\beta$ $\beta = (X'X)^{-1}X'Y$  
+-->
+
+---
+## Linear Model Parameter Estimation: Ordinary Least Squares (OLS)
+
+How do we find the coefficient vector $\mathbf{\beta}$ that best fits the linear model $\mathbf{y} = \mathbf{X}\mathbf{\beta} + \mathbf{\epsilon}$.
+
+- Choose the coefficients $\mathbf{\beta}$ that minimize residual error $\mathbf{\epsilon}$ between the observed data points ($\mathbf{y}$) and the fitted line ($\mathbf{X}\mathbf{\beta}$). This distance is quantified by the **Sum of Squared Errors (SSE)**:
+
+$$\text{Minimize: } \quad \mathbf{\epsilon}'\mathbf{\epsilon} = (\mathbf{Y} - \mathbf{X}\mathbf{\beta})'(\mathbf{Y}-\mathbf{X}\mathbf{\beta})$$
+
+The term $(\mathbf{Y} - \mathbf{X}\mathbf{\beta})$ represents the vector of residuals. Taking the vector product $(\dots)'(\dots)$ squares and sums these residuals.
+
+---
+## Linear Model Parameter Estimation: Ordinary Least Squares (OLS)
+
+To find the minimum point of a continuous function, we use differential calculus:
+
+* **Take the Derivative:** We calculate the derivative of the SSE function with respect to the parameter vector $\mathbf{\beta}$. This derivative represents the **slope** of the error surface.
+    
+    $$\frac{d}{d\mathbf{\beta}}((\mathbf{Y} - \mathbf{X}\mathbf{\beta})'(\mathbf{Y} - \mathbf{X}\mathbf{\beta})) = -2\mathbf{X}'(\mathbf{Y} - \mathbf{X}\mathbf{\beta})$$
+
+* **Set to Zero:** The minimum of the convex error function occurs where the slope is zero. Setting the derivative to zero gives the **normal equations**:
+    
+    $$-2\mathbf{X}'(\mathbf{Y} - \mathbf{X}\mathbf{\beta}) = 0$$
+
+---
+## Linear Model Parameter Estimation: Ordinary Least Squares (OLS)
+
+Solve $-2\mathbf{X}'(\mathbf{Y} - \mathbf{X}\mathbf{\beta}) = 0$ for $\mathbf{\beta}$ 
+
+1.  Divide by $-2$ and distribute $\mathbf{X}'$:
+    $$\mathbf{X}'\mathbf{Y} - \mathbf{X}'\mathbf{X}\mathbf{\beta} = 0$$
+2.  Rearrange the terms:
+    $$\mathbf{X}'\mathbf{Y} = (\mathbf{X}'\mathbf{X})\mathbf{\beta}$$
+3.  Solve for the estimated coefficients, $\mathbf{\hat{\beta}}$, by multiplying both sides by the inverse of $(\mathbf{X}'\mathbf{X})$:
+    $$\mathbf{\hat{\beta}} = (\mathbf{X}'\mathbf{X})^{-1}\mathbf{X}'\mathbf{Y}$$
+
+This formula yields the **Best Linear Unbiased Estimator (BLUE)** for the coefficients under the classical linear model assumptions.
+
+
+
+<!--
+## Hypothesis testing 
+
+- Significance of coefficients is tested with a T-test
+
+$\beta$ can be a vector. We can test the significance of any one coefficient $\beta_i$ via a T-test
+
+$$t_{score} = \frac{\hat{\beta} - \beta_0}{SE_{\hat{\beta}}}$$
+
+$$t_{score} = \frac{(\hat{\beta} - \beta_0) \sqrt{n-2}}{\sqrt{SSR/\sum_{i=1}^n(x_i-\bar{x})^2}}$$
+
+$SSR = \sum_{i=1}^n{\hat{\epsilon}^2}$ - sum of squares of residuals, depends on the whole model
+-->
+
+---
+## Hypothesis Testing: $t$-Test for Model Coefficients
+
+Once the coefficients ($\mathbf{\hat{\beta}}$) are estimated using OLS, a $t$-test is used to determine the statistical **significance of individual coefficients** ($\beta_i$).
+
+The null hypothesis ($H_0$) that a specific coefficient ($\beta_i$) is equal to a hypothesized value ($\beta_0$), typically $\beta_0 = 0$ (meaning the corresponding factor has no effect).
+
+The general formula for the $t$-score is: $t_{\text{score}} = \frac{\hat{\beta}_i - \beta_0}{SE_{\hat{\beta}_i}}$
+
+* $\hat{\beta}_i$: The estimated value of the coefficient (e.g., the observed log-fold-change).
+* $\beta_0$: The hypothesized value (usually $0$).
+* $SE_{\hat{\beta}_i}$: The **Standard Error** of the estimated coefficient, which quantifies the uncertainty of the estimate.
+
+---
+## $t$-Score Expansion and $\text{SSR}$
+
+We expands the $t$-score to show its dependence on model variability. For simple regression, the standard error is directly related to the **Sum of Squares of Residuals** ($\text{SSR}$):
+
+$$t_{\text{score}} = \frac{(\hat{\beta}_i - \beta_0) \sqrt{n-2}}{\sqrt{\text{SSR}/\sum_{i=1}^n(x_i-\bar{x})^2}}$$
+
+* $\text{SSR}$ ($\sum_{i=1}^n{\hat{\epsilon}^2}$): The sum of the squared residuals. This is a measure of the **unexplained variability** or noise left in the gene's expression after accounting for the linear model.
+* $n-2$: The **degrees of freedom** (for simple regression).
+* The $t$-score is essentially the **signal-to-noise ratio**: the estimated effect ($\hat{\beta}_i$) divided by its uncertainty ($SE_{\hat{\beta}_i}$).
+
+In omics data, a key challenge is accurately estimating the $\text{SSR}$ (variance) for each gene, which is why $\text{limma}$ uses its special Empirical Bayes methods.
+
+
+---
+## Linear models and covariates 
+
+- Linear models are useful for including nuisance variables - technical factors
+
+- Variables that have an effect on measurements but are not themselves of interest (e.g. sample storage time)
+
+- Incorporating batch effects like storage time gives smaller residuals and thus larger T-stats for the coefficient of interest
+
+---
+## Linear Models and Covariates
+
+Linear models allow **covariates** or **nuisance variables** alongside the factors of primary interest.
+
+* **Nuisance Variables:** Technical factors that are known or suspected to influence measurements but are **not the focus of the hypothesis test** (e.g., storage time, processing batch, sequencing lane, or patient age).
+
+---
+## Linear Models and Covariates
+
+Incorporating nuisance variables improves the sensitivity of the differential expression analysis:
+  
+* **Smaller Residuals** ($\mathbf{\epsilon}$): By explaining some of the variation in gene expression with the nuisance variables, the remaining unexplained error (the residuals, $\mathbf{\epsilon}$) is reduced. Consequently, the **Sum of Squares of Residuals** ($\text{SSR}$) decreases.
+
+* **Larger t-Statistics:** This leads to a larger t-statistic for the coefficient of interest (a ratio of the effect size to its standard error, which is derived from the $\text{SSR}$), which results in a smaller $p$-value and **higher statistical power**.
+
+---
+## Bayesian-type methods 
+
+- We have lots of genes. Gene $i$ has mean $\mu_i$ and variance $\sigma_i^2$
+
+- Bayesian methods assume that the means and variances come from known distributions (the priors)
+
+- Empirical Bayes methods assume that the means and variances have distributions that are estimated from the data
+
+- "Moderated" methods use test statistics that can be viewed as approximations to Empitical Bayes methods, but are justified by other statistical theory
+
+---
+## Empirical Bayes and Moderated methods 
+
+Primarily focus of the distribution of the variances
+
+- **LIMMA** - more formal empirical Bayes t-test analysis
+
+- Results in replacing gene variances by a weighted average of the gene variance and the mean variance of all genes
+
+- Leads to t-tests with Student's t-distribution
+
+---
+## Empirical Bayes and Moderated Methods
+
+The core innovation of $\text{limma}$ is using **Empirical Bayes (EB)** to stabilize gene-wise variance estimates, which is crucial for studies with small sample sizes.
+
+The variance estimates for individual genes are highly unreliable when there are few replicates. The solution is to model the **distribution of the gene variances** across the entire dataset.
+
+---
+## LIMMA's Moderated $t$-Test
+
+* **Moderated Variance:** $\text{limma}$ calculates a **moderated variance** by taking a weighted average of two values:
+    1.  The **individual gene variance** (the raw, noisy estimate).
+    2.  The **mean variance** or "prior variance" calculated across all genes (the stable, global estimate).
+
+* **Shrinkage:** "squeezes" the noisy individual gene variances toward the common mean, stabilizing the estimates. Genes with very few replicates or extreme variance estimates are shrunk the most.
+
+* **Resulting Distribution:** This EB approach leads to the "moderated $t$-statistic." Critically, this statistic has a known distribution (a **Student's $t$-distribution** with augmented degrees of freedom), which allows for valid and powerful hypothesis testing.
+
+.small[ http://bioinf.wehi.edu.au/limma/
+
+https://bioconductor.org/packages/limma/ ]
+
+<!--
+## Power and False Discovery
+
+The $t$-statistic (and thus the statistical significance) is determined by the **signal-to-noise ratio**—the effect size divided by the standard error. The $t$-statistic is larger when:
+
+* **The Difference Between the Means** is Larger: A larger effect size (larger signal) increases the numerator.
+
+* **The Variances** are Smaller: Smaller within-group variance (less noise) decreases the standard error in the denominator.
+
+* **The Sample Sizes** ($\mathbf{n}$) are Larger: Increasing the sample size reduces the standard error of the mean difference. (The variable $\mathbf{m}$ is usually notation for the total number of genes tested, not a direct factor in the $t$-statistic calculation).
+
+The only factor typically under direct control is the **sample size ($\mathbf{n}$)**.
+
+## Sample Size, Power, and Error Control
+
+For a fixed significance threshold (p-value, $\alpha$), increasing sample size:
+
+* **Increases Power:** increases the probability of correctly rejecting the null hypothesis (detecting true differential expression).
+
+* **Reduces FDR (False Discovery Rate):** makes true effects more distinct, reducing the expected proportion of false positives among all significant findings.
+
+* **Reduces FNR (False Non-Discovery Rate):** Increasing $n$ reduces the chance of incorrectly failing to reject the null hypothesis (missing true differential expression).
+
+## Improving Power
+
+Power can also be improved through strategic choices:
+
+* **Good Experimental Design:** This includes balancing groups, minimizing technical variation, and accounting for covariates (nuisance variables).
+
+* **Choice of Statistical Methodology:** Methods utilizing **Bayes**, **Empirical Bayes (EB)**, or **moderated statistics** (like $\text{limma}$ and $\text{edgeR}$) are inherently **more powerful** than classical methods. They achieve this by sharing information across all genes to obtain more reliable (stabilized) variance estimates.
+-->
+
+<!--
+## Bayesian reasoning: short intro 
+
+- Synthesize prior knowledge and evidence
+
+- Main theorem
+$$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
+
+- Simple derivation 
+$$P(A\ and\ B) = P(A|B)P(B)=P(B|A)P(A)$$
+-->
+
+---
+## Bayesian Reasoning: Short Introduction
+
+Bayesian reasoning is a framework that formally incorporates **prior knowledge** with new evidence to update beliefs. It is a powerful approach for inference, particularly in complex data analysis like that performed by $\text{limma}$ and $\text{edgeR}$.
+
+1.  **Prior Knowledge ($P(A)$):** Your initial belief about a hypothesis *before* seeing the new data.
+
+2.  **Evidence ($P(B|A)$):** The likelihood of observing the data given that the hypothesis is true.
+
+3.  **Posterior Belief ($P(A|B)$):** The updated belief about the hypothesis *after* seeing the new data.
+
+---
+## Main Theorem (Bayes' Theorem)
+
+The mathematical rule for updating the prior belief is known as **Bayes' Theorem**:
+
+$$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
+
+* $P(A|B)$: **Posterior Probability** (What we want: the probability of Hypothesis A given the Evidence B).
+
+* $P(B|A)$: **Likelihood** (The probability of observing Evidence B given Hypothesis A is true).
+
+* $P(A)$: **Prior Probability** (The initial probability of Hypothesis A).
+
+* $P(B)$: **Marginal Likelihood** (The probability of observing the Evidence B, used for normalization).
+
+---
+## Simple Derivation
+
+Bayes' Theorem is derived from the **multiplication rule of probability**, which states that the probability of two events ($A$ and $B$) occurring together is the product of the probability of one event and the conditional probability of the other:
+
+$$
+P(A \text{ and } B) = P(A|B)P(B) = P(B|A)P(A)
+$$
+
+Since $P(A \text{ and } B)$ is the same regardless of the order, we set the two conditional forms equal to each other and solve for the desired posterior probability $P(A|B)$.
+
+
+---
+## Classical example 
+
+- Duchenne Muscular Dystrophy (DMD) can be regarded as a simple recessive sex-linked disease caused by a mutated X chromosome (X).  
+  - An XY male expresses the disease, whereas an XX female is a carrier but does not express the disease  
+
+- Suppose neither of a woman’s parents expresses the disease, but her brother does. Then the woman’s mother must be a carrier, and the woman herself therefore may be a carrier  
+  - $P(C)=1/2$ - _prior_
+
+- What is the probability she is a carrier if she has a healthy son? - _observation_
+
+---
+## Classical example 
+
+- $P(C)=1/2$
+
+$$p(C|h.s.) = \frac{p(h.s.|C)p(C)}{p(h.s.)} = \frac{p(h.s.|C)p(C)}{p(h.s.|C)p(C) + p(h.s.|\bar{C})p(\bar{C)}} $$
+
+$$p(C|h.s.) = \frac{(1/2) * (1//2)}{(1/2) * (1/2) + 1 * (1/2)} = \frac{1}{3}$$
+
+- Incorporate evidence into strong prior belief
+
+<!--
+## Bayesian approach to statistics 
+
+- Naïve approach: estimate the parameters from observation only 
+
+- Bayesian approach: have some prior expectation  
+
+- Prior expectation for gene expression: Gene-specific variance comes from an underlying variance distribution  
+
+## Bayesian approach to statistics 
+
+Bayesian statistical analyses:  
+
+- Begin with 'prior' distributions describing beliefs about the values of parameters in statistical models prior to analysis of the data at hand
+
+- Requires specification of these parameters  
+
+- 'Empirical Bayes' methods use the data at hand to guide prior parameter specification
+
+- Use all the data to define priors, compute posteriors of individual estimates
+-->
+
+---
+## Bayesian Approach to Statistics
+
+The **Bayesian approach** differs from the classical (frequentist) "naïve" approach by explicitly incorporating **prior expectations** into the parameter estimation process.
+
+* **Naïve Approach (Frequentist):** Estimates parameters (like gene variance) based **only on the current observations** for that specific gene. This is highly unreliable with small sample sizes.
+
+* **Bayesian Approach:** Combines the observed data with a **prior expectation** of what the parameters should be.
+
+***
+
+For differential expression analysis (e.g., in $\text{limma}$), the crucial prior expectation is that **gene-specific variances are not independent**. Instead, they are assumed to be drawn from a larger, shared **underlying variance distribution** common to all genes. This allows for information sharing.
+
+---
+## Empirical Bayes (EB) Methods
+
+* **Data-Driven Priors:** **Empirical Bayes** methods simplify this process by using the **entire dataset** to automatically estimate and define the prior parameters.
+
+* **Process:** The raw estimates (e.g., gene variances) are computed. Then, the collective distribution of these estimates (across all genes) is used as the **prior** to compute the final, moderated **posterior estimates** for each individual gene.
+
+* **Benefit:** This approach retains the power of Bayesian reasoning without requiring subjective manual specification of priors, using all the data to robustly inform individual gene estimates.
+
+<!--
+## The $\text{limma}$ Method
+
+$\text{limma}$ (Linear Models for Microarray Data) is a widely-used statistical framework for differential expression analysis that extends linear models using a hierarchical, **Empirical Bayes (EB)** approach.
+
+* **Shrinkage and Moderation:** The raw, noisy variance estimate for each gene is **"shrunk"** (moderated) toward the mean of the variance distribution across all genes. This stabilizes estimates, especially when sample sizes are small, alleviating issues with very small variance scenarios.
+
+* **Result:** The improved (posterior) variance estimates are then used in a classic $t$-test setting to obtain the powerful **moderated $t$-statistic**. The method is **completely data-dependent** as it uses the data itself to estimate the prior parameters (Empirical Bayes).
+
+### Experimental Flexibility and Implementation
+
+* **Linear Models Flexibility:** The linear model foundation allows $\text{limma}$ to be highly versatile:
+    * It can compare two or more experimental groups (e.g., control vs. treatment 1 vs. treatment 2).
+    * It naturally handles **multifactorial designs** (e.g., examining the interaction of genotype and treatment).
+
+* **Implementation:** The $\text{limma}$ package was developed by Smyth et al. (2004) and is a foundational tool within the **Bioconductor** project.
+
+.small[ http://bioinf.wehi.edu.au/limma/
+
+https://bioconductor.org/packages/limma/ ]
+-->
+
+<!--
+## The hierarchical model
+
+Let $\beta_{gj}$ be coefficient (difference in means in two group settings) for gene $g$, factor $j$, assume
+$$\hat{\beta_{gj}}|\beta_{gj},\sigma_g^2 \sim  N(\beta_{gj}, v_{gj}\sigma_g^2) \ \ \ \ s_g^2|\sigma_g^2 \sim \frac{\sigma_g^2}{d_g}\chi_{d_0}^2$$ with priors
+$$P(\beta_{gj} \ne 0) = p_j \ \ \ \ \beta_{gj}|\lambda_g^2,\beta_{gj} \ne 0 \sim N(0, v_{0j}\sigma_g^2) \ \ \ \ \ \ \frac{1}{\sigma_g^2} \sim \frac{1}{d_0s_0^2}\chi_{d_0}^2$$
+-->
+
+<!--
+## Limma method
+
+The sample variance for each gene, given $\sigma^2$ is assumed to follow a scaled Chi-square distribution with $d_g$ degree of freedom
+
+$$S_g^2|\sigma_g^2 \sim \frac{\sigma_g^2}{d_g}\chi_{d_g}^2$$
+
+The unknown residual variances $\sigma_g^2$ are allowed to vary across genes by assuming scaled inverse Chi-square prior distribution
+
+$$\frac{1}{\sigma_g^2} \sim \frac{1}{d_0 * S_0^2}\chi_{d_0}^2$$
+
+where $d_0$ and $S_0^2$ are the hyperparameters for the degrees of freedom and variance, respectively.
+
+
+## Limma method
+
+Under the above hierarchical model, the posterior mean of $\sigma_g^2$ given $S_g^2$ is
+
+$$S_{g\_limma}^{2} = \frac{d_0S_0^2 + d_gS_g^2}{d_0 + d_g}$$
+
+The posterior value shrinks the observed variances towards the prior values with the degrees of shrinkage depending on the relative sizes of the observed and prior degrees of freedom.  
+- Degrees of freedom $df = d_g + d_0$
+- Moderated t-statistics defined by
+
+$$t_g^{limma} = \frac{\bar{y_{g1.}} - \bar{y_{g2.}}}{S_g^{limma}\sqrt{\frac{1}{n_1} + \frac{1}{n_2}}}$$
+follows a t-distribution with augmented degrees of freedom $df$.
+-->
+
+<!--
+## Moderated t-Statistics 
+
+The posterior variance $S_g^{limma}$ is a combination of an estimate obtained from the prior distribution $S_0^2$ and the pooled variance $S_g^2$
+
+$$S_{g\_limma}^{2} = \frac{d_0S_0^2 + d_gS_g^2}{d_0 + d_g}$$
+
+where $d_0$ and $d_g$ are, respectively, prior and empirical degrees of freedom
+
+- Including a prior distribution of variances has the effect of borrowing information from all genes to aid with inference about individual genes
+
+## Moderated t-Statistics 
+
+- Limma, Moderated t-statistics, described in (Gordon K. Smyth, "Linear Models and Empirical Bayes Methods for Assessing Differential Expression in Microarray Experiments" Statistical Applications in Genetics and Molecular Biology 3 (2004) http://www.statsci.org/smyth/pubs/ebayes.pdf)
+
+$$t_g^{limma} = \frac{\bar{y_{g1.}} - \bar{y_{g2.}}}{S_g^{limma}\sqrt{\frac{1}{n_1} + \frac{1}{n_2}}}$$
+
+where $S_{g\_limma}^{2}$ is the posterior variance.
+-->
+
+---
+## Moderated $t$-Statistics
+
+$\text{limma}$ improves the reliability of the $t$-test by replacing the raw, noisy, gene-specific variance with a **moderated posterior variance** ($S_{g\_limma}^2$). The **posterior variance** ($S_{g\_limma}^2$) is a weighted average:
+
+1.  The variance estimated from the **prior distribution** ($S_0^2$), which is calculated by pooling information from *all* genes.
+2.  The **gene-specific (empirical) variance** ($S_g^2$), calculated only from the current gene's data.
+
+$$S_{g\_limma}^{2} = \frac{d_0S_0^2 + d_gS_g^2}{d_0 + d_g}$$
+
+.small[ * $\mathbf{d_0}$: The **prior degrees of freedom**, which determines how much weight is given to the prior (all-gene) information.
+* $\mathbf{d_g}$: The **empirical degrees of freedom**, which is based on the sample size for that gene's estimate. ]
+
+This weighting acts as **information borrowing** (shrinkage), stabilizing variance estimates, especially for genes with few samples.
+
+---
+## The Moderated $t$-Statistic
+
+The **moderated $t$-statistic** ($t_g^{\text{limma}}$) for comparing two groups (Group 1 and Group 2) uses this stabilized posterior variance in the denominator. This is the statistic used to assess differential expression for Gene $g$:
+
+$$t_g^{\text{limma}} = \frac{\bar{y_{g1.}} - \bar{y_{g2.}}}{S_{g\_limma}\sqrt{\frac{1}{n_1} + \frac{1}{n_2}}}$$
+
+* $\mathbf{\bar{y_{g1.}}} - \mathbf{\bar{y_{g2.}}}$: The observed difference in mean expression between the two groups (the **signal**).
+* $\mathbf{S_{g\_limma}}$: The square root of the posterior variance (the **stabilized noise**).
+* $\mathbf{n_1}$ and $\mathbf{n_2}$: The sample sizes of the two groups.
+
+This methodology, described by Gordon K. Smyth (2004), provides a more robust and powerful test for differential expression than classical $t$-tests when dealing with typical omics datasets.
+
+---
+## $\text{limma}$ Design and Contrast Matrices
+
+The design matrix is the input that tells the linear model how the samples relate to the experimental conditions:
+
+* **Structure:**
+    * **Rows:** Correspond to the **individual samples** (or "arrays" in the original microarray context).
+    * **Columns:** Correspond to the **model coefficients ($\mathbf{\beta}$)**. These columns represent the experimental groups or variables (e.g., control group, treatment group, time point).
+
+* **Purpose:** It defines **which condition each sample belongs to**. For example, a "1" in a column indicates that a particular sample belongs to that group, and a "0" indicates it does not. The OLS estimation process uses this matrix to estimate the $\mathbf{\beta}$ coefficients.
+
+---
+## $\text{limma}$ Design and Contrast Matrices
+
+The contrast matrix specifies the **comparisons** (hypotheses) you want to test using the estimated coefficients ($\mathbf{\hat{\beta}}$):
+
+* **Structure:**
+    * **Rows:** Correspond to the coefficients ($\mathbf{\beta}$) from the design matrix.
+    * **Columns:** Correspond to the **specific comparisons** of interest (e.g., Treatment A vs. Control).
+
+
+* **Purpose:** It defines the **linear combination of coefficients** that represents the desired log-fold-change (LFC).
+    * To compare Treatment vs. Control, the contrast vector might be $[-1, 1]$, subtracting the Control coefficient from the Treatment coefficient.
+
+
+* **Simplicity:** In very simple experiments (e.g., a straight two-group comparison where one coefficient directly represents the LFC), an explicit contrast matrix may not be necessary, as the software can infer the comparison. However, it is essential for complex designs (e.g., factorial or time course studies).
+
+<!--
+## More complicated models 
+
+- So far we only consider 2 group experiments  
+
+- Many other possibilities  
+    - Factorial: two groups each has two treatments - Are treatment effects different across groups?  
+    - Continuous variables: dosage of a drug  
+    - Continuous discrete variables  
+        - 2 groups, 3 drug doses — do the drugs affect the groups differently?
+
+.small[ limma on a time course, https://github.com/jennybc/stat540_2014/blob/master/seminars/seminar06_highVolumeLinearModelling.rmd ]
+-->
+
+---
+## More Complicated Linear Models
+
+* **Factorial Designs:** Two or more independent factors (or groups), each with two or more levels (or treatments).
+    * **Example:** Testing a Treatment (Factor 1: Yes/No) across two different cell lines (Factor 2: A/B).
+    * **Key Question:** Are the **treatment effects different across the cell lines**? This is answered by the **interaction term** in the linear model.
+
+* **Continuous Variables:** The model can incorporate explanatory variables that vary continuously, rather than being categorical groups.
+    * **Example:** Modeling gene expression as a function of the exact **dosage of a drug**, patient age, or time post-infection. The coefficient ($\beta$) represents the change in expression for every one-unit increase in the continuous variable.
+
+---
+## More Complicated Linear Models
+
+* **Mixed Continuous/Discrete Variables:** These designs combine both categorical groups and continuous measurements.
+
+* **Example:** Analyzing **2 groups** (Discrete: Patient/Control) that each receive **3 drug doses** (Discrete/Continuous).
+
+* **Key Question:** **Do the drugs affect the groups differently?** This involves testing the interaction between the dose (treated continuously) and the group (treated discretely). The linear model handles this integration seamlessly.
+
+---
+## Limma method 
+
+.small[
+- Lönnstedt, Ingrid, and Terry Speed. “REPLICATED MICROARRAY DATA.” Statistica Sinica 12, no. 1 (2002): 31–46. http://www.jstor.org/stable/24307034. - Empirical Bayes method for analyzing microarray replicates. Issues with simple approaches, proposed B statistics - a Bayes log posterior odds with two hyperparameters in the inverse gamma prior for the variances, and a hyperparameter in the normal prior of the nonzero means. Appendix - detailed definitions, derivations, and solutions.
+
+- Smyth, Gordon K. “Linear Models and Empirical Bayes Methods for Assessing Differential Expression in Microarray Experiments.” Statistical Applications in Genetics and Molecular Biology 3 (2004): Article3. doi:10.2202/1544-6115.1027. http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.315.2066&rep=rep1&type=pdf - Linear models for differential analysis, moderated t-statistics via shrinkage of sample variance. Empirical estimation of Bayesian prior variance distribution and shrinkage hyperparameters.
+
+- Phipson, Belinda, Stanley Lee, Ian J. Majewski, Warren S. Alexander, and Gordon K. Smyth. “Robust Hyperparameter Estimation Protects against Hypervariable Genes and Improves Power to Detect Differential Expression.” The Annals of Applied Statistics 10, no. 2 (June 2016): 946–63. doi:10.1214/16-AOAS920. https://projecteuclid.org/download/pdfview_1/euclid.aoas/1469199900 - An extension of differential analysis using linear modeling and empirical Bayes by windsorizing outliers in estimating sample distribution. 
+]
+
+---
+## Extensions of Limma method 
+
+.small[
+- Sartor, Maureen A., Craig R. Tomlinson, Scott C. Wesselkamper, Siva Sivaganesan, George D. Leikauf, and Mario Medvedovic. “Intensity-Based Hierarchical Bayes Method Improves Testing for Differentially Expressed Genes in Microarray Experiments.” BMC Bioinformatics 7 (December 19, 2006): 538. https://doi.org/10.1186/1471-2105-7-538. https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-7-538 - Intensity-Based Moderated T-statistic (IBMT). Empirical Bayes approach allowing for the relationship between variance and gene signal intensity (estimated with loess). Brief description of previous methods (Smyth, Cyber-T). Details of Smyth hierarchical model and moderated t-statistics, estimation of hyperparameters with implementation of variance-signal. Software at http://eh3.uc.edu/ibmt/. 
+
+- Lianbo Yu et al., “Fully Moderated T-Statistic for Small Sample Size Gene Expression Arrays,” Statistical Applications in Genetics and Molecular Biology 10, no. 1 (September 15, 2011), https://doi.org/10.2202/1544-6115.1701. https://www.degruyter.com/view/j/sagmb.2011.10.issue-1/1544-6115.1701/1544-6115.1701.xml - Third implementation of moderated t-statistics. First is Smyth 2004 model assuming $d_{0g}$ and $s_{0g}^2$ constant, second is IBMT (intensity-based moderated t) Sartor 2006 allows varying $s_{0g}^2$ with gene expression, third is the present FMT (fully moderated t) model allowing varying $d_{0g}$ and $s_{0g}^2$. Description of Smyth hierarchical model, estimation of hyperparameters. Adjusted log variances are fit with loess. Goal - increase in power - is demonstrated on simulated data.
+]

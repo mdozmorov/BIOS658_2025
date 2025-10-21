@@ -1,0 +1,497 @@
+---
+title: "Statistical Testing and Multiple Hypothesis Correction in R"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introduction
+
+This document demonstrates statistical hypothesis testing concepts in R, including:
+
+1. Two-sample t-tests
+2. Multiple hypothesis testing problems
+3. Family-wise error rate (FWER) correction methods
+4. False discovery rate (FDR) methods
+5. Differential expression analysis using limma
+
+# Two-Sample T-Test
+
+## Basic T-Test Example
+
+Here we demonstrate a basic two-sample t-test comparing two groups of measurements. This test assesses whether the means of two groups are statistically different from each other.
+
+```{r two-sample-ttest}
+# Create two groups of data
+group1 <- c(2013.7, 2141.9, 2040.2, 1973.3, 2162.2, 1994.8, 1913.3, 2068.7)
+group2 <- c(1974.6, 2027.6, 1914.8, 1955.8, 1963, 2025.5, 1865.1, 1922.4)
+
+# Check sample sizes
+length(group1)
+length(group2)
+
+# Calculate summary statistics
+mean(group1)
+mean(group2)
+var(group1)
+var(group2)
+```
+
+## Manual T-Test Calculation
+
+The t-statistic is calculated manually using the formula for independent samples with potentially unequal variances (Welch's t-test):
+
+$$t = \frac{\bar{x}_1 - \bar{x}_2}{\sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}}}$$
+
+```{r manual-t-calc}
+# Calculate t-value manually
+t.value <- (mean(group1) - mean(group2)) / 
+           sqrt(var(group1)/length(group1) + var(group2)/length(group2))
+t.value
+```
+
+## Using R's Built-in T-Test Function
+
+```{r builtin-ttest}
+# Perform t-test using R's function
+t.test(group1, group2)
+```
+
+## Visualizing the T-Distribution
+
+Here we visualize the t-distribution with the appropriate degrees of freedom and calculate the p-value manually.
+
+```{r t-distribution-viz}
+# Create sequence for plotting
+t <- seq(-3.5, 3.5, by = 0.01)
+
+# Plot the t-distribution
+plot(t, dt(t, df = 12.116), type = "l", 
+     main = "T-Distribution (df = 12.116)",
+     xlab = "t-value", ylab = "Density")
+abline(v = t.value, col = "red", lty = 2)
+
+# Calculate p-value manually
+# One-tailed p-value
+pt(t.value, df = 12.116, lower.tail = FALSE)
+
+# Two-tailed p-value
+2 * pt(t.value, df = 12.116, lower.tail = FALSE)
+```
+
+## Alternative T-Test Formulation
+
+An equivalent way to perform the t-test using a formula interface with a grouping variable:
+
+```{r alternative-ttest}
+# Create grouping variable (0 for group1, 1 for group2)
+group <- rep(0:1, each = 8)
+
+# Combine all data
+all <- c(group1, group2)
+
+# Perform t-test using formula notation
+t.test(all ~ group)
+
+# Extract p-value from test results
+out <- t.test(all ~ group)
+names(out)
+out$p.value
+```
+
+# Multiple Hypothesis Testing
+
+## The Multiple Testing Problem
+
+When performing many statistical tests simultaneously, the probability of false positives (Type I errors) increases dramatically. This section demonstrates this issue through simulation.
+
+### Simulating Null Data
+
+We generate 10,000 features (e.g., genes) with no true difference between groups. Under the null hypothesis, we expect approximately 5% false positives at α = 0.05.
+
+```{r simulate-null-data}
+# Create matrix for 10,000 tests with 16 samples each
+data <- matrix(NA, ncol = 16, nrow = 10000)
+
+# Generate null data: same distribution for all samples
+for (i in 1:10000) {
+  data[i, ] <- rnorm(16, mean = 2000, sd = 100)
+}
+
+# Show first row as example
+data[1, ]
+```
+
+### Performing Multiple T-Tests
+
+```{r multiple-tests}
+# Perform t-test for each feature
+p.value <- numeric()
+for (i in 1:10000) {
+  p.value[i] <- t.test(data[i, ] ~ group)$p.value
+}
+
+# Visualize p-value distribution (should be uniform under null)
+hist(p.value, breaks = 50, main = "Distribution of P-values Under Null",
+     xlab = "P-value", col = "lightblue")
+
+# Count significant tests at α = 0.05
+sum(p.value < 0.05)
+```
+
+**Interpretation:** Even though there are no true differences (all data comes from the same distribution), we still observe approximately 500 "significant" results (5% of 10,000 tests). This demonstrates the need for multiple testing correction.
+
+### Simulating Data with True Differences
+
+We generate 10,000 features (e.g., genes) where approximately 1,000 have true differences between groups, while 9,000 are null (no difference). This simulates a realistic differential expression scenario.
+
+```{r simulate-mixed-data}
+set.seed(123)  # For reproducibility
+
+# Define group structure
+group <- rep(0:1, each = 8)
+
+# Create matrix for 10,000 tests with 16 samples each
+data <- matrix(NA, ncol = 16, nrow = 10000)
+
+# Number of truly differentially expressed features
+n_true_diff <- 1000
+
+# Randomly select which features will be differentially expressed
+true_diff_indices <- sample(1:10000, n_true_diff)
+
+# Generate data for each feature
+for (i in 1:10000) {
+  if (i %in% true_diff_indices) {
+    # Differentially expressed: different means between groups
+    # Group 0 (samples 1-8): mean = 2000
+    # Group 1 (samples 9-16): mean = 2100 (difference of 100)
+    data[i, group == 0] <- rnorm(8, mean = 2000, sd = 100)
+    data[i, group == 1] <- rnorm(8, mean = 2500, sd = 100)
+  } else {
+    # Not differentially expressed: same distribution for all samples
+    data[i, ] <- rnorm(16, mean = 2000, sd = 100)
+  }
+}
+
+# Show examples
+cat("Example of null feature (row 1):\n")
+print(round(data[1, ], 1))
+cat("\nMean group 0:", round(mean(data[1, group == 0]), 1))
+cat("\nMean group 1:", round(mean(data[1, group == 1]), 1))
+
+cat("\n\nExample of differentially expressed feature (row", true_diff_indices[1], "):\n")
+print(round(data[true_diff_indices[1], ], 1))
+cat("\nMean group 0:", round(mean(data[true_diff_indices[1], group == 0]), 1))
+cat("\nMean group 1:", round(mean(data[true_diff_indices[1], group == 1]), 1))
+
+# Store true differential expression status for later evaluation
+true_status <- rep("null", 10000)
+true_status[true_diff_indices] <- "DE"
+table(true_status)
+```
+
+### Performing Multiple T-Tests
+
+```{r multiple-tests1}
+# Perform t-test for each feature
+p.value <- numeric()
+for (i in 1:10000) {
+  p.value[i] <- t.test(data[i, ] ~ group)$p.value
+}
+
+# Visualize p-value distribution (should be uniform under null)
+hist(p.value, breaks = 50, main = "Distribution of P-values Under Null",
+     xlab = "P-value", col = "lightblue")
+
+# Count significant tests at α = 0.05
+sum(p.value < 0.05)
+
+# Create confusion matrix to evaluate performance
+predicted_sig <- p.value < 0.05
+table(True = true_status, Predicted = ifelse(predicted_sig, "Significant", "Not Sig"))
+
+# Calculate performance metrics
+true_positives <- sum(predicted_sig & true_status == "DE")
+false_positives <- sum(predicted_sig & true_status == "null")
+false_negatives <- sum(!predicted_sig & true_status == "DE")
+true_negatives <- sum(!predicted_sig & true_status == "null")
+
+cat("\nPerformance at α = 0.05 (no correction):\n")
+cat("True Positives:", true_positives, "\n")
+cat("False Positives:", false_positives, "\n")
+cat("False Negatives:", false_negatives, "\n")
+cat("True Negatives:", true_negatives, "\n")
+cat("Sensitivity (Power):", round(true_positives / 1000, 3), "\n")
+cat("False Discovery Rate:", round(false_positives / sum(predicted_sig), 3), "\n")
+```
+
+**Interpretation:** With 1,000 truly differentially expressed features and 9,000 null features, we can now evaluate the performance of different correction methods. Without correction, we detect many true positives but also have a high false discovery rate (many false positives among the significant results).
+
+## Family-Wise Error Rate (FWER) Corrections
+
+FWER methods control the probability of making at least one false positive across all tests.
+
+### Single-Step Methods
+
+```{r fwer-single-step}
+g <- 10000
+alpha <- 0.05
+
+# Bonferroni correction: most conservative
+bonferroni <- alpha / g
+bonferroni
+
+# Šidák single-step correction: slightly less conservative
+SidakSS <- 1 - (1 - alpha)^(1/g)
+SidakSS
+
+# Count significant results
+sum(p.value < bonferroni)
+sum(p.value < SidakSS)
+
+# Evaluate performance with Bonferroni correction
+bonf_sig <- p.value < bonferroni
+cat("\nBonferroni Performance:\n")
+cat("Significant features:", sum(bonf_sig), "\n")
+cat("True Positives:", sum(bonf_sig & true_status == "DE"), "\n")
+cat("False Positives:", sum(bonf_sig & true_status == "null"), "\n")
+cat("Sensitivity:", round(sum(bonf_sig & true_status == "DE") / 1000, 3), "\n")
+if(sum(bonf_sig) > 0) {
+  cat("FDR:", round(sum(bonf_sig & true_status == "null") / sum(bonf_sig), 3), "\n")
+}
+```
+
+### Step-Down Methods
+
+Step-down methods are more powerful than single-step methods as they adjust significance thresholds based on the rank of each p-value.
+
+```{r fwer-stepdown}
+# Holm's step-down method
+holm <- numeric()
+SidakSD <- numeric()
+
+for (i in 1:g) {
+  holm[i] <- alpha / (g - i + 1)
+  SidakSD[i] <- 1 - (1 - alpha)^(1/(g - i + 1))
+}
+
+# Show first 10 thresholds
+head(holm, 10)
+head(SidakSD, 10)
+
+# Count significant results with step-down methods
+sum(sort(p.value) < holm)
+sum(sort(p.value) < SidakSD)
+
+# Evaluate Holm's method performance
+holm_sig <- sort(p.value) < holm
+holm_features <- order(p.value)[holm_sig]
+cat("\nHolm's Method Performance:\n")
+cat("Significant features:", sum(holm_sig), "\n")
+cat("True Positives:", sum(true_status[holm_features] == "DE"), "\n")
+cat("False Positives:", sum(true_status[holm_features] == "null"), "\n")
+cat("Sensitivity:", round(sum(true_status[holm_features] == "DE") / 1000, 3), "\n")
+if(sum(holm_sig) > 0) {
+  cat("FDR:", round(sum(true_status[holm_features] == "null") / sum(holm_sig), 3), "\n")
+}
+```
+
+# Real-World Example: DNA Methylation Data
+
+## Loading and Exploring the Data
+
+This example uses DNA methylation data to test for differences between males and females across 1,490 CpG sites.
+
+```{r load-data, eval=FALSE}
+library(Biobase)
+
+# Load methylation data (update path as needed)
+load("/Users/mdozmorov/Documents/Work/Teaching/Fall 2015/07_Differential Expression/Methyl.RData")
+
+# Explore the data
+ls()
+methyl  # ExpressionSet with 1490 features, 95 samples
+
+# View expression values
+exprs(methyl)[1:5, 1:2]
+
+# View sample information
+pData(methyl)
+
+# Visualize distribution of first sample
+plot(density(exprs(methyl)[, 1]), 
+     main = "Distribution of Methylation Values",
+     xlab = "Methylation Beta Value")
+```
+
+## FWER Corrections for Real Data
+
+```{r fwer-real-data, eval=FALSE}
+# Calculate adjusted alpha levels for 1490 tests
+g <- 1490
+alpha <- 0.05
+
+bonferroni <- alpha / g
+SidakSS <- 1 - (1 - alpha)^(1/g)
+
+holm <- numeric()
+SidakSD <- numeric()
+
+for (i in 1:g) {
+  holm[i] <- alpha / (g - i + 1)
+  SidakSD[i] <- 1 - (1 - alpha)^(1/(g - i + 1))
+}
+
+# Compare first 10 thresholds
+cbind(holm, SidakSD)[1:10, ]
+```
+
+## Differential Methylation Analysis
+
+Testing each CpG site for differential methylation between males and females.
+
+```{r diff-methyl-analysis, eval=FALSE}
+# Check gender distribution
+table(pData(methyl)$Gender.rep)
+
+# Create binary gender variable (0 = female, 1 = male)
+gender <- pData(methyl)$Gender.rep - 1
+table(gender)
+
+# Perform t-test for each CpG site
+pvalue <- numeric()
+for (i in 1:dim(exprs(methyl))[1]) {
+  exprs_i <- as.numeric(exprs(methyl)[i, ])
+  pvalue[i] <- t.test(exprs_i[gender == 0], exprs_i[gender == 1])$p.value
+}
+
+# Count significant results with FWER methods
+sum(pvalue < bonferroni)
+sum(pvalue < SidakSS)
+sum(sort(pvalue) < holm)
+sum(sort(pvalue) < SidakSD)
+```
+
+## False Discovery Rate (FDR) Methods
+
+FDR methods control the expected proportion of false positives among rejected hypotheses, providing more power than FWER methods.
+
+### Benjamini-Hochberg Procedure
+
+The Benjamini-Hochberg (BH) procedure is the most widely used FDR control method.
+
+```{r bh-procedure, eval=FALSE}
+# Manual implementation of BH procedure
+k <- 1:g
+sorted.p <- sort(pvalue)
+
+# Reject hypotheses where p <= (alpha * rank) / total_tests
+bh <- ifelse(sorted.p <= (0.05 * k) / 1490, TRUE, FALSE)
+sum(bh)
+```
+
+### Using p.adjust Function
+
+```{r p-adjust, eval=FALSE}
+library(stats)
+
+# BH adjustment using built-in function
+by <- p.adjust(pvalue, method = "fdr")
+sum(by < 0.05)
+```
+
+### Q-value Method
+
+The q-value approach provides an alternative FDR estimation method (John Storey). 
+
+```{r qvalue-method, eval=FALSE}
+library(qvalue)
+
+# Calculate q-values
+qval <- qvalue(pvalue)
+names(qval)
+
+# Count significant features at FDR < 0.05
+sum(qval$qvalues < 0.05)
+```
+
+# Differential Expression with Limma
+
+The limma package provides a sophisticated approach to differential expression analysis using moderated t-statistics, which "borrows information" across features to improve power.
+
+## Setting Up the Linear Model
+
+```{r limma-setup, eval=FALSE}
+library(limma)
+
+# Create design matrix
+f <- factor(gender, levels = unique(gender))
+design <- model.matrix(~0 + f)
+
+# Fit linear model
+fit <- lmFit(methyl, design = design)
+
+# Define contrast (difference between genders)
+contrast.matrix <- makeContrasts(deg = f1 - f0, levels = design)
+
+# Fit contrasts
+fit2 <- contrasts.fit(fit, contrast.matrix)
+
+# Apply empirical Bayes moderation
+fit3 <- eBayes(fit2)
+```
+
+## Comparing Adjustment Methods in Limma
+
+### No Adjustment
+
+```{r limma-none, eval=FALSE}
+out <- topTable(fit3, adjust.method = "none", number = Inf, sort.by = "B")
+sign <- rownames(out)[out$adj.P.Val < 0.05]
+length(sign)
+```
+
+### Benjamini-Hochberg FDR
+
+```{r limma-bh, eval=FALSE}
+out <- topTable(fit3, adjust.method = "BH", number = Inf)
+sign <- rownames(out)[out$adj.P.Val < 0.05]
+length(sign)
+```
+
+### Holm's FWER Method
+
+```{r limma-holm, eval=FALSE}
+out <- topTable(fit3, adjust.method = "holm", number = Inf, sort.by = "none")
+sign <- rownames(out)[out$adj.P.Val < 0.05]
+length(sign)
+```
+
+# Summary
+
+This document demonstrated:
+
+- **T-tests**: Both manual calculation and built-in functions for comparing two groups
+- **Multiple testing problem**: How conducting many tests inflates Type I error rates
+- **FWER corrections**: Conservative methods (Bonferroni, Šidák, Holm) that control family-wise error
+- **FDR methods**: More powerful approaches (BH, q-value) that control false discovery rate
+- **Limma package**: Advanced differential expression analysis with moderated t-statistics
+
+**Key Takeaway:** Always correct for multiple testing when performing many simultaneous hypothesis tests. Choose FWER methods when strict control of false positives is critical, or FDR methods when greater power is needed and some false positives are acceptable.
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+

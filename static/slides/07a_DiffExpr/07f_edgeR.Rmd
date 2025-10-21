@@ -1,0 +1,268 @@
+---
+title: "edgeR: RNA-seq Differential Expression Analysis"
+subtitle: "Statistical Models and Inference"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+library(dplyr)
+library(ggplot2)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+
+## Introduction  
+
+- **edgeR** is a Bioconductor package for differential expression $DE$ of count data (RNA-seq, SAGE, etc.). 
+
+- It models read counts as an **overdispersed Poisson** $Negative Binomial$ distribution to account for both technical and biological variability.  
+
+- The package can handle experiments with very few replicates by borrowing information across genes - Empirical Bayes method. 
+
+- Key capabilities include two-group *exact tests* and generalized linear models GLMs with likelihood or quasi-likelihood tests.  
+
+.small[ https://bioconductor.org/packages/edgeR/ ]
+
+---
+## Negative Binomial Model  
+
+- Let $Y_{gi}$ be the count for gene *g* in sample *i*. edgeR uses a **Negative Binomial $NB$** model: $Y_{gi} \sim \text{NB}\mu_{gi}, \phi_g$. 
+- Here $\mu_{gi}=M_i p_{g}$ with $M_i$ = library size and $p_{g}$ = relative abundance of gene *g* (possibly depending on group).  
+
+- Under this NB parameterization, $\mathbb{E}[Y_{gi}]=\mu_{gi}$ and 
+  $$\mathrm{Var}Y_{gi} = \mu_{gi} + \phi_g\,\mu_{gi}^2$$
+  which exceeds the Poisson variance by the dispersion term $\phi_g$. When $\phi_g=0$, the model reduces to Poisson.  
+
+---
+## Dispecrion
+
+- The dispersion $\phi_g$ captures biological variability _coefficient of biological variation squared_. 
+
+- The **biological coefficient of variation $BCV$** is defined as $\sqrt{\phi_g}$, representing the extra variability between replicates beyond Poisson noise.  
+
+---
+## Estimation of Dispersion  
+
+Since each gene has few replicates, edgeR uses *borrowing information* across genes. It estimates:  
+
+- **Common dispersion**: a single $\phi$ for all genes assumes identical mean-variance.  
+
+- **Trended dispersion**: a smooth mean-dependent trend $\phi\bar\mu$ so genes with similar average count $\bar\mu$ share variance.  
+
+- **Tagwise dispersion**: a gene-specific $\phi_g$, estimated with empirical Bayes shrinkage towards the common or trended values. This allows high-variability genes to have larger dispersions and stable genes to have smaller dispersions.  
+
+---
+## Estimation of Dispersion  
+
+- edgeR uses an **Empirical Bayes** strategy: raw tagwise dispersions are “squeezed” toward a global trend or common value. The amount of shrinkage depends on data-driven prior degrees of freedom. This moderation stabilizes dispersion estimates, especially in small samples.  
+
+- In practice, one calls `estimateDisp(y, design)` or `estimateCommonDisp`/`estimateTagwiseDisp` to compute these estimates. The result can be visualized $BCV plot$ to check the mean-variance trend.  
+
+---
+## Exact Test for Two-Group Comparison  
+
+- For a simple two-group one-factor design, edgeR provides an *exact test* analogous to Fisher’s exact test but adapted to NB counts. It conditions on the library sizes and total counts for a gene, then computes p-values by summing tail probabilities under the NB null.  
+
+- This **exactTest** is implemented via `exactTest()` in edgeR, allowing either common or tagwise dispersions. It is valid only for single-factor designs (it ignores other factors). The top genes can be retrieved by `topTags()`.  
+
+```{r, eval=FALSE}
+  y <- DGEList(counts=counts, group=group) 
+  y <- calcNormFactors(y)             # TMM normalization 
+  y <- estimateDisp(y)                # estimate dispersions (common/trended/tagwise)
+  et <- exactTest(y)                  # perform exact test for two groups
+  topTags(et)                         # top DE genes
+```
+
+The exact test is most powerful for small sample, two-group comparisons
+
+---
+## Generalized Linear Models (GLMs)
+
+- For complex experiments (multifactor, batches, interactions), edgeR uses a NB GLM framework
+
+- We specify a design matrix $X$ encoding factors. The model is $\log(\mu_{gi}) = X_i \beta_g + logL_i$ (log-linear). Offsets ($logL_i$ log library size) are included automatically.
+
+- Dispersions (common/trended/tagwise) are estimated as before but respecting the design
+
+- Then gene-wise coefficients $\beta_g$ are fitted by conditional maximum likelihood (Cox-Reid adjusted) via `glmFit()`.
+
+---
+## Generalized Linear Models (GLMs)
+
+- Differential expression tests compare coefficients (contrasts) using:
+  - Likelihood ratio tests (`glmLRT`) for NB GLMs
+  - Quasi-likelihood F-tests (`glmQLFTest`) for more robust inference (see next slide).
+
+- Example: for a design matrix design <- model.matrix(~ group + batch), one could do:
+```{r, eval=FALSE}
+fit <- glmQLFit(y, design)         # fit NB GLM with QL dispersion
+qlf <- glmQLFTest(fit, coef=2)     # test for group effect
+topTags(qlf)
+```
+
+(Here coef=2 tests the second coefficient, e.g. group effect.)
+
+---
+## Quasi-Likelihood (QL) Methods
+
+EdgeR also implements **quasi-likelihood (QL)** models to capture additional variability. In the QL framework, the variance is given by:
+
+$$\mathrm{Var}(Y_{gi}) = \sigma_g^2(\mu_{gi} + \phi \mu_{gi}^2)$$
+
+where $\phi$ is the **global Negative Binomial (NB) dispersion** and $\sigma_g^2$ is a **gene-specific QL dispersion**. 
+
+- Any excess variance (beyond NB) is absorbed into $\sigma_g^2$. Here, $\phi$ reflects overall biological variability, and $\sigma_g^2$ captures gene-wise overdispersion beyond the NB model. This makes tests more conservative and robust to model violations.
+
+---
+## Quasi-Likelihood (QL) Methods
+
+- Estimation first involves fitting a common or trended $\phi$, then estimating raw QL dispersions $\sigma_g^2$ for each gene. These raw estimates are very noisy with few replicates, so edgeR applies an **Empirical Bayes** fit: the raw QL dispersions are trended by mean, then shrunk toward that trend.
+
+- The result is a **moderated QL dispersion** for each gene, which is used in the `glmQLFit()` and `glmQLFTest()` functions. These quasi-likelihood F-tests are often preferred for controlling false discoveries in small-sample RNA-seq.
+
+---
+## Empirical Bayes Shrinkage
+
+- A hallmark of **edgeR** is **Empirical Bayes (EB) shrinkage** of dispersion estimates. **Tagwise dispersions** $\phi_g$ are moderated toward a global trend or common value. This pooling increases power and stability: even genes with few counts get reasonable $\phi_g$ estimates.
+
+- Robinson and Smyth (2007, 2008) showed that this moderated dispersion approach yields reliable testing even with only 1–2 replicates per condition. In practice, **prior degrees of freedom** are estimated from the data, determining the strength of the shrinkage.
+
+---
+## Empirical Bayes Shrinkage
+
+- Shrinkage of Fold Changes: edgeR also moderates **log-fold-changes (LFCs)** for very low counts. When computing normalized log-CPM (counts per million), a **prior count** (e.g., `prior.count=0.25`) is added. This has the effect of shrinking LFCs toward $0$ for low-abundance genes, which avoids infinite or wildly large LFCs.
+
+In summary, edgeR's Bayesian machinery yields stable estimates of dispersions and shrunk effect sizes, enhancing inference reliability.
+
+---
+## Case Study: Two-Group DE Example
+
+- Setup: Simulate or load counts for two groups (e.g. 3 controls vs 3 treated). Build a DGEList, normalize and estimate dispersion:
+
+```{r eval=FALSE}
+group <- factor(c(rep("Ctrl",3), rep("Trt",3)))
+y <- DGEList(counts=counts, group=group)
+y <- calcNormFactors(y)      # TMM normalization
+y <- estimateDisp(y)         # estimate common/trended/tagwise
+plotBCV(y)                   # (optional) BCV vs logCPM plot
+```
+
+Exact Test: For simple two-group, use:
+
+```{r eval=FALSE}
+et <- exactTest(y)           # exact test for group
+topTags(et)
+```
+
+This will list DE genes ranked by fold-change and p-value
+
+---
+## Case Study: Two-Group DE Example
+
+GLM/QL Test: Alternatively (especially if adjusting for batches), use GLM-QF:
+
+```{r eval=FALSE}
+design <- model.matrix(~group)
+fit <- glmQLFit(y, design)
+qlf <- glmQLFTest(fit, coef=2)   # test group effect
+topTags(qlf)
+```
+
+The output lists log-fold-changes and FDR-adjusted p-values. For example, genes with large $\log_2$FC and small FDR are called DE. (One can visualize results with MA-plots via plotSmear(y, de.tags=...).)
+
+---
+## Fractional Counts in Sequencing Data
+
+* Quantification tools (e.g., **RSEM**, **Salmon**, **Kallisto**) **distribute read counts fractionally** among possible targets based on posterior probabilities.
+
+* Transcript abundance estimation often uses **expectation–maximization (EM)** algorithms. 
+  * Each iteration assigns **fractional weights** of reads to transcripts depending on compatibility with isoform structures.
+  * Leads to **non-integer expression estimates** per transcript.
+
+---
+## Continuous Generalization of the Negative Binomial Distribution
+
+* Traditional **NB models** assume **integer read counts**.
+
+* Rounding fractional values leads to **information loss** and **bias in dispersion estimation**.
+
+* **edgeR v4** introduces a **continuous generalization** of the NB distribution.
+
+* Allows **fractional counts** without rounding by extending NB probability calculations to the **real domain**.
+
+* Implemented via **divided counts** (Baldoni et al., 2024–2025):
+  * Fractionalized reads represent **uncertainty from ambiguous assignment**.
+  * Variance function preserved: $\mathrm{Var}(y_{gi}) = \sigma_g^2 (\mu_{gi} + \phi_g \mu_{gi}^2)$
+  * Technical variability (σ²) and biological variability (ψ) remain estimable.
+
+* Supports new applications: **differential transcript usage**, **methylation**, **fractional read assignments**.
+
+---
+## Visualization
+
+* **MDS Plot (Multidimensional Scaling)** - Visualizes global sample relationships based on expression profiles.
+  * Helps detect **batch effects**, **outliers**, and **biological clustering**.
+
+* **BCV Plot (Biological Coefficient of Variation)** vs. average expression.
+  * Diagnoses **mean–variance trend** and variability across genes.
+
+* **Quasi-Dispersion Plot** vs. average expression.
+  * Used to assess **empirical Bayes moderation** and detect **hypervariable genes**.
+
+* **Mean–Difference (MD) / MA Plot**
+  * Highlights differentially expressed genes between conditions.
+
+---
+## Specialized Visualization
+
+* **Differential Splicing Plot**
+  * Displays exon-level differential usage for a gene.
+  * Highlights exons contributing to **alternative splicing events**.
+
+* **Dispersion Trend Plots**
+  * Illustrate trends in **NB-dispersion** and **quasi-dispersion** across genes.
+  * Validate dispersion modeling assumptions.
+
+---
+## Key Takeaways
+
+- The NB model (mean-variance quadratic) effectively captures RNA-seq count variability
+
+- Accurate dispersion estimation (common/trended/tagwise) is crucial; edgeR’s EB shrinkage improves estimates
+
+- The exact test is straightforward for two-group comparisons, while the GLM framework handles complex designs
+
+- Quasi-likelihood methods offer robust DE testing by modelling extra gene-specific variation
+
+- Overall, edgeR leverages Empirical Bayes to stabilize dispersions (and even LFCs) for reliable inference
+
+---
+## References
+
+Chen, Yunshun, Lizhong Chen, Aaron T L Lun, Pedro L Baldoni, and Gordon K Smyth. “edgeR v4: Powerful Differential Analysis of Sequencing Data with Expanded Functionality and Improved Support for Small Counts and Larger Datasets.” Nucleic Acids Research 53, no. 2 (2025): gkaf018. https://doi.org/10.1093/nar/gkaf018.

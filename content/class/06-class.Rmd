@@ -63,4 +63,4 @@ knitr::include_url('../../slides/07a_DiffExpr/07f_edgeR.html#1')
 
 ### Code examples
 
-- multitest.Rmd, <a href="../../slides/07a_DiffExpr/lab/multitest.Rmd.Rmd" target="_blank">Rmd</a>, <a href="../../slides/07a_DiffExpr/lab/multitest.Rmd.html" target="_blank">HTML</a>
+- multitest.Rmd, <a href="../../slides/07a_DiffExpr/lab/multitest.Rmd" target="_blank">Rmd</a>, <a href="../../slides/07a_DiffExpr/lab/multitest.html" target="_blank">HTML</a>

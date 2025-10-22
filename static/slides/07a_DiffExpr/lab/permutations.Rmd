@@ -1,0 +1,370 @@
+---
+title: "Permutation Testing for Gene Enrichment Analysis"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introduction
+
+This document demonstrates **permutation testing** for assessing gene enrichment on a specific chromosome. The key question is: **Are differentially expressed genes (DEGs) over-represented on a particular chromosome compared to what we'd expect by chance?**
+
+Permutation testing is a non-parametric approach that:
+- Makes no assumptions about the underlying distribution
+- Creates an empirical null distribution through random sampling
+- Provides an alternative to parametric tests like Fisher's exact test or Chi-square test
+
+# Background: The Biological Question
+
+Imagine you have:
+
+- **200 total genes** in your study (e.g., from a gene expression experiment)
+- **40 genes are located on Chromosome 1**, and 160 genes are on other chromosomes
+- You identify **50 differentially expressed genes (DEGs)**
+- Among these 50 DEGs, **15 are on Chromosome 1**
+
+**Question:** Is Chromosome 1 enriched for DEGs, or could this pattern occur by random chance?
+
+# Setting Up the Data
+
+## Total Gene Population
+
+First, we define the complete set of genes in our analysis, classified by their chromosomal location.
+
+```{r total-genes}
+# Create vector representing all genes in the study
+# 40 genes on Chromosome 1, 160 on other chromosomes
+a <- c(rep("On Other Chromosomes", 160), rep("On Chromosome 1", 40)) 
+
+# Calculate totals
+total.all   <- length(a)                        # Total genes (200)
+total.chr   <- sum(a == "On Chromosome 1")      # Genes on Chromosome 1 (40)
+total.other <- sum(a == "On Other Chromosomes") # Genes on other chromosomes (160)
+
+# Verify totals add up correctly
+all.equal(total.all, total.chr + total.other)
+
+cat("Total genes:", total.all, "\n")
+cat("Genes on Chromosome 1:", total.chr, "(", round(100*total.chr/total.all, 1), "%)\n")
+cat("Genes on other chromosomes:", total.other, "(", round(100*total.other/total.all, 1), "%)\n")
+```
+
+## Differentially Expressed Genes (DEGs)
+
+Next, we define which genes are differentially expressed in our experiment.
+
+```{r deg-genes}
+# Selected genes (DEGs): 50 total
+# 15 on Chromosome 1, 35 on other chromosomes
+b <- c(rep("On Other Chromosomes", 35), rep("On Chromosome 1", 15))
+
+selected.chr   <- sum(b == "On Chromosome 1")      # DEGs on Chromosome 1 (15)
+selected.other <- sum(b == "On Other Chromosomes") # DEGs on other chromosomes (35)
+
+cat("Total DEGs:", length(b), "\n")
+cat("DEGs on Chromosome 1:", selected.chr, "(", round(100*selected.chr/length(b), 1), "%)\n")
+cat("DEGs on other chromosomes:", selected.other, "(", round(100*selected.other/length(b), 1), "%)\n")
+```
+
+**Observation:** While only 20% of all genes are on Chromosome 1, **30% of DEGs** are on Chromosome 1. This suggests possible enrichment.
+
+# Creating the Contingency Table
+
+A 2×2 contingency table summarizes the relationship between chromosomal location and differential expression status.
+
+```{r contingency-table}
+# Create 2x2 contingency table
+#                    DEGs    not DEGs
+# On Chromosome 1      15         25   (40 total)
+# Other Chromosomes    35        125   (160 total)
+#                     (50)      (150)  (200 total)
+
+mtx <- matrix(c(selected.chr, 
+                selected.other, 
+                total.chr - selected.chr, 
+                total.other - selected.other), 
+              ncol = 2, 
+              dimnames = list(c("On Chromosome 1", "On Other Chromosomes"), 
+                              c("DEGs", "not DEGs")))
+
+print(mtx)
+cat("\nTotal genes (verification):", sum(mtx), "\n")
+```
+
+**Reading the table:**
+
+- **Row 1:** Of 40 genes on Chromosome 1, 15 are DEGs and 25 are not
+- **Row 2:** Of 160 genes on other chromosomes, 35 are DEGs and 125 are not
+- **Column 1:** Of 50 DEGs total, 15 are on Chromosome 1 and 35 are elsewhere
+- **Column 2:** Of 150 non-DEGs, 25 are on Chromosome 1 and 125 are elsewhere
+
+# Traditional Statistical Tests
+
+## Fisher's Exact Test
+
+Fisher's exact test calculates the exact probability of observing this contingency table (or more extreme) under the null hypothesis of independence.
+
+```{r fisher-test}
+fisher_p <- fisher.test(mtx)$p.value
+cat("Fisher's exact test p-value:", fisher_p, "\n")
+
+if (fisher_p < 0.05) {
+  cat("Result: Significant enrichment detected (p < 0.05)\n")
+} else {
+  cat("Result: No significant enrichment (p >= 0.05)\n")
+}
+```
+
+**Interpretation:** Fisher's exact test is the gold standard for small sample contingency tables and provides an exact p-value without relying on asymptotic approximations.
+
+## Chi-Square Test
+
+The Chi-square test of independence assesses whether the two categorical variables (chromosomal location and DEG status) are independent.
+
+```{r chisq-test}
+chisq_p <- chisq.test(mtx)$p.value
+cat("Chi-square test p-value:", chisq_p, "\n")
+
+if (chisq_p < 0.05) {
+  cat("Result: Significant association detected (p < 0.05)\n")
+} else {
+  cat("Result: No significant association (p >= 0.05)\n")
+}
+```
+
+**Note:** Chi-square test uses asymptotic approximations and may be less accurate for small sample sizes, but gives similar results to Fisher's test in most cases.
+
+# Permutation Testing Approach 1: Using Test Statistics
+
+## Concept
+
+Instead of relying on theoretical distributions, we create an **empirical null distribution** by:
+1. Randomly selecting 50 genes (same size as our DEG set) from all 200 genes
+2. Calculating the Chi-square statistic for each random selection
+3. Repeating this process many times (10,000 permutations)
+4. Comparing our observed statistic to this empirical distribution
+
+**Null Hypothesis:** DEGs are randomly distributed with respect to chromosomal location.
+
+## Implementation
+
+```{r permutation-chisq}
+set.seed(2)  # For reproducibility
+
+# Number of permutations
+n <- 1:10000
+
+# Observed test statistic from our actual data
+estimate <- chisq.test(mtx)$statistic
+cat("Observed Chi-square statistic:", round(estimate, 3), "\n\n")
+
+# Generate permutation distribution
+estimate.rand <- sapply(n, function(x) {
+  # Randomly select 50 genes from all 200 genes (without replacement)
+  b.rand <- sample(a, size = length(b))
+  
+  # Count how many randomly selected genes are on each chromosome
+  selected.chr.rand <- sum(b.rand == "On Chromosome 1")
+  selected.other.rand <- sum(b.rand == "On Other Chromosomes")
+  
+  # Create permutation contingency table
+  mtx.rand <- matrix(c(selected.chr.rand, 
+                       selected.other.rand, 
+                       total.chr - selected.chr.rand, 
+                       total.other - selected.other.rand), 
+                     ncol = 2)
+  
+  # Calculate Chi-square statistic for this permutation
+  chisq.test(mtx.rand)$statistic
+})
+
+# Calculate permutation p-value
+perm_p_chisq <- (sum(estimate.rand >= estimate) + 1) / (length(n) + 1)
+cat("Permutation p-value (Chi-square method):", perm_p_chisq, "\n")
+```
+
+## Visualizing the Permutation Distribution
+
+```{r permutation-viz-chisq, fig.width=8, fig.height=5}
+# Plot histogram of permutation distribution
+hist(estimate.rand, 
+     breaks = 50, 
+     main = "Permutation Distribution of Chi-square Statistics",
+     xlab = "Chi-square Statistic",
+     col = "lightblue",
+     border = "white")
+
+# Add observed statistic as vertical line
+abline(v = estimate, col = "red", lwd = 2, lty = 2)
+
+# Add legend
+legend("topright", 
+       legend = c("Permutation distribution", 
+                  paste("Observed statistic =", round(estimate, 2))),
+       col = c("lightblue", "red"), 
+       lwd = c(10, 2), 
+       lty = c(1, 2))
+
+# Add text with p-value
+text(x = max(estimate.rand) * 0.7, 
+     y = max(hist(estimate.rand, plot = FALSE)$counts) * 0.9,
+     labels = paste("Permutation p-value =", perm_p_chisq),
+     cex = 1.2)
+```
+
+**Interpretation:** The red line shows our observed Chi-square statistic. The permutation p-value represents the proportion of random permutations that produced a statistic as extreme or more extreme than what we observed.
+
+# Permutation Testing Approach 2: Using Count Differences
+
+## Concept
+
+A simpler approach focuses directly on the **count** of DEGs on Chromosome 1:
+
+- **Expected under null:** If DEGs are randomly distributed, we expect ~20% of 50 DEGs (= 10 genes) on Chromosome 1
+- **Observed:** We actually see 15 DEGs on Chromosome 1
+- **Question:** How often would we see 15 or more genes on Chromosome 1 by random chance?
+
+## Implementation
+
+```{r permutation-count}
+set.seed(1)  # For reproducibility
+n <- 1:10000
+
+# Observed count of DEGs on Chromosome 1
+estimate <- selected.chr
+cat("Observed DEGs on Chromosome 1:", estimate, "\n")
+cat("Expected DEGs on Chromosome 1 (under null):", 
+    round(length(b) * total.chr / total.all, 1), "\n\n")
+
+# Generate permutation distribution of counts
+estimate.rand <- sapply(n, function(x) {
+  # Randomly select 50 genes from all 200 genes
+  b.rand <- sample(a, size = length(b))
+  
+  # Count how many are on Chromosome 1
+  sum(b.rand == "On Chromosome 1")
+})
+
+# Calculate permutation p-value
+# Count how often random selection gives >= observed count
+perm_p_count <- sum(estimate.rand >= estimate) / length(n)
+cat("Permutation p-value (count method):", perm_p_count, "\n")
+```
+
+## Visualizing the Count Distribution
+
+```{r permutation-viz-count, fig.width=8, fig.height=5}
+# Plot histogram of permutation counts
+hist(estimate.rand, 
+     breaks = seq(min(estimate.rand) - 0.5, max(estimate.rand) + 0.5, by = 1),
+     main = "Permutation Distribution of DEG Counts on Chromosome 1",
+     xlab = "Number of DEGs on Chromosome 1",
+     col = "lightgreen",
+     border = "white")
+
+# Add observed count as vertical line
+abline(v = estimate, col = "red", lwd = 2, lty = 2)
+
+# Add expected count as vertical line
+expected_count <- length(b) * total.chr / total.all
+abline(v = expected_count, col = "blue", lwd = 2, lty = 3)
+
+# Add legend
+legend("topright", 
+       legend = c("Permutation distribution", 
+                  paste("Observed count =", estimate),
+                  paste("Expected count =", round(expected_count, 1))),
+       col = c("lightgreen", "red", "blue"), 
+       lwd = c(10, 2, 2), 
+       lty = c(1, 2, 3))
+
+# Add text with p-value
+text(x = max(estimate.rand) * 0.85, 
+     y = max(hist(estimate.rand, plot = FALSE)$counts) * 0.9,
+     labels = paste("Permutation p-value =", perm_p_count),
+     cex = 1.2)
+```
+
+**Interpretation:** The distribution shows what we'd expect by random chance. The red line (observed = 15) is notably higher than the blue line (expected ≈ 10), indicating enrichment.
+
+# Comparing All Methods
+
+```{r compare-methods}
+results <- data.frame(
+  Method = c("Fisher's Exact Test", 
+             "Chi-square Test", 
+             "Permutation (Chi-square)", 
+             "Permutation (Count)"),
+  P_Value = c(fisher_p, chisq_p, perm_p_chisq, perm_p_count),
+  Significant = c(fisher_p < 0.05, 
+                  chisq_p < 0.05, 
+                  perm_p_chisq < 0.05, 
+                  perm_p_count < 0.05)
+)
+
+print(results)
+```
+
+## Summary Statistics
+
+```{r summary-stats}
+cat("Summary of Permutation Distribution (Count Method):\n")
+cat("Mean:", round(mean(estimate.rand), 2), "\n")
+cat("Median:", median(estimate.rand), "\n")
+cat("SD:", round(sd(estimate.rand), 2), "\n")
+cat("95% CI:", quantile(estimate.rand, c(0.025, 0.975)), "\n")
+cat("\nObserved value:", estimate, "\n")
+cat("Z-score:", round((estimate - mean(estimate.rand)) / sd(estimate.rand), 2), "\n")
+```
+
+# Key Insights
+
+## Advantages of Permutation Testing
+
+1. **No distributional assumptions:** Works regardless of data distribution
+2. **Exact for finite samples:** Especially valuable for small sample sizes
+3. **Intuitive interpretation:** Directly answers "How often would we see this by chance?"
+4. **Flexible:** Can use any test statistic, not just standard ones
+
+## When to Use Permutation Tests
+
+- Small sample sizes where asymptotic approximations may fail
+- When distributional assumptions of parametric tests are violated
+- When you need an exact test but Fisher's exact is computationally prohibitive
+- When you want to use a custom test statistic
+
+## Computational Considerations
+
+- **Number of permutations:** More permutations = more precise p-value
+  - 1,000 permutations: precision ± 0.01
+  - 10,000 permutations: precision ± 0.003
+  - Use at least 1,000 for published work
+- **Computational cost:** Increases linearly with number of permutations
+- **Random seed:** Always set for reproducibility
+
+# Conclusions
+
+In this example, all methods (Fisher's exact, Chi-square, and both permutation approaches) give similar results, suggesting that:
+
+1. **Chromosome 1 shows enrichment for DEGs** if p < 0.05
+2. **The enrichment is robust** across different statistical approaches
+3. **Permutation tests validate** the parametric test results
+
+The permutation approach is particularly valuable because it:
+- Provides an independent validation of traditional tests
+- Offers intuitive visualization of the null distribution
+- Works well even with small sample sizes or violated assumptions
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```

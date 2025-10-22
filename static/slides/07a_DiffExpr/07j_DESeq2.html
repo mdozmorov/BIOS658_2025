@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>DESeq2: Statistical Framework for RNA-seq Analysis</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-10-22" />
+    <script src="libs/header-attrs-2.29/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# DESeq2: Statistical Framework for RNA-seq Analysis
+]
+.subtitle[
+## Normalization, Generalized Linear Models, and Hypothesis Testing
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-10-22
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## DESeq2: Differential expression for count data
+
+Differential expression analysis of RNA-seq data in DESeq2 follows the pipeline: 
+
+1. Normalization for library size, 
+2. Estimating dispersion per gene, 
+3. Fitting a Negative Binomial GLM, 
+4. Hypothesis testing (Wald or LRT), 
+5. Shrinkage of log-fold changes. 
+
+DESeq2 shares information across genes via Empirical Bayes shrinkage to stabilize dispersion and fold-change.
+
+---
+## Library size normalization
+
+* **Size factors:** DESeq2 computes one size factor `\(s_j\)` per sample to normalize for sequencing depth and RNA composition.
+  Counts are modeled as Negative Binomial (NB)
+  `\(K_{ij} \sim \text{NB}(\mu_{ij}, \alpha_i)\)` with `\(\mu_{ij} = s_j , q_{ij}\)`
+
+- We don’t know `\(s_j\)` or `\(q_{ij}\)` — both are unknown.
+But we can estimate `\(s_j\)` **up to a constant multiplier** because *ratios* between samples are meaningful.
+
+- The size factors `\(s_j\)` are estimated by the **median-of-ratios** method: for each sample, take the median of gene-wise ratios of counts to the geometric mean across samples.
+
+---
+## The median-of-ratios method
+
+- **Compute a “pseudo-reference” expression** for each gene
+   * For each gene `\(i\)`, compute its **geometric mean** across all samples: `\(g_i = \left(\prod_{j=1}^m K_{ij} \right)^{1/m}\)`.
+     Genes with zero counts &lt;!--in all samples--&gt; are ignored.
+
+
+- **Compute ratios** for each sample
+   * For each sample `\(j\)`, compute the ratio of that gene’s count to the pseudo-reference:
+     `\(r_{ij} = \frac{K_{ij}}{g_i}\)`.
+     Each ratio tells how much higher/lower gene `\(i\)` is in sample `\(j\)` compared to the overall geometric mean.
+
+
+- **Take the median ratio across genes** for each sample
+   * The size factor `\(s_j\)` is defined as:
+     `\(s_j = \text{median}_i \left(r_{ij} \right) = \text{median}_i \left(\frac{K_{ij}}{g_i} \right)\)`.
+     This median summarizes how sample `\(j\)`’s expression levels compare globally to the pseudo-reference.
+
+---
+## Effect of normalization
+
+* The **geometric mean** represents a typical value across samples and handles multiplicative differences well (counts scale multiplicatively with sequencing depth).
+
+* The **median** provides robustness to a few genes with very large or very small fold-changes (outliers).
+
+* The normalized counts are computed as: `\(K_{ij}^{\text{norm}} = \frac{K_{ij}}{s_j}\)`.
+
+After this, differences between samples reflect **biological variation** rather than sequencing depth or compositional bias.
+
+
+``` r
+# Example: estimate size factors in DESeq2
+dds &lt;- DESeqDataSetFromMatrix(countData=counts, colData=coldata, design=~ condition)
+dds &lt;- estimateSizeFactors(dds)
+sizeFactors(dds)  # shows the median-ratio size factors
+```
+
+---
+## Dispersion estimation (Empirical Bayes shrinkage)
+
+- **Gene-wise dispersion (`\(\alpha_i\)`):** For each gene `\(i\)`, DESeq2 computes a maximum-likelihood estimate (MLE) of the dispersion `\(\alpha_i\)` using that gene’s counts. These estimates are noisy with few replicates
+
+Remember DESeq2 models each gene’s counts as: `\(K_{ij} \sim \text{NB}(\mu_{ij}, \alpha_i)\)`, with `\(\mathbb{E}[K_{ij}] = \mu_{ij}\)`, `\(\quad \mathrm{Var}(K_{ij}) = \mu_{ij} + \alpha_i \mu_{ij}^2\)`.
+
+* `\(\mu_{ij}\)` represents **Poisson noise** (sampling/technical variation).
+* `\(\alpha_i \mu_{ij}^2\)` captures **biological variability** (extra-Poisson variance).
+
+So `\(\alpha_i\)` controls how much the variance exceeds the mean. For each gene `\(i\)`:
+
+1. Compute the fitted means `\(\hat{\mu}_{ij}\)` using the GLM (after normalization).
+2. Find the dispersion `\(\alpha_i\)` that **maximizes the NB likelihood**: `\(L(\alpha_i) = \prod_j f_{\text{NB}}(K_{ij} \mid \mu_{ij}, \alpha_i)\)`.
+3. This yields a **maximum-likelihood estimate (MLE)** `\(\hat{\alpha}_i\)`.
+
+Formally, it’s the dispersion that makes the observed variability most probable under the NB assumption — not just the raw variance of the counts.
+
+---
+## Dispersion estimation (Empirical Bayes shrinkage)
+
+- **Dispersion-mean trend:** DESeq2 then fits a smooth curve of dispersion versus mean count (the “trend”) across all genes. This captures the typical dependence of dispersion on expression strength.
+
+- **Shrinkage (EB):** The gene-wise dispersions are shrunk toward the trend via an empirical Bayes approach. Intuitively, genes with little information (low count or few replicates) borrow strength from the overall trend. The final dispersion is the maximum a posteriori (MAP) estimate. The amount of shrinkage is data-driven: with more samples, shrinkage is weaker. (Outlier genes with very high dispersion may use the gene-wise estimate instead of being shrunk.)
+
+
+``` r
+# Example: estimate dispersions in DESeq2 (called internally by DESeq)
+dds &lt;- estimateDispersions(dds)  # fits gene-wise dispersions, trend, and MAP shrinkage
+plotDispEsts(dds)               # visualize gene-wise (black), fitted (red), and MAP (blue) dispersions
+```
+
+---
+## Negative binomial GLM model
+
+- DESeq2 assumes counts `\(K_{ij} \sim \mathrm{NB}(\mu_{ij}, \alpha_i)\)` for gene `\(i\)` and sample `\(j\)`, with a log link function:
+`$$\log(\mu_{ij}) = \log(s_j) + X_j \beta_i$$`
+
+where
+
+* `\(s_j\)` — size factor for sample `\(j\)`,
+* `\(X_j\)` — design matrix row (e.g., indicators for condition or batch),
+* `\(\beta_i\)` — gene-specific coefficient vector.
+
+---
+## Negative binomial GLM model
+
+- DESeq2 assumes counts `\(K_{ij} \sim \mathrm{NB}(\mu_{ij}, \alpha_i)\)` for gene `\(i\)` and sample `\(j\)`, with a log link function:
+`$$\log(\mu_{ij}) = \log(s_j) + X_j \beta_i$$`
+
+- **Coefficients:** Typically, `\(\beta_i\)` includes an **intercept** (log mean expression), and one or more **condition effects** (`\(\log_2\)`-fold change between treatment and control). That is what gets estimated for each gene.
+
+- **Flexibility:** More complex designs (covariates, interactions, blocking factors) are handled by adding terms to the **design formula** in `\(X\)`.
+
+
+``` r
+# Example: run DESeq (size factor + dispersion estimation + GLM fitting)
+dds &lt;- DESeq(dds)  # performs size factor normalization, dispersion estimation, and GLM fitting
+```
+
+---
+## Hypothesis testing (Wald)
+
+&lt;!-- **Wald test (default):** DESeq2 tests significance of coefficients (e.g. log fold change) using Wald t-test. 
+
+- The estimate `\(\hat{\beta}\)` is divided by its standard error to form a z-statistic, compared to Normal(0,1). 
+
+- This tests `\(H_0\)`: `\(\beta=0\)` (no log fold change) unless a log-FC threshold is specified. P-values (for each gene) are adjusted by Benjamini-Hochberg FDR. --&gt;
+
+- **Wald test (default):** DESeq2 tests the significance of individual coefficients (e.g., log2 fold changes) in the fitted negative binomial GLM.
+
+* For each gene and coefficient, DESeq2 estimates `\(\hat{\beta}\)` and `\(SE(\hat{\beta})\)`.
+
+* The **Wald statistic** is computed as `\(z = \frac{\hat{\beta} }{SE(\hat{\beta})}\)` which is approximately `\(N(0,1)\)` under the null hypothesis `\(H_0: \beta = 0\)` (no log2 fold change between conditions).
+
+* **Inference:** Two-sided p-values are derived from the normal distribution and adjusted for multiple testing (Benjamini–Hochberg FDR).
+
+* **Use case:** The Wald test is suitable for simple two-group or contrast-based comparisons; for multi-factor designs, the likelihood ratio test (LRT) is preferred.
+
+&lt;!-- **Likelihood ratio test:**  Alternatively, DESeq2 can perform a likelihood ratio test ## Hypothesis testing (LRT)
+
+(LRT) by comparing the full model to a reduced model (e.g. omitting a factor). Use `DESeq(dds, test="LRT", reduced=~)` for this. LRT is useful for multi-factor designs or testing any change in nested coefficients.
+
+- **Independent filtering:** By default, DESeq2 filters out genes with very low mean counts before multiple testing to improve power (independent of the test statistic).
+
+
+``` r
+res &lt;- results(dds)                # Wald test results (e.g. "condition_trt_vs_untrt")
+resLRT &lt;- results(dds, test="LRT", reduced=~ condition)  # LRT dropping the condition effect
+```
+--&gt;
+
+---
+## Hypothesis testing (LRT)
+
+* DESeq2 models may include multiple covariates. `\(\text{full model: }~ \mu_{g,i} = f(\text{batch},,\text{condition},,\text{time},\ldots)\)`. Consider `\(\text{reduced model: }~ \mu_{g,i} = f(\text{batch},\text{time},\ldots) \quad (\text{omitting “condition”})\)`
+
+* The statistic is `\(D = 2 \big( \log L_{\rm full} - \log L_{\rm reduced} \big)\)` where `\(L_{\rm full}\)` is the likelihood of the full model and `\(L_{\rm reduced}\)` is the likelihood of the reduced model.
+
+* Under the null hypothesis (that the extra terms in the full model do *not* improve fit), the statistic *D* is asymptotically `\(\chi^2\)`-distributed with degrees of freedom equal to the difference in the number of parameters between full and reduced models.
+
+* Thus for each gene we get a p-value indicating: *“Does including the additional term(s) in the full model significantly improve the model fit?”* 
+
+
+``` r
+dds &lt;- DESeq(dds, test="LRT", reduced = ~ …)
+```
+
+---
+## Shrinkage of log2 fold changes (moderated LFC)
+
+- **Empirical Bayes shrinkage:** DESeq2 applies a zero-centered Normal prior on `\(\log_2\)` fold changes `\(\beta\)` to shrink noisy estimates toward zero. After initial GLM fits (MLEs), DESeq2 fits a Normal prior to the distribution of MLE `\(\log_2\)` fold changes, then computes maximum a posteriori (MAP) estimates. Genes with low information (high dispersion or low count) undergo stronger shrinkage.
+
+- **Benefit:** Shrunk LFCs have lower variance, making gene ranking more reproducible. Wald tests use the shrunken `\(\hat{\beta}\)` and corresponding posterior standard error.
+
+- **Adaptive shrinkage:** DESeq2 offers advanced shrinkage via the `lfcShrink()` function with methods “ashr” or “apeglm”. These use adaptive priors (Ashr by Stephens (2016) or the apeglm approach for more accurate shrinkage.
+
+---
+## Shrinkage of log2 fold changes (moderated LFC)
+
+- **Usage:** For visualization or ranking, call `lfcShrink(dds, coef=..., type="ashr")` after running DESeq2; for results with threshold, you can directly use `results()` with `lfcThreshold`.
+
+
+``` r
+res &lt;- results(dds) 
+res_shrunk &lt;- lfcShrink(dds, coef="condition_trt_vs_untrt", type="ashr")
+```
+
+---
+## Independent filtering
+  
+- DESeq2 automatically removes genes with very low mean normalized counts **before multiple testing**, as these genes provide little power to detect differential expression.
+
+- The filtering criterion is **independent of the test statistic**, ensuring that type I error is not inflated. 
+
+- By default, DESeq2 uses the mean of normalized counts as the filter statistic and chooses an optimal cutoff that **maximizes the number of rejections (discoveries)** at a given FDR threshold.
+
+---
+## DESeq2 vs edgeR: similarities and differences
+
+- **Commonalities:** Both DESeq2 and edgeR model counts with a negative binomial GLM and use Empirical Bayes to borrow strength across genes for dispersion estimation. Both use these dispersion estimates in statistical tests for differential expression.
+
+---
+## DESeq2 vs edgeR: similarities and differences
+
+- **Normalization:** DESeq2’s default is median-of-ratios normalization, whereas edgeR’s default is TMM (Trimmed Mean of M-values) normalization. TMM also computes sample-specific scaling factors to account for RNA composition.
+
+---
+## DESeq2 vs edgeR: similarities and differences
+
+- **Dispersion shrinkage:** DESeq2 fits a dispersion-mean trend and learns the prior variance from the data. EdgeR by default shrinks gene-wise dispersions toward a common or trended value using a weighted likelihood (with a user-specified prior.df). (edgeR’s quasi-likelihood pipeline further estimates a gene-wise “quasi-dispersion” with limma-style EB for extra robustness.)
+
+---
+## DESeq2 vs edgeR: similarities and differences
+
+- **Statistical tests:** DESeq2 typically uses Wald tests on GLM coefficients (with optional LRT). edgeR offers an “exact test” for two-group comparisons or GLM-based tests: the default GLM QL-F test (`glmQLFTest`) in newer versions is a quasi-likelihood F-test, and there is also a GLM LRT (glmLRT). The quasi-likelihood method is generally more conservative than the standard GLM LRT.
+
+---
+## DESeq2 vs edgeR: similarities and differences
+
+- **Other differences:** DESeq2 automatically filters low-count genes and flags outliers (Cook’s distance) by default; edgeR provides similar functions (e.g. `filterByExpr`, robust estimation) but does not force them. DESeq2 also offers built-in log-fold change shrinkage; edgeR does not shrink LFCs by default.
+
+---
+## Comparison of edgeR and DESeq2
+.small[
+| **Aspect**                                    | **edgeR**                                                                                         | **DESeq2**                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Statistical Model**                         | Negative Binomial (NB) model for counts                                                           | Negative Binomial (NB) model for counts                                                       |
+| **Variance structure**                        | `\(\mathrm{Var}(K_{ij}) = \mu_{ij} + \phi_i \mu_{ij}^2\)`                                           | `\(\mathrm{Var}(K_{ij}) = \mu_{ij} + \alpha_i \mu_{ij}^2\)`                                     |
+| **Normalization**                             | Trimmed Mean of M-values (TMM) — accounts for composition bias between libraries                  | Median-of-ratios — geometric mean–based size factors for each sample                          |
+| **Dispersion estimation (gene-wise)**         | Uses Cox–Reid adjusted profile likelihood to estimate dispersions per gene                        | Uses Maximum Likelihood Estimation (MLE) per gene under NB model                              |
+| **Dispersion shrinkage (borrowing strength)** | Empirical Bayes shrinkage toward a common or trended dispersion (weighted likelihood)             | Shrinkage toward a smooth dispersion–mean trend using empirical Bayes prior                   |
+| **Mean–dispersion trend**                     | Can use common, trended, or tagwise (gene-wise) dispersion models                                 | Fits parametric curve (default: `\(\alpha(\mu) = \alpha_0 + \alpha_1 / \mu\)`)                  |
+| **Model fitting**                             | Uses GLM with log-link: `\(\log(\mu_{ij}) = x_j^T \beta_i\)`                                        | Uses GLM with log-link: `\(\log(\mu_{ij}) = x_j^T \beta_i\)`                                    |
+| **Testing framework**                         | Likelihood Ratio Test (LRT) or Quasi-likelihood F-test (QLF)                                      | Wald test or Likelihood Ratio Test (LRT)                                                      |
+]
+
+---
+## Comparison of edgeR and DESeq2
+.small[
+| **Aspect**                                    | **edgeR**                                                                                         | **DESeq2**                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Shrinkage of log fold changes**             | Not performed by default (users can use glmTreat or quasi-likelihood moderation)                  | Performs adaptive shrinkage of log2 fold changes via **Empirical Bayes** (e.g., apeglm, ashr) |
+| **Handling of low counts**                    | Strong filtering recommended; robust dispersion estimation helps                                  | Built-in shrinkage and independent filtering reduce impact of low counts                      |
+| **Batch effects / design**                    | Fully supports complex designs via design matrix and contrasts                                    | Fully supports complex designs via design matrix and contrasts                                |
+| **Implementation**                            | Fast and efficient, suitable for small-sample designs                                             | Slightly more conservative, often more robust for small-sample datasets                       |
+| **Interpretation of p-values**                | Based on moderated dispersions (EB-adjusted)                                                      | Based on moderated dispersions (EB-adjusted)                                                  |
+| **Strengths**                                 | Excellent for flexible modeling and small samples; quasi-likelihood provides robust error control | Excellent normalization and fold-change shrinkage; conservative false-positive control        |
+| **Limitations**                               | May overestimate fold changes if dispersion not stabilized                                        | Conservative; may reduce power for weak signals                                               |
+| **Key references**                            | Robinson, McCarthy &amp; Smyth (2010), *Bioinformatics*                                               | Love, Huber &amp; Anders (2014), *Genome Biology*                                                 |
+]
+
+---
+## Summary
+
+* Both packages model RNA-seq counts using the **Negative Binomial distribution**.
+
+* The main difference lies in **how they estimate and shrink dispersion** and **how they control false discoveries**.
+
+* **edgeR** emphasizes **flexibility and quasi-likelihood inference**, while **DESeq2** emphasizes **stability through shrinkage** and **robust normalization**.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

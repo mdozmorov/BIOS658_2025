@@ -1,0 +1,34 @@
+---
+title: "Functional enrichment"
+# linktitle: "1. Introduction to RStudio and Images"
+date: "2025-10-27"
+class_date: "2025-10-27"
+draft: false
+output:
+  blogdown::html_page:
+    toc: false
+menu:
+  class:
+    parent: Class sessions
+    weight: 7
+type: docs
+weight: 7
+# pdf: 
+# thumb: 
+editor_options: 
+  chunk_output_type: console
+---
+
+## Functional enrichment
+
+<a href="../../slides/08_FuncEnrich/08_functional_enrichment.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/08_FuncEnrich/08_functional_enrichment.html#1')
+```
+
+
+
+<!-- ### Code examples -->
+
+<!-- - multitest.Rmd, <a href="../../slides/07a_DiffExpr/lab/multitest.Rmd" target="_blank">Rmd</a>, <a href="../../slides/07a_DiffExpr/lab/multitest.html" target="_blank">HTML</a> -->

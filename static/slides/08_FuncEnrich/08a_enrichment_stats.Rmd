@@ -1,0 +1,745 @@
+---
+title: "Chi-square test, Fisher's Exact test, McNemar's Test"
+# subtitle: "Using ggplot2 and dplyr"
+author: "Mikhail Dozmorov"
+institute: "Virginia Commonwealth University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["xaringan-themer.css"]
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+mono_light(
+  base_color = "midnightblue",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "500", "500i"),
+  code_font_google   = google_font("Droid Mono"),
+  link_color = "#8B1A1A", #firebrick4, "deepskyblue1"
+  text_font_size = "28px"
+)
+library(dplyr)
+library(ggplot2)
+```
+
+<!-- HTML style block -->
+<style>
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+</style>
+
+## Overvies
+
+We will cover **three** inference methods for categorical data
+
+* **Chi-square test** for comparisons between 2 categorical variables
+
+* **Fisher's exact test**
+
+* **McNemar Chi-square test** for paired categorical data
+
+---
+## Chi-square test
+
+The Chi-square test can be used for two applications
+
+* The Chi-square test can be used to test for **independence** between two variables
+    * The *null hypothesis* for this test is that the variables are independent (i.e. that there is no statistical association).
+    * The *alternative hypothesis* is that there is a statistical relationship or association between the two variables.
+
+* The Chi-square test can be used to test for **equality of proportions** between two or more groups.
+    * The *null hypothesis* for this test is that the 2 proportions are equal.
+    * The *alternative hypothesis* is that the proportions are not equal (test for a difference in either direction).
+
+---
+## Contingency Tables
+
+* Setting: Let $X_{1}$ and $X_{2}$ denote categorical variables, $X_{1}$ having $I$ levels and $X_{2}$ having $J$ levels.
+
+* There are $IJ$ possible combinations of classifications.
+
+* When the cells contain **frequencies of outcomes**, the table is called a **contingency table**.
+
+|         | Level 1 | Level 2 | ... | Level J |
+|:-------:|:-------:|:-------:|:---:|:-------:|
+| Level 1 |         |         |     |         |
+| Level 2 |         |         |     |         |
+|   ...   |         |         |     |         |
+| Level I |         |         |     |         |
+
+---
+## Chi-square Test: Testing for Independence
+
+**Step 1: Hypothesis (always two-sided):**
+$$H_{0}: \text{Independent}$$
+$$H_{A}: \text{Not independent}$$
+
+**Step 2: Calculate the test statistic:**
+$$X^{2}=\sum\frac{(x_{ij}-e_{ij})^{2}}{e_{ij}}\quad \text{with df}=(I-1)(J-1)$$
+---
+## Chi-square Test: Testing for Independence
+
+**Step 3: Calculate the p-value**
+$$\text{p-value} = P(X^{2} > X^{2})_{\text{value}} \leftarrow \text{2-sided}$$
+**Step 4: Draw a conclusion**
+
+* p-value < $\alpha$ **reject independence**
+
+* p-value > $\alpha$ **do not reject independence**
+
+---
+## Chi-square Test: Testing for Independence - An Example
+
+**Racial differences and cardiac arrest.**
+
+* In a large mid-western city, the association in the incidence of cardiac arrest and subsequent survival was studied in **6117** cases of non-traumatic, out of hospital cardiac arrest.
+
+* During a 12 month period, fewer than 1% of African-Americans survived an arrest-to-hospital discharge, compared to 2.6% of Caucasians.
+
+---
+## Chi-square Test: Testing for Independence
+
+**Racial differences and cardiac arrest - Survival to Discharge**
+
+| Race | YES | NO | Total |
+| :--- | :-: | :-: | :-: |
+| Caucasian | 84 | 3123 | 3207 |
+| African-American | 24 | 2886 | 2910 |
+| Total | 108 | 6009 | 6117 |
+
+---
+## Chi-square Test: Testing for Independence
+
+**Scientific Hypothesis:**
+An association exists between race (African-American/Caucasian) and survival to hospital discharge (Yes/No) in cases of non-traumatic out-of-hospital cardiac arrest.
+
+**Statistical Hypothesis:**
+
+* $H_{0}$: Race and survival to hospital discharge are **independent** in cases of non-traumatic out-of-hospital cardiac arrest.
+
+* $H_{A}$: Race and survival to hospital discharge are **not independent** in cases of non-traumatic out-of-hospital cardiac arrest.
+
+---
+## Chi-square Test: Testing for Independence
+
+1.  Obtain a **random sample** of $n$ independent observations (the selection of one observation does not influence the selection of any other).
+
+2.  Observations are classified subsequently according to cells formed by the intersection rows and columns in a **contingency table**.
+    * Rows $(r)$ consist of mutually exclusive categories of one variable.
+    * Columns $(c)$ consist of mutually exclusive categories of the other variable.
+
+3.  The **frequency of observations** in each cell is determined along with **marginal totals**.
+
+---
+## Chi-square Test: Testing for Independence
+
+4)  **Expected frequencies** are calculated under the null hypothesis of independence (no association) and compared to observed frequencies.
+
+* *Recall:* $A$ and $B$ are independent if: $P(A \text{ and } B) = P(A) * P(B)$
+
+5)  Use the **Chi-square ($X^{2}$) test statistic** to observe the difference between the observed and expected frequencies.
+
+---
+## $\chi^{2}$ Distribution
+
+* The **chi-square distribution** describes the distribution of a **sum of squared standard normal variables**:
+  $$\chi^2_k = \sum_{i=1}^{k} Z_i^2, \quad Z_i \sim N(0,1)$$
+  where (k) is the **degrees of freedom (df)**.
+
+* With **1 degree of freedom**, the χ² distribution is equivalent to the **square of a standard normal** variable.
+
+* It takes only **non-negative values**; thus, all probability mass lies in the **right tail**.
+
+* **Mean:** $E[\chi^2_k] = k$, **Variance:** $\mathrm{Var}[\chi^2_k] = 2k$
+
+* The χ² distribution is fundamental for:
+
+  * **Variance tests**
+  * **Goodness-of-fit tests**
+  * **ANOVA** and **regression** (in F- and t-statistics derivations)
+
+
+---
+## Chi-square distributions and critical values for 1 df, 4 df and 20 df
+
+```{r echo = FALSE, fig.height=4.1, fig.align='center'}
+x <- rchisq(100, 5)
+hist(x, prob=TRUE, ylim = c(0, 0.3), xlim = c(0, 35))
+curve( dchisq(x, df=20), col='blue', add=TRUE, lwd = 5)
+curve( dchisq(x, df=4), col='green', add=TRUE, lwd = 5)
+curve( dchisq(x, df=1), col='red', add=TRUE, lwd = 5)
+legend("topright", legend = c("df = 1", "df = 4", "df = 20"), fill = c("red", "green", "blue"))
+```
+
+* Since the Chi-square distribution is always positive, the rejection region is only in the right tail.
+* Critical value for $\alpha = 0.05$ and Chi-square with **1 df is 3.84**.
+* Critical value for $\alpha = 0.05$ and Chi-square with **4 df is 9.49**.
+* For Chi-square with **20 df**, the critical value $(\alpha = 0.05) = 31.4$.
+
+---
+## How to Identify the critical value
+
+* The **rejection region** of the Chi-square test is the **upper tail** so there is only one critical value.
+
+
+* First calculate the **df** to identify the correct Chi-square distribution.
+    * For a $2 \times 2$ table, there are $(2-1)*(2-1) = 1$ df.
+
+
+* Use the `qchisq` function to find the critical value.
+    * General formula: `qchisq(p, df)`.
+
+---
+## State the conclusion
+
+The p-value for $P(\chi^{2} > X^{2}) = \text{pchisq}(X^{2}, \text{df}, \text{lower.tail} = FALSE)$
+
+* **Reject the null hypothesis** by either the **rejection region method** or the **p-value method**
+$$X^{2} > \text{Critical Value}$$
+$$\text{or}$$
+$$\text{P-value} < \alpha$$
+
+---
+## Chi-squared Test: Testing for Independence - Calculating expected frequencies
+
+| Race | YES | NO | Total |
+| :--- | :-: | :-: | :-: |
+| Caucasian | 84 (Observed) | 3123 | 3207 |
+| African-American | 24 | 2886 | 2910 |
+| Total | 108 | 6009 | 6117 |
+
+Under the assumption of independence:
+$$P(\text{YES and Caucasian}) = P(\text{YES}) * P(\text{Caucasian})$$
+$$\frac{3207}{6117} \cdot \frac{108}{6117} \approx 0.009256$$
+Expected cell count $e_{ij} = 0.009256 \cdot 6117 \approx 56.62$
+
+---
+## Chi-square Test: Testing for Independence - Calculating expected frequencies
+
+| Race | YES | NO | Total |
+| :--- | :---: | :---: | :---: |
+| Caucasian | 84 | 3123 | 3207 |
+| | **56.62** | **3151.43** | |
+| African-American | 24 | 2886 | 2910 |
+| | **51.38** | **2854.82** | |
+| Total | 108 | 6009 | 6117 |
+
+$$\text{Expected Cell Counts} = \frac{\text{(Marginal Row total)} \cdot \text{(Marginal Column Total)}}{\text{n}}$$
+* Check to see if expected frequencies are $\ge 2$.
+* No more than **20%** of cells with expected frequencies $< 5$.
+
+---
+## Chi-square Test: Testing for Independence
+
+**Step 1: Hypothesis (always two-sided):**
+$$H_{0}: \text{Independent (Race/Survival)}$$
+$$H_{A}: \text{Not independent}$$
+
+**Step 2: Calculate the test statistic:**
+
+$$X^{2}=\sum\frac{(x_{ij}-e_{ij})^{2}}{e_{ij}}$$
+
+$$X^{2} = \frac{(84-56.62)^{2}}{56.62} + \frac{(3123-3151.43)^{2}}{3151.43} + \frac{(24-51.38)^{2}}{51.38} + \frac{(2886-2854.82)^{2}}{2854.82}$$
+
+$$X^{2} \approx 13.24 + 0.26 + 14.59 + 0.34 \approx \mathbf{28.42}$$
+
+---
+## Chi-square Test: Testing for Independence
+
+**Step 3: Calculate the p-value**
+$$\text{p-value} = P(X^{2} > 28.42) = \text{pchisq}(28.42, 1, lower.tail = FALSE) < \mathbf{0.001}$$
+
+**Step 4: Draw a conclusion**
+
+* p-value < $\alpha$ **reject independence**.
+* A **significant association exists** between race and survival to hospital discharge in cases of non-traumatic out-of-hospital cardiac arrest.
+
+---
+## Chi-square Test: Testing for Equality or Homogeneity of Proportions
+
+Testing for equality or homogeneity of proportions - examines **differences between two or more independent proportions**.
+
+* In chi-square test for independence, we examine the cross-classification of a **single sample** of observations on two qualitative variables.
+
+* The chi-square test can also be used for problems involving **two or more independent populations**.
+
+---
+## Chi-square Test: Testing for Equality or Homogeneity of Proportions - Example
+
+Patients with evolving myocardial infarction were assigned independently and randomly to one of four thrombolytic treatments, and then followed to determine 30 day mortality.
+
+.small[
+| 30 day outcome | Streptokinase and SC Heparin | Streptokinase and IV Heparin | Accelerated t-PA and IV Heparin | Accelerated t-PA and Streptokinase with IV Heparin | Total |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Survived | 9091 | 9609 | 9692 | 9605 | 37997 |
+| Died | 705 | 768 | 652 | 723 | 2848 |
+| Total | 9796 | 10377 | 10344 | 10328 | 40845 |
+]
+
+Are these four treatment populations **equal with respect to 30-day mortality**?
+
+---
+## Chi-square Test: Testing for Equality or Homogeneity of Proportions - Example
+
+.small[
+| 30 day outcome | Streptokinase and SC Heparin | Streptokinase and IV Heparin | Accelerated t-PA and IV Heparin | Accelerated t-PA and Streptokinase with IV Heparin | Total |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Survived | 9091 | 9609 | 9692 | 9605 | 37997 |
+| | **9112.95** | **9653.44** | **9622.74** | **9607.86** | |
+| Died | 705 | 768 | 652 | 723 | 2848 |
+| | **683.05** | **723.56** | **721.26** | **720.14** | |
+| Total | 9796 | 10377 | 10344 | 10328 | 40845 |
+
+
+Under the assumption of independence: $P(\text{Streptokinase and SC Heparin and Survival}) = P(\text{Streptokinase and SC Heparin}) \cdot P(\text{Survival})$
+
+For "Streptokinase and SC Heparin" and "Survived":
+
+$$\frac{9796}{40845} \cdot \frac{37997}{40845} \approx 0.223$$
+]
+
+---
+## Chi-square Test: Testing for Equality or Homogeneity of Proportions - Example
+
+.small[
+| 30 day outcome | Streptokinase and SC Heparin | Streptokinase and IV Heparin | Accelerated t-PA and IV Heparin | Accelerated t-PA and Streptokinase with IV Heparin | Total |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Survived | 9091 | 9609 | 9692 | 9605 | 37997 |
+| | **9112.95** | **9653.44** | **9622.74** | **9607.86** | |
+| Died | 705 | 768 | 652 | 723 | 2848 |
+| | **683.05** | **723.56** | **721.26** | **720.14** | |
+| Total | 9796 | 10377 | 10344 | 10328 | 40845 |
+
+
+$$\text{Expected Cell Counts} = \frac{\text{(Marginal Row total)} \cdot \text{(Marginal Column Total)}}{\text{n}}$$
+Expected cell count $= 0.223 \cdot 40845 \approx 9112.95$
+]
+
+---
+## Chi-square Test: Testing for Equality or Homogeneity of Proportions
+
+**Step 1: Hypothesis (always two-sided):**
+- $H_{0}$: The four treatment options are homogeneous with respect to 30 day survival.
+- $H_{A}$: The four treatment options are not homogeneous with respect to 30 day survival.
+
+**Step 2: Calculate the test statistic:**
+$$X^{2}=\sum\frac{(x_{ij}-e_{ij})^{2}}{e_{ij}}\quad \text{with df}=(I-1)(J-1)$$
+
+$$X^{2} \approx \mathbf{10.85}$$
+$$\text{df} = (2-1)(4-1) = \mathbf{3}$$
+
+<!--
+**Step 3: Calculate the p-value**
+$$\text{p-value} = P(X^{2} > X^{2})$$
+
+**Step 4: Draw a conclusion**
+* p-value < $\alpha$ **reject independence**
+* p-value > $\alpha$ **do not reject independence**
+-->
+
+---
+## Chi-square Test: Testing for Equality or Homogeneity of Proportions
+
+**Step 3: Calculate the p-value**
+$$\text{p-value} = P(X^{2} > 10.85) = \text{pchisq}(10.85, 3, lower.tail = FALSE) = \mathbf{0.013}$$
+
+**Step 4: Draw a conclusion**
+* p-value $< \alpha$ (assuming $\alpha = 0.05$) **reject null**.
+
+* The four treatment groups are **not equal with respect to 30 day mortality**.
+
+* The largest relative departure from expected was noted in patients receiving accelerated t-PA and IV heparin, with **fewer patients than expected dying**.
+
+---
+## Chi-Square Testing
+.small[
+| | Independence | Equality (Homogeneity) |
+| :--- | :--- | :--- |
+| $H_{0}$ | two classification criteria are independent | populations are homogeneous with regard to one classification criterion |
+| $H_{A}$ | two classification criteria are not independent | populations are not homogeneous with regard to one classification criterion |
+| **Requirements** | One sample selected randomly from a defined population. Observations cross-classified into two nominal criteria. | Two or more samples are selected from two or more populations. Observations are classified on one nominal criterion. |
+| **Conclusions** | phrased in terms of independence of the two classifications. | phrased with regard to homogeneity or equality of treatment populations. |
+]
+
+---
+## Chi-square test in EXCEL or online calculator
+
+* `CHISQ.TEST` is the Excel function for the Chi-square test.
+
+* You'll need to calculate the expected cell frequencies from the observed marginal totals and then calculate the statistic from the observed and expected frequencies.
+
+
+* This website will calculate the Chi-square statistic and p-value for data in a $2 \times 2$ table.
+    * Enter the cell counts in the table. Choose the Chi-square test **without Yate's correction** to obtain the same results as in the example.
+    * https://www.graphpad.com/quickcalcs/contingency1/
+
+---
+## Chi-Square Testing: Rules of Thumb
+
+* All expected frequencies should be **equal to or greater than 2** (observed frequencies can be less than 2).
+
+* **No more than 20%** of the cells should have expected frequencies of **less than 5**.
+
+* *What if these rules of thumb are violated?*
+
+---
+## Small Expected Frequencies
+
+* Chi-square test is an **approximate method**.
+
+* The chi-square distribution is an idealized mathematical model.
+
+* In reality, the statistics used in the chi-square test are qualitative (have discrete values and not continuous).
+
+* For $2 \times 2$ tables, use **Fisher's Exact Test** if your expected frequencies are **less than 2**.
+
+---
+## Fisher's Exact Test: Description
+
+* The Fisher's exact test calculates the **exact probability** of the table of observed cell frequencies given the following assumptions:
+    * The **null hypothesis of independence is true**.
+    * The **marginal totals of the observed table are fixed**.
+
+* Calculation of the probability of the observed cell frequencies uses the **factorial mathematical operation**.
+
+* Factorial is notated by **!** which means multiply the number by all integers smaller than the number.
+    * *Example:* $7! = 7 \cdot 6 \cdot 5 \cdot 4 \cdot 3 \cdot 2 \cdot 1 = 5040$.
+
+---
+## Fisher's Exact Test: Calculation
+
+| | | | |
+| :---: | :---: | :---: | :---: |
+| | a | b | $a+b$ |
+| | c | d | $c+d$ |
+| | $a+c$ | $b+d$ | n |
+
+If margins of a table are fixed, the exact probability of a table with cells $a, b, c, d$ and marginal totals $(a+b), (c+d), (a+c), (b+d) =$
+
+$$\frac{(a+b)! \cdot (c+d)! \cdot (a+c)! \cdot (b+d)!}{n! \cdot a! \cdot b! \cdot c! \cdot d!}$$
+---
+## Where the formula comes from
+
+1. **Model assumption:** Under the null hypothesis (no association between rows and columns), the counts follow a **hypergeometric distribution** — i.e., sampling *without replacement* from a finite population.
+   * We have (a+c) items in the first column (“successes”),
+   * We draw (a+b) items (the first row),
+   * What’s the probability that exactly **a** of them are “successes”?
+
+2. **Hypergeometric probability:** $P(A=a) = \frac{\binom{a+c}{a}\binom{b+d}{b}}{\binom{n}{a+b}}$
+
+3. **Convert binomial coefficients to factorials:** $\binom{x}{y} = \frac{x!}{y!(x-y)!}$
+
+Substituting and simplifying gives: $P(a,b,c,d) = \frac{(a+b)! (c+d)! (a+c)! (b+d)!}{n! , a! b! c! d!}$
+
+
+---
+## Fisher's Exact Test: Calculation Example
+
+| | | | |
+| :---: | :---: | :---: | :---: |
+| | 1 | 8 | 9 |
+| | 4 | 5 | 9 |
+| | 5 | 13 | 18 |
+
+The exact probability of this table
+
+$$\frac{(9)! \cdot (9)! \cdot (13)! \cdot (5)!}{18! \cdot 1! \cdot 8! \cdot 4! \cdot 5!} = \frac{136080}{1028160} = 0.132$$
+
+---
+## Probability for all possible tables with the same marginal totals
+
+* The following slide shows the 6 possible tables for the observed marginal totals: 9, 9, 5, 13. The probability of each table is also given.
+
+* The **observed table is Table II**.
+
+* The **p-value for the Fisher's exact test** is calculated by summing all probabilities **less than or equal to the probability of the observed table**.
+
+* The probability is smallest for the tables (tables I and VI) that are **least likely to occur by chance** if the null hypothesis of independence is true.
+
+---
+## Set of 6 possible tables with marginal totals: 9, 9, 5, 13
+
+.small[
+.pull-left[
+| I | 0 | 9 | 9 |
+| :---: | :---: | :---: | :---: |
+| | 5 | 4 | 9 |
+| | 5 | 13 | 18 |
+| | Pr = **0.0147** | | |
+
+| II | 1 | 8 | 9 |
+| :---: | :---: | :---: | :---: |
+| | 4 | 5 | 9 |
+| | 5 | 13 | 18 |
+| | Pr = **0.132** | | |
+
+| III | 2 | 7 | 9 |
+| :---: | :---: | :---: | :---: |
+| | 3 | 6 | 9 |
+| | 5 | 13 | 18 |
+| | Pr = **0.353** | | |
+
+]
+.pull-right[
+| IV | 3 | 6 | 9 |
+| :---: | :---: | :---: | :---: |
+| | 2 | 7 | 9 |
+| | 5 | 13 | 18 |
+| | Pr = **0.353** | | |
+
+| V | 4 | 5 | 9 |
+| :---: | :---: | :---: | :---: |
+| | 1 | 8 | 9 |
+| | 5 | 13 | 18 |
+| | Pr = **0.132** | | |
+
+| VI | 5 | 4 | 9 |
+| :---: | :---: | :---: | :---: |
+| | 0 | 9 | 9 |
+| | 5 | 13 | 18 |
+| | Pr = **0.0147** | | |
+]
+]
+
+---
+## Fisher's Exact Test: p-value
+
+```{r, out.width = "700px", fig.align='center', echo=FALSE}
+knitr::include_graphics("img/fisher_tables.png")
+```
+
+The observed table (Table II) has probability = $\mathbf{0.132}$
+
+**P-value for the Fisher's exact test** =
+$$\text{Pr (Table II) + Pr (Table V) + Pr (Table I) + Pr (Table VI)}$$
+$$= 0.132 + 0.132 + 0.0147 + 0.0147 = \mathbf{0.293}$$
+
+---
+## Conclusion of Fisher's Exact test
+
+* At significance level $\mathbf{0.05}$, the null hypothesis of independence is **not rejected** because the p-value of $0.293 > 0.05$.
+
+* Looking back at the probabilities for each of the 6 tables, only Tables I and VI would result in a significant Fisher's exact test result:
+    * $p = 2 \cdot 0.0147 = \mathbf{0.0294}$ for either of these tables.
+
+* This makes sense, intuitively, because these tables are least likely to occur by chance if the null hypothesis is true.
+
+---
+## Fisher's Exact test Calculator for a 2x2 table
+
+* This website will calculate the Fisher's exact test p-value after you enter the cell counts for a $2 \times 2$ contingency table.
+
+* Use the p-value for the **two-sided test**.
+
+* https://www.graphpad.com/quickcalcs/contingency1/
+
+---
+## Tests for Categorical Data
+
+* To compare proportions between two groups or to test for independence between two categorical variables, use the **Chi-square test**.
+
+* If **more than 20% of the expected cell frequencies $< 5$**, use the **Fisher's exact test**.
+
+* When categorical data are **paired**, the **McNemar test** is the appropriate test.
+
+---
+## Comparing Proportions with Paired data
+
+* When data are **paired** and the outcome of interest is a proportion, the **McNemar Test** is used to evaluate hypotheses about the data.
+  * Developed by Quinn McNemar in 1947.
+  * Sometimes called the **McNemar Chi-square test** because the test statistic has a Chi-square distribution.
+
+
+* The McNemar test is **only used for paired nominal data**.
+  * Use the Chi-square test for independence when nominal data are collected from **independent groups**.
+
+---
+## Examples of Paired Data for Proportions
+
+Pair-Matched data can come from:
+
+* **Case-control studies** where each case has a matching control (matched on age, gender, race, etc.).
+
+ **Twins studies** - the matched pairs are twins.
+
+* **Before - After data**.
+    * the outcome is presence (+) or absence (-) of some characteristic measured on the **same individual at two time points**.
+
+---
+## Summarizing the Data
+
+* Like the Chi-square test, data need to be arranged in a **contingency table** before calculating the McNemar statistic.
+
+* The table will always be $2 \times 2$ but the cell frequencies are numbers of **'pairs'** not numbers of individuals.
+
+* Examples for setting up the tables are in the following slides for:
+    * Case - Control paired data
+    * Twins paired data: one exposed and one unexposed
+    * Before - After paired data
+
+---
+## Pair-Matched Data for Case-Control Study: outcome is exposure to some risk factor
+
+| Case | Control | |
+| :---: | :---: | :---: |
+| | Exposed | Unexposed |
+| Exposed | **a** | **b** |
+| Unexposed | **c** | **d** |
+
+* **a** - number of case-control pairs where both are **exposed**.
+* **b** - number of case-control pairs where the **case is exposed** and the **control is unexposed**.
+* **c** - number of case-control pairs where the **case is unexposed** and the **control is exposed**.
+* **d** - number of case-control pairs where both are **unexposed**.
+* The counts in the table for a case-control study are **numbers of pairs** not numbers of individuals.
+
+---
+## Paired Data for Before-After counts
+
+* The data set-up is slightly different when we are looking at 'Before-After' counts of some characteristic of interest.
+
+* For this data, each subject is measured twice for the presence or absence of the characteristic: **before and after an intervention**.
+
+* The 'pairs' are not two paired individuals but **two measurements on the same individual**.
+
+* The outcome is binary: each subject is classified as + (characteristic present) or – (characteristic absent) at each time point.
+
+.small[
+| Before treatment | After treatment | |
+| :---: | :---: | :---: |
+| | + | - |
+| + | **a** | **b** |
+| - | **c** | **d** |
+]
+
+---
+## Paired Data for Before-After Counts
+
+* **a** - number of subjects with characteristic present **both before and after** treatment.
+
+* **b** - number of subjects where characteristic is present **before but not after**.
+
+* **c** - number of subjects where characteristic is present **after but not before**.
+
+* **d** - number of subjects with the characteristic absent **both before and after** treatment.
+
+.small[
+| Before treatment | After treatment | |
+| :---: | :---: | :---: |
+| | + | - |
+| + | **a** | **b** |
+| - | **c** | **d** |
+]
+---
+## Null hypotheses for Paired Nominal data
+
+* The null hypothesis for **case-control pair matched data** is that the proportion of subjects exposed to the risk factor is **equal for cases and controls**.
+
+* The null hypothesis for **twin paired data** is that the proportions with the event are **equal for exposed and unexposed twins**.
+
+* The null hypothesis for **before-after data** is that the proportion of subjects with the characteristic (or event) is the **same before and after treatment**.
+
+---
+## McNemar's test
+
+* For any of the paired data Null Hypotheses the following are true if the null hypothesis is true:
+blogdow 
+
+* Since cells 'b' and 'c' are the cells that identify a difference, **only cells 'b' and 'c' are used** to calculate the test statistic.
+    * Cells 'b' and 'c' are called the **discordant cells** because they represent pairs with a difference.
+    * Cells 'a' and 'd' are the concordant cells. These cells do not contribute any information about a difference between pairs or over time so they aren't used to calculate the test statistic.
+
+---
+## McNemar Statistic
+
+* The McNemar's Chi-square statistic is calculated using the counts in the **'b' and 'c' cells** of the table:
+$$\chi^{2}=\frac{(b-c)^{2}}{b+c}$$
+
+* Square the difference of $(b-c)$ and divide by $b+c$.
+
+* If the null hypothesis is true the McNemar Chi-square statistic $= 0$.
+
+---
+## McNemar Statistic
+
+* The sampling distribution of the McNemar statistic is a **Chi-square distribution**.
+
+* Since the McNemar test is always done on data in a $2 \times 2$ table, the **degrees of freedom for this statistic $= 1$**.
+
+* For a test with $\alpha = 0.05$, the **critical value** for the McNemar statistic $= \mathbf{3.84}$.
+    * The null hypothesis is **not rejected** if the McNemar statistic $< 3.84$.
+    * The null hypothesis is **rejected** if the McNemar statistic $> 3.84$.
+
+---
+## P-value for McNemar statistic
+
+* You can find the p-value for the McNemar statistic using the **pchisq function in R**.
+
+* Enter `= pchisq(test statistic, 1, lower.tail = FALSE)` to obtain the p-value.
+
+* If the test statistic is $> 3.84$, the p-value will be $< 0.05$ and the null hypothesis of equal proportions between pairs or over time will be rejected.
+
+---
+## McNemar test Example
+
+* In 1989 results of a twin study were published in *Social Science and Medicine: Twins, smoking and mortality: a 12 year prospective study of smoking-discordant twin pairs.* Kaprio J and Koskenvuo M.
+
+* **22 pairs of twins** were enrolled in the study. **One of the twins smoked, the other didn't**. The twins were followed to see which twin died first.
+    * For **17 pairs** of twins: the **smoking twin died first**.
+    * For **5 pairs** of twins: the **nonsmoking twin died first**.
+
+---
+## Data for Twin study in a table
+
+| Smoking Twin | Non-smoking Twin | |
+| :---: | :---: | :---: |
+| | Died 1st | Died 2nd |
+| Died 1st | **0** | **17** |
+| Died 2nd | **5** | **0** |
+
+---
+## McNemar test hypotheses
+
+* $H_{0}$: The proportion of smoking twins who died first is **equal** to the proportion of nonsmoking twins who died first.
+
+* $H_{A}$: The proportion of smoking twins who died first is **not equal** to the proportion of nonsmoking twins who died first.
+
+* In this study that counts which twin dies first, all data are **discordant** and are in the **'b' and 'c' cells**.
+    * $b = 17$ (Smoking twin died 1st, Non-smoking twin died 2nd)
+    * $c = 5$ (Smoking twin died 2nd, Non-smoking twin died 1st)
+
+---
+## McNemar test
+
+* Significance level of the test = **0.05**
+* Critical value for Chi-square distribution with 1 df = **3.84**
+
+* Calculate the test statistic:
+    $$\chi^{2}=\frac{(b-c)^{2}}{b+c}=\frac{(17-5)^{2}}{17+5} = \mathbf{6.54}$$
+
+* P-value = **0.01**
+    * `= pchisq(6.54, 1, lower.tail = FALSE)`
+
+---
+## Decision and Conclusion for Twin study
+
+* **Decision:** The **null hypothesis of equal proportions** of first death for smoking and non-smoking twins is **rejected**.
+    * By the rejection region method: $6.54 > 3.84$.
+    * By the p-value method: $0.01 < 0.05$.
+
+* **Conclusion:** A **significantly different proportion** of smoking twins died first compared to their non-smoking twin indicating a **different risk of death associated with smoking ($p=0.01$)**.
+
+---
+## McNemar test in EXCEL and online calculator
+
+* There is **no EXCEL function or Data Analysis Tool** for the McNemar Chi-square test.
+
+* This website will calculate the McNemar test statistic and p-value:
+    * https://www.graphpad.com/quickcalcs/mcnemar1/

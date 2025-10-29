@@ -1,0 +1,789 @@
+---
+title: "Gene Set Testing with CAMERA"
+author: "Bioinformatics Tutorial"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    code_folding: show
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6
+)
+```
+
+# Introduction
+
+This tutorial demonstrates how to perform **competitive gene set testing** using **CAMERA** (Correlation Adjusted MEan RAnk gene set test) from the `limma` package.
+
+## What is CAMERA?
+
+**CAMERA** is a competitive gene set test that:
+
+- Tests whether genes in a pathway are **MORE differentially expressed** than genes **NOT in the pathway**
+- Accounts for **inter-gene correlation**, which is crucial because genes in pathways often work together
+- Provides directional enrichment (up or down-regulated pathways)
+- Is generally more powerful than older methods like GSEA for microarray data
+
+## Competitive vs Self-Contained Tests
+
+- **Competitive tests (CAMERA)**: Compare genes in the set vs. genes outside the set
+  - Question: "Are these genes MORE DE than other genes?"
+  - Null hypothesis: Genes in set are no more DE than genes outside
+  
+- **Self-contained tests (ROAST/MROAST/FRY)**: Compare genes in the set vs. no differential expression
+  - Question: "Are these genes DE?"
+  - Null hypothesis: No genes in the set are DE
+
+In this tutorial, we'll use the **ALL (Acute Lymphoblastic Leukemia)** dataset to compare B-cell vs T-cell samples and identify enriched KEGG pathways.
+
+---
+
+# 1. Load Required Packages
+
+We need several Bioconductor packages for this analysis:
+
+```{r load-packages}
+library(limma)
+library(ALL)
+library(hgu95av2.db)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+```
+
+**Package purposes:**
+
+- `limma`: Differential expression and CAMERA analysis
+- `ALL`: The acute lymphoblastic leukemia dataset
+- `hgu95av2.db`: Microarray platform annotations
+- `org.Hs.eg.db`: Human gene annotations and KEGG pathways
+- `clusterProfiler`: For downloading KEGG pathway descriptions
+
+---
+
+# 2. Load and Prepare the ALL Dataset
+
+The ALL dataset contains gene expression profiles from patients with acute lymphoblastic leukemia. We'll compare B-cell and T-cell subtypes.
+
+```{r load-data}
+# Load the dataset
+data(ALL)
+
+# Examine the dataset structure
+print(ALL)
+
+# View sample information
+print("Sample phenotype data (first 5 samples, first 5 columns):")
+print(pData(ALL)[1:5, 1:5])
+```
+
+## 2.1 Select Samples for Comparison
+
+We'll focus on comparing B-cell and T-cell ALL samples.
+
+```{r select-samples}
+# Identify B-cell samples (includes B, B1, B2, B3, B4 subtypes)
+bcell_samples <- which(ALL$BT %in% c("B", "B1", "B2", "B3", "B4"))
+
+# Identify T-cell samples
+tcell_samples <- which(ALL$BT == "T")
+
+# Create a subset with B-cell and T-cell samples
+# Using 10 B-cell and all T-cell samples for a balanced comparison
+samples_to_keep <- c(bcell_samples[1:10], tcell_samples)
+ALL_subset <- ALL[, samples_to_keep]
+
+cat("Number of samples selected:\n")
+cat("  B-cell samples:", length(bcell_samples[1:10]), "\n")
+cat("  T-cell samples:", length(tcell_samples), "\n")
+cat("  Total:", length(samples_to_keep), "\n")
+```
+
+---
+
+# 3. Preprocessing and Design Matrix
+
+We extract the expression data and create a design matrix for the linear model.
+
+```{r preprocessing}
+# Extract expression data
+exprs_data <- exprs(ALL_subset)
+
+# Create cell type factor
+cell_type <- factor(ifelse(ALL_subset$BT == "T", "T", "B"))
+
+# Create design matrix (group-means parameterization)
+design <- model.matrix(~0 + cell_type)
+colnames(design) <- c("B_cell", "T_cell")
+
+cat("Design matrix structure:\n")
+print(head(design))
+
+cat("\nSample distribution:\n")
+print(table(cell_type))
+```
+
+**Design matrix notes:**
+
+- We use `~0 + cell_type` for a group-means parameterization
+- This makes it easier to specify contrasts between groups
+- Each column represents one cell type
+
+---
+
+# 4. Differential Expression Analysis
+
+We use `limma` to identify differentially expressed genes between T-cell and B-cell samples.
+
+```{r differential-expression}
+# Fit linear model
+fit <- lmFit(exprs_data, design)
+
+# Define contrast: T-cell vs B-cell
+contrast_matrix <- makeContrasts(
+  TvsB = T_cell - B_cell,
+  levels = design
+)
+
+cat("Contrast matrix:\n")
+print(contrast_matrix)
+
+# Fit contrasts and apply empirical Bayes moderation
+fit2 <- contrasts.fit(fit, contrast_matrix)
+fit2 <- eBayes(fit2)
+
+# View top differentially expressed genes
+top_genes <- topTable(fit2, coef = "TvsB", number = 20)
+
+cat("\nTop 20 differentially expressed genes:\n")
+print(top_genes[, c("logFC", "AveExpr", "t", "P.Value", "adj.P.Val")])
+```
+
+**Key statistics:**
+
+- **logFC**: Log2 fold change (T-cell vs B-cell)
+- **AveExpr**: Average expression across all samples
+- **t**: Moderated t-statistic
+- **P.Value**: Raw p-value
+- **adj.P.Val**: FDR-adjusted p-value (Benjamini-Hochberg)
+
+---
+
+# 5. Prepare KEGG Pathway Gene Sets
+
+Gene set testing requires mapping microarray probes to genes and then to pathways.
+
+## 5.1 Map Probes to Entrez Gene IDs
+
+```{r map-probes}
+# Get probe to Entrez Gene ID mapping from the array annotation
+probe_to_entrez <- as.list(hgu95av2ENTREZID)
+probe_to_entrez <- probe_to_entrez[!is.na(probe_to_entrez)]
+
+# Map our probes to Entrez IDs
+probe_ids <- rownames(exprs_data)
+entrez_mapping <- unlist(probe_to_entrez[probe_ids])
+entrez_mapping <- entrez_mapping[!is.na(entrez_mapping)]
+
+cat("Probe to gene mapping:\n")
+cat("  Total probes in dataset:", length(probe_ids), "\n")
+cat("  Probes mapped to Entrez IDs:", length(entrez_mapping), "\n")
+cat("  Mapping rate:", round(100 * length(entrez_mapping) / length(probe_ids), 1), "%\n")
+```
+
+## 5.2 Get KEGG Pathway Annotations
+
+We use `org.Hs.egPATH` to map Entrez Gene IDs to KEGG pathway IDs.
+
+```{r kegg-pathways}
+# Get gene-to-pathway mapping
+pathway_map <- org.Hs.egPATH
+mapped_genes <- mappedkeys(pathway_map)
+gene_to_pathway <- as.list(pathway_map[mapped_genes])
+
+cat("Gene-to-pathway mapping:\n")
+cat("  Total genes mapped to pathways:", length(gene_to_pathway), "\n")
+cat("  Example - first gene:", names(gene_to_pathway)[1], "\n")
+cat("  Pathways for this gene:", paste(gene_to_pathway[[1]], collapse = ", "), "\n")
+```
+
+## 5.3 Invert to Pathway-to-Genes Mapping
+
+CAMERA requires a list where each pathway contains its member genes.
+
+```{r invert-mapping}
+# Create pathway-to-genes mapping
+pathway_to_genes <- list()
+
+for (gene_id in names(gene_to_pathway)) {
+  pathways <- gene_to_pathway[[gene_id]]
+  for (pathway_id in pathways) {
+    if (is.null(pathway_to_genes[[pathway_id]])) {
+      pathway_to_genes[[pathway_id]] <- character(0)
+    }
+    pathway_to_genes[[pathway_id]] <- c(pathway_to_genes[[pathway_id]], gene_id)
+  }
+}
+
+cat("Pathway-to-genes mapping:\n")
+cat("  Total KEGG pathways:", length(pathway_to_genes), "\n")
+cat("  First few pathway IDs:", paste(names(pathway_to_genes)[1:5], collapse = ", "), "\n")
+```
+
+## 5.4 Create Gene Set Index Lists
+
+CAMERA requires pathways as lists of row indices in the expression matrix.
+
+```{r gene-set-indices}
+create_gene_set_indices <- function(pathway_list, gene_mapping, min_genes = 10) {
+  pathway_indices <- list()
+  
+  for (pathway_id in names(pathway_list)) {
+    # Get genes in this pathway
+    pathway_genes <- pathway_list[[pathway_id]]
+    
+    # Find probes that map to these genes
+    probes_in_pathway <- names(gene_mapping)[gene_mapping %in% pathway_genes]
+    
+    # Get row indices of these probes in expression matrix
+    indices <- which(rownames(exprs_data) %in% probes_in_pathway)
+    
+    # Only keep pathways with sufficient genes for statistical power
+    if (length(indices) >= min_genes) {
+      pathway_indices[[pathway_id]] <- indices
+    }
+  }
+  
+  return(pathway_indices)
+}
+
+gene_set_indices <- create_gene_set_indices(pathway_to_genes, entrez_mapping)
+
+cat("Gene set indices for CAMERA:\n")
+cat("  Pathways with ≥10 genes:", length(gene_set_indices), "\n")
+cat("  Example - Pathway", names(gene_set_indices)[1], "\n")
+cat("    has", length(gene_set_indices[[1]]), "genes in the dataset\n")
+```
+
+**Why filter by pathway size?**
+
+- Pathways with very few genes have limited statistical power
+- Small gene sets may produce unreliable enrichment results
+- A minimum of 10-15 genes is standard practice
+
+---
+
+# 6. Run CAMERA Analysis
+
+CAMERA performs competitive gene set testing while accounting for inter-gene correlation.
+
+```{r camera-analysis}
+# Run CAMERA
+camera_results <- camera(
+  y = exprs_data,
+  index = gene_set_indices,
+  design = design,
+  contrast = contrast_matrix[, "TvsB"],
+  inter.gene.cor = 0.01
+)
+
+cat("CAMERA analysis complete!\n")
+cat("  Pathways tested:", nrow(camera_results), "\n\n")
+
+cat("Top 15 enriched KEGG pathways:\n")
+print(head(camera_results, 15))
+```
+
+**CAMERA parameters:**
+
+- **y**: Expression data matrix
+- **index**: List of gene set indices
+- **design**: Design matrix
+- **contrast**: The contrast to test
+- **inter.gene.cor**: Assumed inter-gene correlation
+  - `0.01`: Small positive correlation (default assumption)
+  - `NA`: Estimate from data (slower but more accurate)
+  - Higher values: More conservative p-values
+
+**Output columns:**
+
+- **NGenes**: Number of genes in the pathway
+- **Correlation**: Estimated inter-gene correlation
+- **Direction**: "Up" or "Down" enrichment
+- **PValue**: Raw p-value
+- **FDR**: False discovery rate (Benjamini-Hochberg)
+
+---
+
+# 7. Annotate Results with Pathway Descriptions
+
+Raw pathway IDs are not interpretable, so we'll add pathway names and descriptions.
+
+## 7.1 Download KEGG Pathway Information
+
+```{r download-kegg}
+cat("Downloading KEGG pathway information...\n")
+
+# Download KEGG data using clusterProfiler
+kegg_info <- download_KEGG("hsa")
+
+cat("\nStructure of downloaded data:\n")
+str(kegg_info)
+```
+
+The `kegg_info` object contains:
+
+- **KEGGPATHID2EXTID**: Maps pathway IDs to gene Entrez IDs
+- **KEGGPATHID2NAME**: Maps pathway IDs to pathway names
+
+## 7.2 Create Pathway Name Mapping
+
+```{r pathway-names}
+# Extract pathway names
+pathway_names <- setNames(
+  kegg_info$KEGGPATHID2NAME$to, 
+  kegg_info$KEGGPATHID2NAME$from
+)
+
+cat("Pathway name mapping:\n")
+cat("  Total pathways with names:", length(pathway_names), "\n\n")
+
+cat("Example pathway names:\n")
+print(head(pathway_names, 3))
+```
+
+## 7.3 Format and Add Descriptions to Results
+
+```{r add-descriptions}
+# Get pathway IDs from CAMERA results
+pathway_ids <- rownames(camera_results)
+
+# Pad pathway IDs with leading zeros to match KEGG format
+# Example: "810" becomes "00810", then "hsa00810"
+pathway_ids_padded <- sprintf("%05s", pathway_ids)
+pathway_ids_formatted <- paste0("hsa", pathway_ids_padded)
+
+cat("Example of ID formatting:\n")
+formatting_example <- data.frame(
+  Original = head(pathway_ids),
+  Padded = head(pathway_ids_padded),
+  Formatted = head(pathway_ids_formatted)
+)
+print(formatting_example)
+
+# Add descriptions to results
+camera_results$Description <- pathway_names[pathway_ids_formatted]
+
+# Mark missing descriptions as NA
+camera_results$Description[is.na(camera_results$Description)] <- NA
+
+cat("\nDescriptions successfully added!\n\n")
+cat("Top 10 pathways with descriptions:\n")
+print(camera_results[1:10, c("NGenes", "Direction", "PValue", "FDR", "Description")])
+```
+
+**Why pad with zeros?**
+
+- KEGG pathway IDs have 5 digits: "hsa00810", "hsa01100"
+- Our data may have IDs without leading zeros: "810", "1100"
+- We need to pad to match the KEGG format for lookup
+
+---
+
+# 8. Visualize Results
+
+Visualization helps identify the most significant pathways and their direction of enrichment.
+
+```{r visualize-results, fig.height=8}
+# Select top pathways for visualization
+top_n <- 15
+top_pathways <- head(camera_results, top_n)
+
+# Create barplot
+par(mar = c(5, 15, 4, 2))
+barplot(
+  -log10(top_pathways$FDR),
+  horiz = TRUE,
+  names.arg = top_pathways$Description,
+  las = 1,
+  main = "Top KEGG Pathways (CAMERA Analysis)\nT-cell vs B-cell ALL",
+  xlab = "-log10(FDR)",
+  col = ifelse(top_pathways$Direction == "Up", "steelblue", "coral")
+)
+abline(v = -log10(0.05), lty = 2, col = "red")
+legend("bottomright", 
+       legend = c("Up in T-cell", "Down in T-cell", "FDR = 0.05"),
+       fill = c("steelblue", "coral", NA),
+       border = c("black", "black", NA),
+       lty = c(NA, NA, 2),
+       col = c(NA, NA, "red"))
+```
+
+**Interpretation:**
+
+- **Blue bars**: Pathways up-regulated in T-cells (vs B-cells)
+- **Coral bars**: Pathways down-regulated in T-cells (vs B-cells)
+- **Red dashed line**: FDR = 0.05 significance threshold
+- **Longer bars**: More significant enrichment
+
+---
+
+# 9. Summary of Significant Pathways
+
+Let's quantify how many pathways are significantly enriched at different thresholds.
+
+```{r significant-pathways}
+# Extract significant pathways (FDR < 0.05)
+significant_pathways <- camera_results[camera_results$FDR < 0.05, ]
+
+cat("=======================================================\n")
+cat("SUMMARY OF CAMERA RESULTS\n")
+cat("=======================================================\n\n")
+
+cat("Total pathways tested:", nrow(camera_results), "\n")
+cat("Significant pathways (FDR < 0.05):", nrow(significant_pathways), "\n")
+cat("  Up-regulated in T-cells:", sum(significant_pathways$Direction == "Up"), "\n")
+cat("  Down-regulated in T-cells:", sum(significant_pathways$Direction == "Down"), "\n\n")
+
+# Show additional significance thresholds
+cat("Pathways at different FDR thresholds:\n")
+cat("  FDR < 0.01:", sum(camera_results$FDR < 0.01), "\n")
+cat("  FDR < 0.001:", sum(camera_results$FDR < 0.001), "\n\n")
+
+# Show top significant pathways
+cat("Top 10 most significant pathways:\n")
+print(significant_pathways[1:min(10, nrow(significant_pathways)), 
+                           c("NGenes", "Direction", "PValue", "FDR", "Description")])
+```
+
+---
+
+# 10. Compare with Self-Contained Test (MROAST)
+
+To understand the difference between competitive and self-contained tests, let's compare CAMERA with MROAST.
+
+```{r compare-mroast}
+cat("Running MROAST for comparison...\n")
+cat("(Testing first 50 pathways for speed)\n\n")
+
+# Run MROAST (self-contained test)
+mroast_results <- mroast(
+  y = exprs_data,
+  index = gene_set_indices[1:min(50, length(gene_set_indices))],
+  design = design,
+  contrast = contrast_matrix[, "TvsB"],
+  nrot = 999
+)
+
+cat("Top 10 pathways from MROAST:\n")
+print(head(mroast_results, 10))
+```
+
+## 10.1 Compare Results
+
+```{r compare-results}
+# Compare pathways tested by both methods
+common_pathways <- intersect(rownames(camera_results), rownames(mroast_results))
+
+comparison <- data.frame(
+  PathwayID = common_pathways,
+  CAMERA_PValue = camera_results[common_pathways, "PValue"],
+  MROAST_PValue = mroast_results[common_pathways, "PValue"],
+  CAMERA_FDR = camera_results[common_pathways, "FDR"],
+  MROAST_FDR = mroast_results[common_pathways, "FDR"],
+  CAMERA_Direction = camera_results[common_pathways, "Direction"],
+  MROAST_Direction = mroast_results[common_pathways, "Direction"]
+)
+
+cat("\nComparison of top 10 pathways:\n")
+print(head(comparison[order(comparison$CAMERA_PValue), ], 10))
+
+# Calculate correlation
+cor_result <- cor(comparison$CAMERA_PValue, comparison$MROAST_PValue, 
+                  method = "spearman")
+cat("\nSpearman correlation between CAMERA and MROAST p-values:", 
+    round(cor_result, 3), "\n")
+```
+
+**Key Differences:**
+
+- **CAMERA** (competitive): Tests if pathway genes are MORE DE than other genes
+- **MROAST** (self-contained): Tests if pathway genes are DE at all
+- Results often agree, but can differ when:
+  - Overall differential expression is high/low
+  - Pathway genes have similar DE levels as background
+  - Inter-gene correlation is strong
+
+---
+
+# 11. Understanding Inter-Gene Correlation
+
+The `inter.gene.cor` parameter is crucial for CAMERA. Let's see how it affects results.
+
+## 11.1 Effect of Different Correlation Values
+
+```{r correlation-effect}
+cat("Testing different inter.gene.cor values...\n\n")
+
+# Test with different correlation assumptions
+cor_values <- c(0.01, 0.05, 0.1, NA)
+results_list <- list()
+
+for (cor_val in cor_values) {
+  label <- ifelse(is.na(cor_val), "Estimated", as.character(cor_val))
+  
+  cat("Running CAMERA with inter.gene.cor =", label, "...\n")
+  
+  results_list[[label]] <- camera(
+    y = exprs_data,
+    index = gene_set_indices[1:20],  # Test subset for speed
+    design = design,
+    contrast = contrast_matrix[, "TvsB"],
+    inter.gene.cor = cor_val
+  )
+}
+
+cat("\nComparison of top pathway with different correlation values:\n")
+pathway_example <- names(gene_set_indices)[1]
+
+comparison_cor <- data.frame(
+  Correlation = names(results_list),
+  PValue = sapply(results_list, function(x) x[pathway_example, "PValue"]),
+  FDR = sapply(results_list, function(x) x[pathway_example, "FDR"]),
+  Direction = sapply(results_list, function(x) x[pathway_example, "Direction"])
+)
+print(comparison_cor)
+```
+
+**Guidelines for inter.gene.cor:**
+
+- **0.01**: Default, assumes weak correlation (conservative)
+- **0.05-0.1**: For pathways with moderate correlation
+- **NA**: Estimates from data (most accurate but slower)
+- **Higher values**: More conservative p-values
+
+## 11.2 When to Use Each Setting
+
+```{r correlation-guidelines}
+cat("\nGuidelines for choosing inter.gene.cor:\n\n")
+
+guidelines <- data.frame(
+  Setting = c("0.01 (default)", "0.05-0.1", "NA (estimate)", "0.2+"),
+  `Use When` = c(
+    "General analysis, quick results",
+    "Known moderate pathway correlation",
+    "Most accurate, worth the computation time",
+    "Strong correlation expected (e.g., protein complexes)"
+  ),
+  Speed = c("Fast", "Fast", "Slow", "Fast"),
+  Conservativeness = c("Moderate", "More conservative", "Data-driven", "Very conservative")
+)
+
+print(guidelines)
+```
+
+---
+
+# 12. Advanced: Examining Specific Pathways
+
+Let's examine some interesting pathways in detail.
+
+```{r examine-pathways}
+# Get top up and down-regulated pathways
+top_up <- camera_results[camera_results$Direction == "Up", ][1:5, ]
+top_down <- camera_results[camera_results$Direction == "Down", ][1:5, ]
+
+cat("Top 5 up-regulated pathways in T-cells:\n")
+print(top_up[, c("NGenes", "PValue", "FDR", "Description")])
+
+cat("\nTop 5 down-regulated pathways in T-cells:\n")
+print(top_down[, c("NGenes", "PValue", "FDR", "Description")])
+```
+
+## 12.1 Gene-Level Details for a Pathway
+
+```{r pathway-genes}
+# Select an interesting pathway
+selected_pathway_id <- rownames(camera_results)[1]
+selected_pathway_indices <- gene_set_indices[[selected_pathway_id]]
+
+# Get gene-level statistics for this pathway
+pathway_genes_stats <- topTable(
+  fit2, 
+  coef = "TvsB", 
+  number = Inf,
+  sort.by = "none"
+)[selected_pathway_indices, ]
+
+cat("Gene-level statistics for pathway:", 
+    camera_results[selected_pathway_id, "Description"], "\n\n")
+
+cat("Summary of log fold changes:\n")
+print(summary(pathway_genes_stats$logFC))
+
+cat("\nTop 10 genes in this pathway:\n")
+print(head(pathway_genes_stats[order(pathway_genes_stats$P.Value), ], 10)[, 
+           c("logFC", "AveExpr", "t", "P.Value", "adj.P.Val")])
+```
+
+---
+
+# 13. Export Results
+
+Save the results for further analysis or reporting.
+
+```{r export-results, eval=FALSE}
+# Create output directory
+if (!dir.exists("results")) {
+  dir.create("results")
+}
+
+# Export significant pathways
+write.csv(
+  camera_results,
+  file = "results/camera_all_pathways.csv",
+  row.names = TRUE
+)
+
+write.csv(
+  significant_pathways,
+  file = "results/camera_significant_pathways.csv",
+  row.names = TRUE
+)
+
+# Export top genes for significant pathways
+for (i in 1:min(5, nrow(significant_pathways))) {
+  pathway_id <- rownames(significant_pathways)[i]
+  pathway_indices <- gene_set_indices[[pathway_id]]
+  
+  pathway_stats <- topTable(
+    fit2,
+    coef = "TvsB",
+    number = Inf,
+    sort.by = "P"
+  )[pathway_indices, ]
+  
+  filename <- paste0("results/pathway_", pathway_id, "_genes.csv")
+  write.csv(pathway_stats, file = filename, row.names = TRUE)
+}
+
+cat("Results exported to 'results/' directory\n")
+```
+
+---
+
+# 14. Key Concepts Summary
+
+## CAMERA Characteristics
+
+**Advantages:**
+
+- Accounts for inter-gene correlation (genes don't act independently)
+- More powerful than GSEA for moderate effect sizes
+- Fast computation
+- Provides directional enrichment
+- Works well with any linear model design
+
+**Limitations:**
+
+- Requires appropriate inter.gene.cor setting
+- Competitive test assumption may not suit all biological questions
+- Requires sufficient genes per pathway (≥10 recommended)
+
+## When to Use CAMERA
+
+Use CAMERA when:
+
+1. **You want competitive testing**: Compare genes in pathway vs. all other genes
+2. **You have a linear model**: Any design matrix that works with limma
+3. **Inter-gene correlation matters**: Genes in pathways work together
+4. **You need speed**: Testing many pathways quickly
+5. **You want direction**: Know if pathways are up or down-regulated
+
+Use ROAST/MROAST/FRY when:
+
+1. **You want self-contained testing**: Test if pathway genes are DE
+2. **You're skeptical of pathway definition**: Don't want to compare to background
+3. **You have specific hypotheses**: Testing individual pathways
+
+## Key Parameters
+
+| Parameter | Purpose | Recommendations |
+|-----------|---------|-----------------|
+| `inter.gene.cor` | Controls correlation adjustment | 0.01 (default), NA (estimate), 0.05-0.1 (moderate) |
+| `sort` | How to sort results | "directional" (default), "mixed", "none" |
+| `min pathway size` | Filter small pathways | 10-15 genes minimum |
+| `FDR threshold` | Significance cutoff | 0.05 (standard), 0.01 (stringent) |
+
+---
+
+# 15. Biological Interpretation
+
+The pathways identified by CAMERA represent coordinated changes in gene expression between T-cell and B-cell ALL samples.
+
+## Expected Biological Differences
+
+B-cell and T-cell leukemias should show differences in:
+
+- **Immune cell development pathways**: T-cell vs B-cell receptor signaling
+- **Lineage-specific transcription factors**: Different master regulators
+- **Cell surface markers**: CD markers specific to each lineage
+- **Signaling pathways**: Different growth factor responses
+
+## Validation Approaches
+
+To validate CAMERA results:
+
+1. **Literature review**: Check if pathways are known to differ between cell types
+2. **Independent datasets**: Test on other B-cell vs T-cell comparisons
+3. **Functional studies**: Experimental validation of key genes
+4. **Cross-method validation**: Compare with GSEA, ROAST, or other methods
+5. **Single-gene validation**: qPCR or other techniques for key genes
+
+---
+
+# 16. Conclusions
+
+In this tutorial, we demonstrated:
+
+1. **Data preparation**: Loading and preprocessing the ALL dataset
+2. **Pathway mapping**: Converting probes to genes to pathways
+3. **CAMERA analysis**: Competitive gene set testing
+4. **Result annotation**: Adding pathway descriptions
+5. **Visualization**: Graphical representation of results
+6. **Comparison**: CAMERA vs. MROAST (competitive vs. self-contained)
+7. **Parameter exploration**: Understanding inter.gene.cor
+8. **Biological interpretation**: Making sense of the results
+
+## Key Takeaways
+
+- CAMERA is a powerful **competitive** gene set test
+- Inter-gene correlation adjustment is crucial for valid p-values
+- Pathway descriptions make results interpretable
+- Compare with self-contained tests (ROAST/MROAST) for comprehensive analysis
+- Minimum pathway size (10-15 genes) ensures statistical power
+- Always validate significant findings with independent approaches
+
+## Further Reading
+
+- Wu & Smyth (2012). Camera: a competitive gene set test accounting for inter-gene correlation. *Nucleic Acids Research* 40:e133
+- Goeman & Bühlmann (2007). Analyzing gene expression data in terms of gene sets. *Bioinformatics* 23:980-987
+- [Limma User's Guide](https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersguide.pdf)
+- [Gene Set Testing Chapter](http://bioinf.wehi.edu.au/software/MSigDB/)
+
+---
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```

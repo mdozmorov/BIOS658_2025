@@ -27,8 +27,13 @@ editor_options:
 knitr::include_url('../../slides/08_FuncEnrich/08_functional_enrichment.html#1')
 ```
 
+<a href="../../slides/08_FuncEnrich/08a_enrichment_stats.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/08_FuncEnrich/08a_enrichment_stats.html#1')
+```
 
 
-<!-- ### Code examples -->
+### Code examples
 
-<!-- - multitest.Rmd, <a href="../../slides/07a_DiffExpr/lab/multitest.Rmd" target="_blank">Rmd</a>, <a href="../../slides/07a_DiffExpr/lab/multitest.html" target="_blank">HTML</a> -->
+- camera.Rmd, <a href="../../slides/08_FuncEnrich/lab/camera.Rmd" target="_blank">Rmd</a>, <a href="../../slides/08_FuncEnrich/lab/camera.html" target="_blank">HTML</a>

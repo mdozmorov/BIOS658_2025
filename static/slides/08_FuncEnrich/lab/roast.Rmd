@@ -1,0 +1,615 @@
+---
+title: "Gene Set Testing with ROAST, MROAST, and FRY"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    code_folding: show
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 8
+)
+```
+
+# Introduction
+
+This tutorial demonstrates how to perform **self-contained gene set testing** using three related methods from the `limma` package:
+
+- **ROAST**: Rotation gene set test for a single gene set
+- **MROAST**: Multiple ROAST tests with multiple testing correction
+- **FRY**: Fast approximation to MROAST with infinite rotations
+
+These methods test whether genes in a pathway are differentially expressed, comparing against a null hypothesis of **no differential expression**. This is different from **competitive tests** like CAMERA, which test whether genes in a set are more differentially expressed than genes outside the set.
+
+We'll use the **ALL (Acute Lymphoblastic Leukemia)** dataset to compare B-cell vs T-cell ALL samples and identify enriched KEGG pathways.
+
+---
+
+# 1. Load Required Packages
+
+We need several Bioconductor packages for this analysis:
+
+- `limma`: For differential expression and gene set testing
+- `ALL`: The dataset we'll analyze
+- `hgu95av2.db`: Annotation for the microarray platform
+- `org.Hs.eg.db`: Human gene annotations
+- `clusterProfiler`: For downloading KEGG pathway information
+
+```{r load-packages}
+library(limma)
+library(ALL)
+library(hgu95av2.db)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+```
+
+---
+
+# 2. Load and Prepare the ALL Dataset
+
+The ALL dataset contains gene expression measurements from acute lymphoblastic leukemia patients. We'll compare B-cell and T-cell samples to identify differentially expressed pathways.
+
+```{r load-data}
+# Load the ALL dataset
+data(ALL)
+
+# Select B-cell and T-cell samples
+bcell_samples <- which(ALL$BT %in% c("B", "B1", "B2", "B3", "B4"))
+tcell_samples <- which(ALL$BT == "T")
+
+# Create a balanced subset
+samples_to_keep <- c(bcell_samples[1:10], tcell_samples[1:5])
+ALL_subset <- ALL[, samples_to_keep]
+
+# Extract expression data
+exprs_data <- exprs(ALL_subset)
+
+# Create design matrix
+cell_type <- factor(ifelse(ALL_subset$BT == "T", "T", "B"))
+design <- model.matrix(~0 + cell_type)
+colnames(design) <- c("B_cell", "T_cell")
+
+print("Sample composition:")
+print(table(cell_type))
+```
+
+The design matrix uses a **group-means parameterization** (no intercept), which makes it easier to specify contrasts between groups.
+
+---
+
+# 3. Differential Expression Analysis
+
+We use `limma` to identify differentially expressed genes between T-cell and B-cell samples. This analysis provides the statistical foundation for gene set testing.
+
+```{r differential-expression}
+# Fit linear model
+fit <- lmFit(exprs_data, design)
+
+# Define contrast: T-cell vs B-cell
+contrast_matrix <- makeContrasts(
+  TvsB = T_cell - B_cell,
+  levels = design
+)
+
+# Fit contrasts and apply empirical Bayes
+fit2 <- contrasts.fit(fit, contrast_matrix)
+fit2 <- eBayes(fit2)
+
+# View top genes
+top_genes <- topTable(fit2, coef = "TvsB", number = 10)
+print("Top 10 differentially expressed genes:")
+print(top_genes[, c("logFC", "AveExpr", "t", "P.Value", "adj.P.Val")])
+```
+
+The `eBayes` function computes moderated t-statistics by borrowing information across genes, which improves statistical power especially for small sample sizes.
+
+---
+
+# 4. Prepare KEGG Pathway Gene Sets
+
+Gene set testing requires mapping our microarray probes to gene identifiers and then to pathway annotations. We use KEGG pathways as our gene sets.
+
+## 4.1 Map Probes to Entrez Gene IDs
+
+```{r map-probes}
+# Get probe to Entrez Gene ID mapping
+probe_to_entrez <- as.list(hgu95av2ENTREZID)
+probe_to_entrez <- probe_to_entrez[!is.na(probe_to_entrez)]
+
+# Map our probes to Entrez IDs
+probe_ids <- rownames(exprs_data)
+entrez_mapping <- unlist(probe_to_entrez[probe_ids])
+entrez_mapping <- entrez_mapping[!is.na(entrez_mapping)]
+
+print(paste("Number of probes mapped to Entrez IDs:", length(entrez_mapping)))
+```
+
+## 4.2 Get KEGG Pathway Annotations
+
+We use the `org.Hs.egPATH` object which maps Entrez Gene IDs to KEGG pathway IDs.
+
+```{r kegg-pathways}
+# Get gene-to-pathway mapping
+pathway_map <- org.Hs.egPATH
+mapped_genes <- mappedkeys(pathway_map)
+gene_to_pathway <- as.list(pathway_map[mapped_genes])
+
+# Invert to create pathway-to-genes mapping
+pathway_to_genes <- list()
+for (gene_id in names(gene_to_pathway)) {
+  pathways <- gene_to_pathway[[gene_id]]
+  for (pathway_id in pathways) {
+    if (is.null(pathway_to_genes[[pathway_id]])) {
+      pathway_to_genes[[pathway_id]] <- character(0)
+    }
+    pathway_to_genes[[pathway_id]] <- c(pathway_to_genes[[pathway_id]], gene_id)
+  }
+}
+
+print(paste("Total KEGG pathways:", length(pathway_to_genes)))
+```
+
+## 4.3 Create Gene Set Indices
+
+ROAST, MROAST, and FRY require gene sets as lists of row indices in the expression matrix.
+
+```{r gene-set-indices}
+create_gene_set_indices <- function(pathway_list, gene_mapping, min_genes = 10) {
+  pathway_indices <- list()
+  
+  for (pathway_id in names(pathway_list)) {
+    pathway_genes <- pathway_list[[pathway_id]]
+    probes_in_pathway <- names(gene_mapping)[gene_mapping %in% pathway_genes]
+    indices <- which(rownames(exprs_data) %in% probes_in_pathway)
+    
+    # Only keep pathways with sufficient genes
+    if (length(indices) >= min_genes) {
+      pathway_indices[[pathway_id]] <- indices
+    }
+  }
+  
+  return(pathway_indices)
+}
+
+gene_set_indices <- create_gene_set_indices(pathway_to_genes, entrez_mapping)
+
+print(paste("Pathways with >=10 genes:", length(gene_set_indices)))
+```
+
+We filter out pathways with fewer than 10 genes because very small gene sets have limited statistical power and biological interpretability.
+
+---
+
+# 5. Download KEGG Pathway Descriptions
+
+To make results interpretable, we need pathway names and descriptions.
+
+```{r pathway-names}
+# Download KEGG data using clusterProfiler
+kegg_info <- download_KEGG("hsa")
+
+# Create pathway ID to name mapping
+pathway_names <- setNames(
+  kegg_info$KEGGPATHID2NAME$to, 
+  kegg_info$KEGGPATHID2NAME$from
+)
+
+print(paste("Pathway names available:", length(pathway_names)))
+print("Example pathways:")
+print(head(pathway_names, 3))
+```
+
+```{r helper-function}
+# Helper function to add descriptions to results
+add_pathway_descriptions <- function(results, pathway_ids_col = NULL) {
+  if (is.null(pathway_ids_col)) {
+    pathway_ids <- rownames(results)
+  } else {
+    pathway_ids <- results[[pathway_ids_col]]
+  }
+  
+  # Pad pathway IDs to match KEGG format (e.g., "810" -> "hsa00810")
+  pathway_ids_padded <- sprintf("%05s", pathway_ids)
+  pathway_ids_formatted <- paste0("hsa", pathway_ids_padded)
+  
+  results$Description <- pathway_names[pathway_ids_formatted]
+  results$Description[is.na(results$Description)] <- NA
+  
+  return(results)
+}
+```
+
+---
+
+# 6. ROAST: Single Gene Set Test
+
+**ROAST** (Rotation gene Set Test) tests a single gene set using rotation-based p-values. It's ideal when you have a specific pathway hypothesis to test.
+
+ROAST estimates p-values by randomly rotating orthogonalized residuals, which preserves the correlation structure while breaking the association with the outcome.
+
+```{r roast-single}
+# Test the first pathway as an example
+test_pathway_id <- names(gene_set_indices)[1]
+test_pathway_indices <- gene_set_indices[[test_pathway_id]]
+
+# Get pathway description
+pathway_id_formatted <- paste0("hsa", sprintf("%05s", test_pathway_id))
+pathway_description <- pathway_names[pathway_id_formatted]
+
+cat("Testing pathway:", test_pathway_id, "\n")
+cat("Description:", pathway_description, "\n")
+cat("Number of genes:", length(test_pathway_indices), "\n\n")
+
+# Run ROAST with high number of rotations
+roast_result <- roast(
+  y = exprs_data,
+  index = test_pathway_indices,
+  design = design,
+  contrast = contrast_matrix[, "TvsB"],
+  nrot = 9999
+)
+
+print(roast_result)
+```
+
+**Interpreting ROAST output:**
+
+- **Down**: Tests if genes tend to be down-regulated (negative t-statistics)
+- **Up**: Tests if genes tend to be up-regulated (positive t-statistics)
+- **UpOrDown**: Two-sided test for any directional change
+- **Mixed**: Tests for differential expression in either direction
+- **Active.Prop**: Proportion of genes contributing materially to significance
+
+The number of rotations (`nrot=9999`) should be high for publication-quality results. The minimum possible p-value is 1/(nrot+1).
+
+---
+
+# 7. MROAST: Multiple Gene Set Tests
+
+**MROAST** extends ROAST to test multiple gene sets simultaneously with appropriate multiple testing correction.
+
+MROAST is suitable when testing a moderate number of pathways (up to ~100). For larger numbers, FRY is more efficient.
+
+```{r mroast-analysis}
+# Test a subset of pathways (first 50)
+n_pathways_test <- min(50, length(gene_set_indices))
+pathways_to_test <- gene_set_indices[1:n_pathways_test]
+
+cat("Testing", n_pathways_test, "KEGG pathways with MROAST...\n")
+cat("This may take a few minutes...\n\n")
+
+# Run MROAST
+mroast_results <- mroast(
+  y = exprs_data,
+  index = pathways_to_test,
+  design = design,
+  contrast = contrast_matrix[, "TvsB"],
+  nrot = 9999,
+  adjust.method = "BH",
+  sort = "directional"
+)
+
+# Add pathway descriptions
+mroast_results <- add_pathway_descriptions(mroast_results)
+
+# Display top results
+print("Top 15 pathways from MROAST:")
+print(mroast_results[1:15, c("NGenes", "PropDown", "PropUp", 
+                              "Direction", "PValue", "FDR", "Description")])
+```
+
+**Interpreting MROAST columns:**
+
+- **NGenes**: Number of genes in the pathway
+- **PropDown**: Proportion of genes with z-score < -√2
+- **PropUp**: Proportion of genes with z-score > √2
+- **Direction**: Overall direction of enrichment ("Up" or "Down")
+- **PValue**: Two-sided directional p-value
+- **FDR**: False discovery rate (Benjamini-Hochberg correction)
+- **PValue.Mixed**: Non-directional p-value
+- **FDR.Mixed**: FDR for non-directional test
+
+---
+
+# 8. FRY: Fast Gene Set Testing
+
+**FRY** is a fast approximation that simulates what MROAST would give with an infinite number of rotations. It's ideal for testing large numbers of pathways.
+
+FRY can test thousands of pathways in seconds, making it suitable for genome-wide pathway screening.
+
+```{r fry-analysis}
+cat("Testing all", length(gene_set_indices), "KEGG pathways with FRY...\n\n")
+
+# Run FRY on all pathways
+fry_results <- fry(
+  y = exprs_data,
+  index = gene_set_indices,
+  design = design,
+  contrast = contrast_matrix[, "TvsB"],
+  sort = "directional"
+)
+
+# Add pathway descriptions
+fry_results <- add_pathway_descriptions(fry_results)
+
+# Display top results
+print("Top 15 pathways from FRY:")
+print(fry_results[1:15, c("NGenes", "Direction", "PValue", "FDR", "Description")])
+```
+
+**Key advantages of FRY:**
+
+- Very fast - can test entire pathway databases
+- High-resolution p-values not limited by number of rotations
+- Directional p-values approximate MROAST with infinite rotations
+- When `df.prior` is large and `set.statistic="mean"`, FRY gives exactly the same directional p-values as infinite MROAST
+
+---
+
+# 9. Compare MROAST and FRY Results
+
+Let's compare the results from MROAST and FRY to see how well FRY approximates MROAST.
+
+```{r compare-methods}
+# Find common pathways tested by both methods
+common_pathways <- intersect(rownames(mroast_results), rownames(fry_results))
+
+comparison <- data.frame(
+  PathwayID = common_pathways,
+  MROAST_PValue = mroast_results[common_pathways, "PValue"],
+  FRY_PValue = fry_results[common_pathways, "PValue"],
+  MROAST_FDR = mroast_results[common_pathways, "FDR"],
+  FRY_FDR = fry_results[common_pathways, "FDR"],
+  Description = fry_results[common_pathways, "Description"]
+)
+
+# Sort by FRY p-value
+comparison_sorted <- comparison[order(comparison$FRY_PValue), ]
+
+print("Comparison of top 10 pathways:")
+print(head(comparison_sorted, 10))
+
+# Calculate correlation
+cor_pval <- cor(comparison$MROAST_PValue, comparison$FRY_PValue, 
+                method = "spearman")
+cat("\nSpearman correlation between MROAST and FRY p-values:", 
+    round(cor_pval, 3), "\n")
+```
+
+A high correlation indicates that FRY provides a good approximation to MROAST results while being much faster.
+
+---
+
+# 10. Visualize Results
+
+Visual comparisons help understand the agreement between methods and the biological findings.
+
+```{r visualizations, fig.width=12, fig.height=10}
+par(mfrow = c(2, 2), mar = c(8, 4, 4, 2))
+
+# 1. Top pathways from MROAST
+top_mroast <- head(mroast_results, 15)
+barplot(
+  -log10(top_mroast$FDR),
+  names.arg = rownames(top_mroast),
+  las = 2,
+  main = "MROAST: Top 15 Pathways",
+  ylab = "-log10(FDR)",
+  col = ifelse(top_mroast$Direction == "Up", "steelblue", "coral"),
+  cex.names = 0.6
+)
+abline(h = -log10(0.05), lty = 2, col = "red")
+legend("topright", legend = c("Up", "Down", "FDR = 0.05"), 
+       fill = c("steelblue", "coral", NA), 
+       border = c("black", "black", NA),
+       lty = c(NA, NA, 2), col = c(NA, NA, "red"))
+
+# 2. Top pathways from FRY
+top_fry <- head(fry_results, 15)
+barplot(
+  -log10(top_fry$FDR),
+  names.arg = rownames(top_fry),
+  las = 2,
+  main = "FRY: Top 15 Pathways",
+  ylab = "-log10(FDR)",
+  col = ifelse(top_fry$Direction == "Up", "steelblue", "coral"),
+  cex.names = 0.6
+)
+abline(h = -log10(0.05), lty = 2, col = "red")
+
+# 3. P-value comparison scatter plot
+plot(
+  -log10(comparison$MROAST_PValue),
+  -log10(comparison$FRY_PValue),
+  pch = 16,
+  col = rgb(0, 0, 0, 0.3),
+  xlab = "-log10(MROAST P-value)",
+  ylab = "-log10(FRY P-value)",
+  main = "MROAST vs FRY P-values"
+)
+abline(0, 1, col = "red", lty = 2)
+text(x = max(-log10(comparison$MROAST_PValue)) * 0.7,
+     y = max(-log10(comparison$FRY_PValue)) * 0.1,
+     labels = paste("Correlation =", round(cor_pval, 3)),
+     col = "blue")
+
+# 4. Distribution of pathway sizes
+hist(
+  fry_results$NGenes,
+  breaks = 30,
+  main = "Distribution of Pathway Sizes",
+  xlab = "Number of Genes",
+  col = "lightblue",
+  border = "white"
+)
+
+par(mfrow = c(1, 1))
+```
+
+---
+
+# 11. Summary of Significant Pathways
+
+Let's summarize how many pathways are significantly enriched at FDR < 0.05.
+
+```{r summary-significant}
+# MROAST significant pathways
+mroast_sig <- mroast_results[mroast_results$FDR < 0.05, ]
+cat("MROAST - Significant pathways (FDR < 0.05):", nrow(mroast_sig), "\n")
+cat("  Up-regulated:", sum(mroast_sig$Direction == "Up"), "\n")
+cat("  Down-regulated:", sum(mroast_sig$Direction == "Down"), "\n\n")
+
+# FRY significant pathways
+fry_sig <- fry_results[fry_results$FDR < 0.05, ]
+cat("FRY - Significant pathways (FDR < 0.05):", nrow(fry_sig), "\n")
+cat("  Up-regulated:", sum(fry_sig$Direction == "Up"), "\n")
+cat("  Down-regulated:", sum(fry_sig$Direction == "Down"), "\n\n")
+
+# Overlap between methods
+sig_overlap <- intersect(rownames(mroast_sig), rownames(fry_sig))
+cat("Pathways significant in both methods:", length(sig_overlap), "\n\n")
+
+# Show top significant pathways from FRY
+cat("Top 10 significant pathways (FRY):\n")
+print(head(fry_sig[, c("NGenes", "Direction", "PValue", "FDR", "Description")], 10))
+```
+
+---
+
+# 12. Advanced Example: Using Gene Weights
+
+Gene weights allow you to specify directional expectations for genes in a pathway based on prior knowledge or experimental evidence.
+
+## What are Gene Weights?
+
+Gene weights are directional values (positive or negative) that indicate:
+- **+1**: Gene expected to be up-regulated
+- **-1**: Gene expected to be down-regulated
+- Other values: Weighted contributions
+
+When you specify gene weights, a significant "Up" p-value means the observed changes are **positively correlated** with the weights (genes are changing in the expected direction). A significant "Down" p-value means changes are **negatively correlated** with the weights.
+
+```{r gene-weights-example}
+# Create weighted gene set based on differential expression
+# (In practice, weights would come from prior knowledge)
+top_de_genes <- topTable(fit2, coef = "TvsB", number = 100, sort.by = "none")
+gene_weights <- sign(top_de_genes$logFC)
+
+# Get indices of these genes
+top_gene_probes <- rownames(top_de_genes)
+weighted_indices <- which(rownames(exprs_data) %in% top_gene_probes)
+
+# Create data.frame with gene indices and weights
+weighted_set <- data.frame(
+  Gene = weighted_indices,
+  Weight = gene_weights
+)
+
+cat("Testing weighted gene set with ROAST:\n\n")
+roast_weighted <- roast(
+  y = exprs_data,
+  index = weighted_set,
+  design = design,
+  contrast = contrast_matrix[, "TvsB"],
+  nrot = 9999
+)
+
+print(roast_weighted)
+```
+
+**Interpretation with gene weights:**
+
+- **Significant "Up"**: Genes are changing in the direction specified by weights (positive correlation)
+- **Significant "Down"**: Genes are changing opposite to weights (negative correlation)
+- This is useful for testing whether your data matches a known expression signature
+
+---
+
+# 13. Key Differences Between Methods
+
+## Summary Table
+
+| Feature | ROAST | MROAST | FRY |
+|---------|-------|--------|-----|
+| **Number of sets** | Single | Multiple | Multiple |
+| **Speed** | Slow | Moderate | Fast |
+| **P-value method** | Rotation-based | Rotation-based | Analytical approximation |
+| **Rotations needed** | Many (9999+) | Many (9999+) | None |
+| **Best use case** | Focused hypothesis | Moderate # pathways | Large # pathways |
+| **PropDown/PropUp** | No | Yes | No |
+| **Active.Prop** | Yes | No | No |
+
+## When to Use Each Method
+
+### Use ROAST when:
+- Testing a **single specific pathway** hypothesis
+- You want detailed output including `Active.Prop`
+- You have time for rotation-based testing
+
+### Use MROAST when:
+- Testing a **moderate number** of pathways (~10-100)
+- You want `PropDown` and `PropUp` statistics
+- You need rotation-based exact p-values
+
+### Use FRY when:
+- Testing a **large number** of pathways (hundreds to thousands)
+- Speed is important
+- You need high-resolution p-values
+- Screening entire pathway databases
+
+## Self-Contained vs Competitive Tests
+
+All three methods (ROAST, MROAST, FRY) are **self-contained tests**:
+- Test whether genes in a set are differentially expressed
+- Compare against a null hypothesis of **NO differential expression**
+- Answer: "Are these genes DE?"
+
+In contrast, **CAMERA** is a **competitive test**:
+- Tests whether genes in a set are **MORE** differentially expressed than genes **outside** the set
+- Compare against other genes in the genome
+- Answer: "Are these genes MORE DE than others?"
+
+---
+
+# 14. Conclusions
+
+In this tutorial, we demonstrated:
+
+1. How to prepare gene sets from KEGG pathways
+2. Single pathway testing with **ROAST**
+3. Multiple pathway testing with **MROAST**
+4. Fast pathway screening with **FRY**
+5. Comparison between methods showing high agreement
+6. Use of gene weights for directional testing
+
+## Key Takeaways
+
+- FRY provides an excellent fast approximation to MROAST
+- Use high `nrot` values (≥9999) for publication-quality ROAST/MROAST results
+- Gene weights enable testing of directional hypotheses
+- All three methods are self-contained tests (vs. CAMERA's competitive test)
+- Choose the method based on number of pathways and computational time available
+
+## Further Reading
+
+- Wu et al. (2010). ROAST: rotation gene set tests for complex microarray experiments. *Bioinformatics* 26:2176-2182
+- Goeman & Bühlmann (2007). Analyzing gene expression data in terms of gene sets. *Bioinformatics* 23:980-987
+- [Limma User's Guide](https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersguide.pdf)
+
+---
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```

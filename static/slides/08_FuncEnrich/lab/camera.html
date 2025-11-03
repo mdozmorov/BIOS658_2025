@@ -11,7 +11,7 @@
 
 <meta name="author" content="Bioinformatics Tutorial" />
 
-<meta name="date" content="2025-10-29" />
+<meta name="date" content="2025-11-03" />
 
 <title>Gene Set Testing with CAMERA</title>
 
@@ -1587,7 +1587,7 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Gene Set Testing with CAMERA</h1>
 <h4 class="author">Bioinformatics Tutorial</h4>
-<h4 class="date">2025-10-29</h4>
+<h4 class="date">2025-11-03</h4>
 
 </div>
 
@@ -1999,9 +1999,9 @@ cat(&quot;\nStructure of downloaded data:\n&quot;)</code></pre>
 ## Structure of downloaded data:</code></pre>
 <pre class="r"><code>str(kegg_info)</code></pre>
 <pre><code>## List of 2
-##  $ KEGGPATHID2EXTID:&#39;data.frame&#39;:    39388 obs. of  2 variables:
-##   ..$ from: chr [1:39388] &quot;hsa00010&quot; &quot;hsa00010&quot; &quot;hsa00010&quot; &quot;hsa00010&quot; ...
-##   ..$ to  : chr [1:39388] &quot;10327&quot; &quot;124&quot; &quot;125&quot; &quot;126&quot; ...
+##  $ KEGGPATHID2EXTID:&#39;data.frame&#39;:    39690 obs. of  2 variables:
+##   ..$ from: chr [1:39690] &quot;hsa00010&quot; &quot;hsa00010&quot; &quot;hsa00010&quot; &quot;hsa00010&quot; ...
+##   ..$ to  : chr [1:39690] &quot;10327&quot; &quot;124&quot; &quot;125&quot; &quot;126&quot; ...
 ##  $ KEGGPATHID2NAME :&#39;data.frame&#39;:    368 obs. of  2 variables:
 ##   ..$ from: chr [1:368] &quot;hsa01100&quot; &quot;hsa01200&quot; &quot;hsa01210&quot; &quot;hsa01212&quot; ...
 ##   ..$ to  : chr [1:368] &quot;Metabolic pathways&quot; &quot;Carbon metabolism&quot; &quot;2-Oxocarboxylic acid metabolism&quot; &quot;Fatty acid metabolism&quot; ...</code></pre>
@@ -2217,28 +2217,28 @@ mroast_results &lt;- mroast(
 cat(&quot;Top 10 pathways from MROAST:\n&quot;)</code></pre>
 <pre><code>## Top 10 pathways from MROAST:</code></pre>
 <pre class="r"><code>print(head(mroast_results, 10))</code></pre>
-<pre><code>##       NGenes   PropDown    PropUp Direction PValue         FDR PValue.Mixed
-## 00592     11 0.00000000 0.4545455        Up  0.001 0.008333333        0.001
-## 04146     61 0.04918033 0.3278689        Up  0.001 0.008333333        0.010
-## 05131    100 0.27000000 0.0500000      Down  0.001 0.008333333        0.067
-## 00410     23 0.00000000 0.4782609        Up  0.003 0.017857143        0.021
-## 00640     29 0.00000000 0.4482759        Up  0.003 0.017857143        0.028
-## 00650     31 0.00000000 0.4193548        Up  0.003 0.017857143        0.024
-## 00250     33 0.03030303 0.3636364        Up  0.003 0.017857143        0.023
-## 00071     43 0.02325581 0.4418605        Up  0.004 0.021875000        0.004
-## 00340     22 0.04545455 0.4545455        Up  0.006 0.025000000        0.004
-## 00280     45 0.00000000 0.4444444        Up  0.006 0.025000000        0.018
-##         FDR.Mixed
-## 00592 0.008333333
-## 04146 0.039516129
-## 05131 0.073888889
-## 00410 0.039516129
-## 00640 0.042968750
-## 00650 0.039516129
-## 00250 0.039516129
-## 00071 0.025000000
-## 00340 0.025000000
-## 00280 0.039516129</code></pre>
+<pre><code>##       NGenes   PropDown    PropUp Direction PValue        FDR PValue.Mixed
+## 00410     23 0.00000000 0.4782609        Up  0.001 0.00625000        0.012
+## 00592     11 0.00000000 0.4545455        Up  0.001 0.00625000        0.002
+## 04146     61 0.04918033 0.3278689        Up  0.001 0.00625000        0.012
+## 05131    100 0.27000000 0.0500000      Down  0.001 0.00625000        0.072
+## 00071     43 0.02325581 0.4418605        Up  0.002 0.01071429        0.004
+## 00650     31 0.00000000 0.4193548        Up  0.002 0.01071429        0.023
+## 00250     33 0.03030303 0.3636364        Up  0.002 0.01071429        0.022
+## 00640     29 0.00000000 0.4482759        Up  0.003 0.01562500        0.023
+## 00340     22 0.04545455 0.4545455        Up  0.004 0.01944444        0.005
+## 00620     39 0.07692308 0.3076923        Up  0.005 0.02045455        0.009
+##        FDR.Mixed
+## 00410 0.03382353
+## 00592 0.01875000
+## 04146 0.03382353
+## 05131 0.08055556
+## 00071 0.02500000
+## 00650 0.03750000
+## 00250 0.03750000
+## 00640 0.03750000
+## 00340 0.02500000
+## 00620 0.03035714</code></pre>
 <div id="compare-results" class="section level2">
 <h2>10.1 Compare Results</h2>
 <pre class="r"><code># Compare pathways tested by both methods
@@ -2258,17 +2258,17 @@ cat(&quot;\nComparison of top 10 pathways:\n&quot;)</code></pre>
 <pre><code>## 
 ## Comparison of top 10 pathways:</code></pre>
 <pre class="r"><code>print(head(comparison[order(comparison$CAMERA_PValue), ], 10))</code></pre>
-<pre><code>##    PathwayID CAMERA_PValue MROAST_PValue   CAMERA_FDR  MROAST_FDR
-## 1      05131  1.296692e-06         0.001 4.994151e-05 0.008333333
-## 2      05130  9.191080e-05         0.059 1.608439e-03 0.139285714
-## 3      05416  1.282019e-04         0.065 1.923028e-03 0.140217391
-## 4      05220  2.504333e-04         0.250 2.921721e-03 0.402419355
-## 5      04110  5.153455e-04         0.233 4.919207e-03 0.400833333
-## 6      04145  7.599988e-04         0.197 6.939119e-03 0.350892857
-## 7      05323  1.075522e-03         0.165 9.034388e-03 0.318269231
-## 8      04520  4.997876e-03         0.353 3.086923e-02 0.492567568
-## 9      04722  6.447600e-03         0.673 3.840846e-02 0.800595238
-## 10     04380  2.987963e-02         0.963 1.228479e-01 0.963000000
+<pre><code>##    PathwayID CAMERA_PValue MROAST_PValue   CAMERA_FDR MROAST_FDR
+## 1      05131  1.296692e-06         0.001 4.994151e-05  0.0062500
+## 2      05130  9.191080e-05         0.043 1.608439e-03  0.1011905
+## 3      05416  1.282019e-04         0.061 1.923028e-03  0.1315217
+## 4      05220  2.504333e-04         0.267 2.921721e-03  0.4053030
+## 5      04110  5.153455e-04         0.242 4.919207e-03  0.4053030
+## 6      04145  7.599988e-04         0.232 6.939119e-03  0.4053030
+## 7      05323  1.075522e-03         0.193 9.034388e-03  0.3620370
+## 8      04520  4.997876e-03         0.365 3.086923e-02  0.4925676
+## 9      04722  6.447600e-03         0.699 3.840846e-02  0.8315476
+## 10     04380  2.987963e-02         0.958 1.228479e-01  0.9580000
 ##    CAMERA_Direction MROAST_Direction
 ## 1              Down             Down
 ## 2              Down             Down
@@ -2286,7 +2286,7 @@ cor_result &lt;- cor(comparison$CAMERA_PValue, comparison$MROAST_PValue,
 cat(&quot;\nSpearman correlation between CAMERA and MROAST p-values:&quot;, 
     round(cor_result, 3), &quot;\n&quot;)</code></pre>
 <pre><code>## 
-## Spearman correlation between CAMERA and MROAST p-values: 0.143</code></pre>
+## Spearman correlation between CAMERA and MROAST p-values: 0.134</code></pre>
 <p><strong>Key Differences:</strong></p>
 <ul>
 <li><strong>CAMERA</strong> (competitive): Tests if pathway genes are

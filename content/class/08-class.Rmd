@@ -1,0 +1,35 @@
+---
+title: "Clustering"
+# linktitle: "1. Introduction to RStudio and Images"
+date: "2025-11-27"
+class_date: "2025-11-27"
+draft: false
+output:
+  blogdown::html_page:
+    toc: false
+menu:
+  class:
+    parent: Class sessions
+    weight: 8
+type: docs
+weight: 8
+# pdf: 
+# thumb: 
+editor_options: 
+  chunk_output_type: console
+---
+
+<!--
+## Functional enrichment
+
+<a href="../../slides/08_FuncEnrich/08_functional_enrichment.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/08_FuncEnrich/08_functional_enrichment.html#1')
+```
+-->
+
+### Code examples
+
+- Volcano.Rmd, <a href="../../slides/09_Clustering/Volcano.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/Volcano.html" target="_blank">HTML</a>
+- Heatmap.Rmd, <a href="../../slides/09_Clustering/Heatmap.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/Heatmap.html" target="_blank">HTML</a>

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Volcano Plots</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-11-10" />
+    <script src="libs/header-attrs-2.30/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Volcano Plots
+]
+.subtitle[
+## Visualizing Differential Expression
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-11-10
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## What is a Volcano Plot?
+
+&lt;img src="img/volcano_plot.png" width="650px" style="display: block; margin: auto;" /&gt;
+
+---
+## What is a Volcano Plot?
+
+**Volcano plot:** A scatter plot used to visualize differential expression results
+
+**Axes:**
+- **X-axis:** Log fold change (log₂FC) - magnitude of change
+- **Y-axis:** -log₁₀(p-value) - statistical significance
+
+**Why "volcano"?**
+- Shape resembles a volcanic eruption
+- Significant genes with large changes appear at the top sides
+- Non-significant genes cluster at the bottom
+
+**Key Features:**
+- Combines **statistical significance** and **biological relevance**
+- Quickly identify genes that are both significantly and substantially changed
+- Standard visualization in genomics papers
+
+---
+
+## Interpreting a Volcano Plot
+
+**Quadrants:**
+
+.pull-left[
+**Upper right:** 
+- Upregulated genes
+- High significance
+- Large positive fold change
+
+**Upper left:**
+- Downregulated genes
+- High significance  
+- Large negative fold change
+
+**Bottom:**
+- Non-significant genes
+- Regardless of fold change
+]
+
+.pull-right[
+**Thresholds commonly used:**
+- Vertical lines: |log₂FC| ≥ 1 (2-fold change)
+- Horizontal line: p-value ≤ 0.05 or adjusted p-value ≤ 0.05
+
+**Points above/outside thresholds:**
+- Differentially expressed genes (DEGs)
+]
+
+---
+
+## Generate Sample Data
+
+Using the `airway` dataset from Bioconductor
+
+
+``` r
+# Install if needed
+# BiocManager::install("airway")
+# BiocManager::install("DESeq2")
+
+library(DESeq2)
+library(airway)
+
+# Load airway dataset
+data("airway")
+
+# Create DESeq2 object
+dds &lt;- DESeqDataSet(airway, design = ~ cell + dex)
+
+# Run differential expression analysis
+dds &lt;- DESeq(dds)
+
+# Get results (comparing dex treated vs untreated)
+res &lt;- results(dds, contrast = c("dex", "trt", "untrt"))
+
+# Convert to data frame
+res_df &lt;- as.data.frame(res)
+res_df$gene &lt;- rownames(res_df)
+```
+
+---
+
+## Prepare Data for Plotting
+
+
+``` r
+library(dplyr)
+
+# Remove rows with NA values
+res_df &lt;- res_df %&gt;%
+  filter(!is.na(padj), !is.na(log2FoldChange))
+
+# Add significance categories
+res_df &lt;- res_df %&gt;%
+  mutate(
+    significance = case_when(
+      padj &lt; 0.05 &amp; log2FoldChange &gt; 1 ~ "Upregulated",
+      padj &lt; 0.05 &amp; log2FoldChange &lt; -1 ~ "Downregulated",
+      TRUE ~ "Not Significant"
+    )
+  )
+
+# View summary
+table(res_df$significance)
+
+# Preview data
+head(res_df[, c("gene", "log2FoldChange", "pvalue", "padj", "significance")])
+```
+
+---
+
+## Basic Volcano Plot with ggplot2
+
+
+``` r
+library(ggplot2)
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_point(alpha = 0.4, size = 1.5) +
+  labs(title = "Volcano Plot: DESeq2 Results",
+       x = "Log2 Fold Change",
+       y = "-Log10 P-value") +
+  theme_minimal()
+```
+
+**Result:** Basic scatter plot showing all genes
+
+---
+
+## Add Color by Significance
+
+
+``` r
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(pvalue), 
+                   color = significance)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_manual(values = c("Upregulated" = "red",
+                                "Downregulated" = "blue",
+                                "Not Significant" = "grey")) +
+  labs(title = "Volcano Plot with Significance Colors",
+       x = "Log2 Fold Change",
+       y = "-Log10 P-value",
+       color = "Differential Expression") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+**Enhancement:** Color-coded by expression direction and significance
+
+---
+
+## Add Threshold Lines
+
+
+``` r
+# Define thresholds
+fc_threshold &lt;- 1  # log2FC threshold
+pval_threshold &lt;- 0.05
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(pvalue), 
+                   color = significance)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_manual(values = c("Upregulated" = "red",
+                                "Downregulated" = "blue",
+                                "Not Significant" = "grey50")) +
+  # Add threshold lines
+  geom_vline(xintercept = c(-fc_threshold, fc_threshold), 
+             linetype = "dashed", color = "black", linewidth = 0.5) +
+  geom_hline(yintercept = -log10(pval_threshold), 
+             linetype = "dashed", color = "black", linewidth = 0.5) +
+  labs(title = "Volcano Plot with Thresholds",
+       subtitle = "|log2FC| ≥ 1, p-value ≤ 0.05",
+       x = "Log2 Fold Change",
+       y = "-Log10 P-value",
+       color = "Status") +
+  theme_minimal()
+```
+
+---
+
+## Label Top Genes
+
+
+``` r
+library(ggrepel)
+
+# Select top 10 genes by adjusted p-value
+top_genes &lt;- res_df %&gt;%
+  filter(significance != "Not Significant") %&gt;%
+  arrange(padj) %&gt;%
+  head(10)
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(pvalue), 
+                   color = significance)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_manual(values = c("Upregulated" = "red",
+                                "Downregulated" = "blue",
+                                "Not Significant" = "grey50")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  # Add gene labels
+  geom_text_repel(data = top_genes, 
+                  aes(label = gene),
+                  size = 3, max.overlaps = 15) +
+  labs(title = "Volcano Plot with Top Gene Labels",
+       x = "Log2 Fold Change",
+       y = "-Log10 P-value") +
+  theme_minimal()
+```
+
+---
+
+## Using Adjusted P-values
+
+**Important:** Use adjusted p-values (padj) to control for multiple testing
+
+
+``` r
+# Recalculate significance with adjusted p-values
+res_df &lt;- res_df %&gt;%
+  mutate(
+    significance_adj = case_when(
+      padj &lt; 0.05 &amp; log2FoldChange &gt; 1 ~ "Upregulated",
+      padj &lt; 0.05 &amp; log2FoldChange &lt; -1 ~ "Downregulated",
+      TRUE ~ "Not Significant"
+    )
+  )
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), 
+                   color = significance_adj)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_manual(values = c("Upregulated" = "red",
+                                "Downregulated" = "blue",
+                                "Not Significant" = "grey50")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  labs(title = "Volcano Plot with Adjusted P-values",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value") +
+  theme_minimal()
+```
+
+---
+
+## Enhanced Volcano Plot
+
+
+``` r
+# Count DEGs
+n_up &lt;- sum(res_df$significance_adj == "Upregulated")
+n_down &lt;- sum(res_df$significance_adj == "Downregulated")
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), 
+                   color = significance_adj)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(
+    values = c("Upregulated" = "#E41A1C",
+               "Downregulated" = "#377EB8",
+               "Not Significant" = "grey70"),
+    labels = c(paste0("Upregulated (", n_up, ")"),
+               paste0("Downregulated (", n_down, ")"),
+               "Not Significant")
+  ) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", alpha = 0.5) +
+  labs(title = "Dexamethasone Treatment Effect on Gene Expression",
+       subtitle = "Airway smooth muscle cells",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value",
+       color = "Expression Status") +
+  theme_bw() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+---
+
+## Using EnhancedVolcano Package
+
+**EnhancedVolcano** provides publication-ready volcano plots with minimal code
+
+
+``` r
+# Install if needed
+# BiocManager::install("EnhancedVolcano")
+
+library(EnhancedVolcano)
+
+EnhancedVolcano(res_df,
+                lab = res_df$gene,
+                x = 'log2FoldChange',
+                y = 'pvalue',
+                title = 'Dexamethasone vs Control',
+                pCutoff = 0.05,
+                FCcutoff = 1,
+                pointSize = 2.0,
+                labSize = 4.0,
+                colAlpha = 0.5,
+                legendPosition = 'right',
+                legendLabSize = 12,
+                legendIconSize = 4.0)
+```
+
+---
+
+## EnhancedVolcano: Customization
+
+
+``` r
+EnhancedVolcano(res_df,
+                lab = res_df$gene,
+                x = 'log2FoldChange',
+                y = 'padj',
+                title = 'Differential Expression Analysis',
+                subtitle = 'Airway: Treated vs Untreated',
+                pCutoff = 0.05,
+                FCcutoff = 1.5,
+                pointSize = 2.0,
+                labSize = 3.0,
+                # Custom colors
+                col = c('grey30', 'forestgreen', 'royalblue', 'red2'),
+                colAlpha = 0.7,
+                # Select top genes to label
+                selectLab = top_genes$gene,
+                drawConnectors = TRUE,
+                widthConnectors = 0.5,
+                colConnectors = 'grey30',
+                # Legend
+                legendPosition = 'bottom',
+                legendLabels = c('NS', 'Log2FC', 'p-value', 'p-value &amp; Log2FC'),
+                legendLabSize = 10)
+```
+
+---
+
+## Using ggVolcano Package
+
+**ggVolcano** is another specialized package for volcano plots
+
+
+``` r
+# BiocManager::install("BioSenior/ggVolcano", update = FALSE)
+library(ggVolcano)
+# use the function -- add_regulate to add a regulate column 
+# to the DEG result data. 
+res_df$FDR &lt;- as.numeric(res_df$padj)
+data &lt;- add_regulate(data = res_df, log2FC_name = "log2FoldChange",
+                     fdr_name = "FDR", log2FC = 1, fdr = 0.3)
+
+
+# plot
+gradual_volcano(data[, c("gene", "log2FoldChange", "padj")], x = "log2FoldChange", y = "padj",
+          label = "gene", label_number = 10,
+          fills = c("#53a4cf", "#aec5d1", "white", "#e2ae96", "#cc917c", "#a96d5d", "#91403e"),
+          colors = "#404950",
+          log2FC_cut = 0, FDR_cut = 1, add_line = FALSE, pointSizeRange = c(2, 2),
+          output = TRUE)
+```
+
+**Features:**
+- Automatic labeling of top genes
+- Built-in color schemes
+- Simple syntax
+
+---
+
+## Highlighting Specific Genes
+
+
+``` r
+# Define genes of interest
+genes_of_interest &lt;- c("ENSG00000179094", "ENSG00000116584", 
+                       "ENSG00000168309")
+
+res_df &lt;- res_df %&gt;%
+  mutate(highlight = ifelse(gene %in% genes_of_interest, 
+                            "Gene of Interest", 
+                            significance_adj))
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(aes(color = highlight), alpha = 0.6, size = 2) +
+  scale_color_manual(
+    values = c("Upregulated" = "red",
+               "Downregulated" = "blue",
+               "Not Significant" = "grey70",
+               "Gene of Interest" = "gold"),
+    breaks = c("Upregulated", "Downregulated", 
+               "Not Significant", "Gene of Interest")
+  ) +
+  geom_text_repel(data = filter(res_df, gene %in% genes_of_interest),
+                  aes(label = gene), size = 3.5, fontface = "bold") +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  labs(title = "Volcano Plot with Highlighted Genes",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value") +
+  theme_minimal()
+```
+
+---
+
+## Interactive Volcano Plot with plotly
+
+
+``` r
+library(plotly)
+
+# Create ggplot object
+p &lt;- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), 
+                        color = significance_adj,
+                        text = paste("Gene:", gene,
+                                   "&lt;br&gt;Log2FC:", round(log2FoldChange, 2),
+                                   "&lt;br&gt;P-adj:", format(padj, digits = 3)))) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = c("Upregulated" = "red",
+                                "Downregulated" = "blue",
+                                "Not Significant" = "grey70")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  labs(title = "Interactive Volcano Plot",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value") +
+  theme_minimal()
+
+# Convert to interactive plot
+ggplotly(p, tooltip = "text")
+```
+
+**Benefits:** Hover to see gene information, zoom, pan
+
+---
+
+## Faceted Volcano Plots
+
+For comparing multiple contrasts
+
+
+``` r
+# Simulate multiple contrasts (for demonstration)
+res_df_multi &lt;- bind_rows(
+  res_df %&gt;% mutate(contrast = "Treatment vs Control"),
+  res_df %&gt;% 
+    mutate(log2FoldChange = log2FoldChange * 0.7,
+           padj = padj * 1.5,
+           contrast = "Time Point 2 vs 1")
+)
+
+ggplot(res_df_multi, aes(x = log2FoldChange, y = -log10(padj), 
+                         color = significance_adj)) +
+  geom_point(alpha = 0.5, size = 1) +
+  scale_color_manual(values = c("Upregulated" = "red",
+                                "Downregulated" = "blue",
+                                "Not Significant" = "grey70")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  facet_wrap(~ contrast) +
+  labs(title = "Multiple Comparisons",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## MA Plot vs Volcano Plot
+
+**MA Plot:** Alternative visualization for differential expression
+
+
+``` r
+library(patchwork)
+
+# Volcano plot
+p1 &lt;- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), 
+                         color = significance_adj)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_manual(values = c("red", "blue", "grey70")) +
+  labs(title = "Volcano Plot", x = "Log2 Fold Change", 
+       y = "-Log10 Adj P-value") +
+  theme_minimal()
+
+# MA plot
+p2 &lt;- ggplot(res_df, aes(x = log10(baseMean), y = log2FoldChange,
+                         color = significance_adj)) +
+  geom_point(alpha = 0.6, size = 1.5) +
+  scale_color_manual(values = c("red", "blue", "grey70")) +
+  geom_hline(yintercept = c(-1, 1), linetype = "dashed") +
+  labs(title = "MA Plot", x = "Log10 Mean Expression", 
+       y = "Log2 Fold Change") +
+  theme_minimal()
+
+p1 + p2 + plot_layout(guides = "collect")
+```
+
+---
+
+## Best Practices
+
+**Data preparation:**
+- Remove genes with NA values
+- Use adjusted p-values (FDR) for thresholds
+- Consider filtering low-count genes before analysis
+
+**Thresholds:**
+- Common: |log₂FC| ≥ 1 (2-fold change) and padj ≤ 0.05
+- Adjust based on biological context and sample size
+- Be consistent across analyses
+
+**Visualization:**
+- Use color strategically (red/blue for up/down is conventional)
+- Label only top genes to avoid clutter
+- Include threshold lines for clarity
+- Add counts in legend (e.g., "Upregulated (234)")
+
+---
+
+## Summary
+
+**Volcano plots visualize differential expression results:**
+- X-axis: Log₂ fold change (magnitude)
+- Y-axis: -log₁₀ p-value (significance)
+
+**Key elements:**
+- Color by significance status
+- Threshold lines for FC and p-value
+- Labels for top or interesting genes
+
+**R packages:**
+- **ggplot2:** Full customization, complete control
+- **EnhancedVolcano:** Publication-ready, many options
+- **ggVolcano:** Simple syntax, quick plots
+
+---
+
+## Resources
+
+**Packages:**
+- `DESeq2`: Differential expression analysis
+- `EnhancedVolcano`: Advanced volcano plots
+- `ggvolcano`: Simple volcano plots
+- `ggrepel`: Non-overlapping text labels
+- `plotly`: Interactive plots
+
+**Documentation:**
+- EnhancedVolcano: https://bioconductor.org/packages/EnhancedVolcano/
+- ggVolcano: https://github.com/BioSenior/ggVolcano
+- ggvolcano: https://cran.r-project.org/package=ggvolcano
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

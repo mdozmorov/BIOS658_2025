@@ -19,17 +19,19 @@ editor_options:
   chunk_output_type: console
 ---
 
-<!--
-## Functional enrichment
+## Hierarchical clustering
 
-<a href="../../slides/08_FuncEnrich/08_functional_enrichment.html#1" target="_blank">Lecture slides in HTML format</a>
+<a href="../../slides/09_Clustering/Clustering.html#1" target="_blank">Lecture slides in HTML format</a>
 
 ```{r echo=FALSE}
-knitr::include_url('../../slides/08_FuncEnrich/08_functional_enrichment.html#1')
+knitr::include_url('../../slides/09_Clustering/Clustering.html#1')
 ```
--->
+
 
 ### Code examples
 
 - Volcano.Rmd, <a href="../../slides/09_Clustering/Volcano.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/Volcano.html" target="_blank">HTML</a>
 - Heatmap.Rmd, <a href="../../slides/09_Clustering/Heatmap.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/Heatmap.html" target="_blank">HTML</a>
+- Single_linkage.Rmd, <a href="../../slides/09_Clustering/lab/Single_linkage.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Single_linkage.html" target="_blank">HTML</a>
+- Complete_linkage.Rmd, <a href="../../slides/09_Clustering/lab/Complete_linkage.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Complete_linkage.html" target="_blank">HTML</a>
+- Average_linkage.Rmd, <a href="../../slides/09_Clustering/lab/Average_linkage.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Average_linkage.html" target="_blank">HTML</a>

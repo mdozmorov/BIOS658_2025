@@ -1,0 +1,184 @@
+---
+title: "Single Linkage Hierarchical Clustering"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Single linkage clustering merges the two clusters whose **minimum pairwise distance** is the smallest among all pairs.
+When clusters have multiple members, the distance between them is defined as the **minimum distance between any pair of points** across clusters.
+
+# 1. Setting up the data
+
+We start with a simple dataset of 8 individuals with weight (kg) and height (cm).
+
+```{r data-setup}
+weight.kg <- c(15, 49, 13, 45, 85, 66, 12, 10)
+height.cm <- c(95, 156, 95, 160, 178, 176, 90, 78)
+
+data <- matrix(cbind(weight.kg, height.cm), nrow = 8)
+dimnames(data)[[2]] <- c("weight.kg", "height.cm")
+data
+```
+
+# 2. Visualizing the data
+
+```{r plot-data, fig.width=6, fig.height=5}
+plot(data[,1], data[,2], type = "n",
+     xlab = "Weight (kg)", ylab = "Height (cm)",
+     main = "Sample points (1–8)")
+text(data[,1], data[,2], labels = 1:8)
+```
+
+This scatter plot helps visualize the relative proximity of the data points.
+
+# 3. Pairwise distances
+
+We compute the Euclidean distances between all pairs of observations.
+
+```{r distance-matrix}
+# Pairwise distances
+dist_matrix <- dist(data, diag = TRUE, upper = TRUE)
+round(dist_matrix, 2)
+```
+
+`dist()` calculates the Euclidean distance by default.
+You can verify distances manually:
+
+```{r manual-distance}
+sqrt((49 - 45)^2 + (156 - 160)^2)
+```
+
+# 4. Hierarchical clustering (Single linkage)
+
+The `hclust()` function performs hierarchical clustering.
+We specify `method = "single"` to use **minimum inter-cluster distance**.
+
+```{r hclust-single}
+hclust.single <- hclust(dist(data), method = "single")
+
+# Structure of result
+names(hclust.single)
+hclust.single$height
+```
+
+`$height` gives the distances (linkage heights) at which clusters merge.
+
+# 5. Dendrogram
+
+```{r dendrogram, fig.width=7, fig.height=5}
+plot(hclust.single, main = "Single Linkage Dendrogram",
+     xlab = "Observation", ylab = "Distance")
+```
+
+This plot shows how clusters are formed iteratively based on minimum distance.
+
+# 6. Manual first iteration
+
+We can manually verify the algorithm.
+First, compute all pairwise distances and find the minimum.
+
+```{r manual-iteration1}
+dist <- dist(data, diag = TRUE)
+round(dist, 2)
+min(as.dist(dist)[as.dist(dist) != 0])  # smallest nonzero distance
+```
+
+The smallest distance corresponds to the pair (1,3).
+These two points will be merged first.
+
+# 7. Updating distances after merging (Clusters 1 & 3)
+
+We manually update the distance matrix using the **single linkage rule** —
+distance between clusters = *minimum* pairwise distance.
+
+```{r merge-13}
+old.dist <- as.matrix(dist)
+new.dist <- old.dist
+
+# Set intra-cluster distance to 0 for merged points
+new.dist[1,3] <- new.dist[3,1] <- 0
+
+# Update distances for cluster (1,3)
+for (i in 1:8) {
+  new.dist[1,i] <- new.dist[i,1] <- min(old.dist[1,i], old.dist[3,i])
+  new.dist[3,i] <- new.dist[i,3] <- min(old.dist[1,i], old.dist[3,i])
+}
+
+# Verify matrix symmetry
+all.equal(new.dist, t(new.dist))
+round(as.dist(new.dist), 2)
+```
+
+# 8. Next iteration (Merging 7 with cluster 1–3)
+
+We continue by finding the next smallest distance and merging.
+
+```{r merge-137}
+min(as.dist(new.dist)[as.dist(new.dist) != 0])  # 5.099
+
+# Merge cluster (1,3) with point 7
+new.dist2 <- new.dist
+for (i in 1:8) {
+  new.dist2[1,i] <- new.dist2[i,1] <- 
+    min(old.dist[1,i], old.dist[3,i], old.dist[7,i])
+}
+all.equal(new.dist2, t(new.dist2))
+round(as.dist(new.dist2), 3)
+```
+
+# 9. Merge (2,4) cluster
+
+Similarly, we merge points (2,4) and update distances.
+
+```{r merge-24}
+min(as.dist(new.dist2)[as.dist(new.dist2) != 0])  # 5.657
+
+new.dist3 <- new.dist2
+for (i in 1:8) {
+  new.dist3[2,i] <- new.dist3[i,2] <- 
+    min(old.dist[2,i], old.dist[4,i])
+}
+round(as.dist(new.dist3), 3)
+```
+
+The smallest distance after this step corresponds to the next merge (8 with cluster 1,3,7).
+
+# 10. Compare manual and automated results
+
+```{r compare-hclust}
+hclust.single$height
+```
+
+The merge heights from `hclust()` match our manual computation:
+`2.00, 5.10, 5.66, 12.17, ...`
+
+---
+
+# 11. Define clusters
+
+We can “cut” the dendrogram at a specific number of clusters (`k`)
+or a given height (`h`).
+
+```{r cutree}
+# Cut into 2 clusters
+cut.single <- cutree(hclust.single, k = 2)
+cut.single
+
+# Alternatively, cut at height threshold
+cut.single <- cutree(hclust.single, h = 20)
+cut.single
+```
+
+These assignments group samples based on single linkage distance.
+
+# Summary
+
+* **Single linkage** = merge by *minimum* pairwise distance.
+* Sensitive to **chaining** (long elongated clusters).
+* `hclust()` reproduces manual results efficiently.
+* Can visualize structure via **dendrogram** or **cluster assignments**.

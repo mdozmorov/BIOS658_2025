@@ -1,0 +1,162 @@
+---
+title: "Complete Linkage Hierarchical Clustering"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Complete linkage clustering merges two clusters whose **maximum pairwise distance** between their members is smallest among all cluster pairs.
+It tends to produce **compact, spherical clusters** and is less affected by chaining than single linkage.
+
+# 1. Setting up the data
+
+We use the same height and weight dataset as before.
+
+```{r data-setup}
+weight.kg <- c(15,49,13,45,85,66,12,10)
+height.cm <- c(95,156,95,160,178,176,90,78)
+
+data <- matrix(cbind(weight.kg, height.cm), nrow = 8)
+dimnames(data)[[2]] <- c("weight.kg", "height.cm")
+data
+```
+
+# 2. Pairwise distances
+
+Compute Euclidean distances between all pairs of observations.
+
+```{r distance-matrix}
+dist <- dist(data, diag = TRUE)
+round(dist, 3)
+```
+
+Find the smallest nonzero distance to identify the first merge.
+
+```{r min-distance}
+min(as.dist(dist)[as.dist(dist) != 0])  # 2
+```
+
+The closest pair is **(1,3)** — these two will be merged first.
+
+# 3. Merge (1,3): update distances using maximum rule
+
+In complete linkage, when merging clusters,
+the distance between the new cluster and another item is the **maximum** distance between any members of the two clusters.
+
+```{r merge-13}
+old.dist <- as.matrix(dist)
+new.dist <- as.matrix(dist)
+
+# Merge (1,3)
+new.dist[1,3] <- new.dist[3,1] <- 0
+
+# Update distances using max rule
+for (i in 1:8) {
+  new.dist[1,i] <- new.dist[i,1] <- max(old.dist[1,i], old.dist[3,i])
+  new.dist[3,i] <- new.dist[i,3] <- max(old.dist[1,i], old.dist[3,i])
+}
+
+# Check matrix symmetry
+all.equal(new.dist, t(new.dist))
+round(as.dist(new.dist), 3)
+```
+
+Next merge will occur between the two clusters with the smallest nonzero distance.
+
+```{r min-distance-2}
+min(as.dist(new.dist)[as.dist(new.dist) != 0])  # 5.657
+```
+
+# 4. Merge (2,4): update distances to new cluster (2,4)
+
+Now, we merge observations 2 and 4.
+Their distance to other points is determined by the **maximum** of pairwise distances.
+
+```{r merge-24}
+new.dist2 <- new.dist
+new.dist2[2,4] <- new.dist2[4,2] <- 0
+
+# Update distances for cluster (2,4)
+for (i in 1:8) {
+  new.dist2[2,i] <- new.dist2[i,2] <- 
+    max(old.dist[2,i], old.dist[4,i])
+  new.dist2[4,i] <- new.dist2[i,4] <- 
+    max(old.dist[2,i], old.dist[4,i])
+}
+
+# Check symmetry and new distances
+all.equal(new.dist2, t(new.dist2))
+round(as.dist(new.dist2), 3)
+
+# Identify next merge
+min(as.dist(new.dist2)[as.dist(new.dist2) != 0])  # 5.831
+```
+
+# 5. Merge (1,3,7): update distances
+
+Next, the cluster (1,3) merges with observation 7.
+Distance updates again use the **maximum** rule.
+
+```{r merge-137}
+new.dist3 <- new.dist2
+
+# Merge cluster (1,3) with 7
+new.dist3[1,7] <- new.dist3[7,1] <- new.dist3[3,7] <- new.dist3[7,3] <- 0
+
+# Update distances using max rule
+for (i in 1:8) {
+  new.dist3[1,i] <- new.dist3[i,1] <-
+    max(old.dist[1,i], old.dist[3,i], old.dist[7,i])
+  new.dist3[3,i] <- new.dist3[i,3] <-
+    max(old.dist[1,i], old.dist[3,i], old.dist[7,i])
+  new.dist3[7,i] <- new.dist3[i,7] <-
+    max(old.dist[1,i], old.dist[3,i], old.dist[7,i])
+}
+
+# Check matrix and display
+all.equal(new.dist3, t(new.dist3))
+round(as.dist(new.dist3), 3)
+
+# Find next merge candidate
+min(as.dist(new.dist3)[as.dist(new.dist3) != 0])  # 17.72
+```
+
+# 6. Automated verification with `hclust()`
+
+Rather than continuing manually, we verify the steps using R’s `hclust()` function.
+
+```{r hclust-complete}
+hclust.complete <- hclust(dist(data), method = "complete")
+hclust.complete$height
+```
+
+Output:
+
+```
+2.000000  5.656854  5.830952  17.720045  19.104973  43.863424 125.000000
+```
+
+These values correspond to the distances at which merges occurred,
+matching our manual calculations.
+
+# 7. Dendrogram visualization
+
+```{r dendrogram, fig.width=7, fig.height=5}
+plot(hclust.complete, main = "Complete Linkage Dendrogram",
+     xlab = "Observation", ylab = "Distance")
+```
+
+Complete linkage produces tighter, more compact clusters.
+
+# Summary
+
+* **Complete linkage** merges clusters based on *maximum* pairwise distance.
+* Produces **compact** and **well-separated** clusters.
+* Less sensitive to chaining than single linkage.
+* `hclust(method = "complete")` confirms manual iterations exactly.
+
+Would you like me to provide this version as a **downloadable `.Rmd` file** (e.g., `complete_linkage.Rmd`)?

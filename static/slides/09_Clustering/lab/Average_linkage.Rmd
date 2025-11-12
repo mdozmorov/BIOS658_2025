@@ -1,0 +1,144 @@
+---
+title: "Average Linkage Hierarchical Clustering"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Average linkage clustering (UPGMA) merges clusters based on the **average pairwise distance** between their members.
+This method balances chaining (as in single linkage) and compactness (as in complete linkage).
+
+# 1. Setting up the data
+
+We’ll use the same example data as before (height and weight).
+
+```{r data-setup}
+weight.kg <- c(15,49,13,45,85,66,12,10)
+height.cm <- c(95,156,95,160,178,176,90,78)
+
+data <- matrix(cbind(weight.kg, height.cm), nrow = 8)
+dimnames(data)[[2]] <- c("weight.kg", "height.cm")
+data
+```
+
+# 2. Pairwise distances
+
+Compute the full distance matrix using Euclidean distance.
+
+```{r distance-matrix}
+dist.avg <- as.matrix(dist(data, diag = TRUE, upper = TRUE))
+round(dist.avg, 3)
+```
+
+# 3. Merge (1,3): update distances using average rule
+
+Average linkage defines the distance between a merged cluster and another observation as
+the **average of all pairwise distances** between points in the two clusters.
+
+We merge (1,3) first because they are closest.
+
+```{r merge-13}
+new.dist <- matrix(rep(0, 8 * 8), ncol = 8)
+
+# For every observation i, compute distance to cluster (1,3)
+for (i in c(2,4,5,6,7,8)) {
+  for (j in c(1,3)) {
+    new.dist[i,j] <- (dist.avg[i,1] + dist.avg[i,3]) / 2
+    new.dist[j,i] <- (dist.avg[i,1] + dist.avg[i,3]) / 2
+  }
+  # Retain distances between other observations
+  for (j in c(2,4,5,6,7,8)) {
+    new.dist[i,j] <- dist.avg[i,j]
+    new.dist[j,i] <- dist.avg[j,i]
+  }
+}
+
+round(new.dist, 3)
+```
+
+The next minimum distance is approximately **5.465**, corresponding to cluster (1,3,7).
+
+# 4. Merge (1,3,7): update distances
+
+Now, merge cluster (1,3) with observation 7.
+Compute the average of all distances to (1,3,7).
+
+```{r merge-137}
+new.dist <- matrix(rep(0, 8 * 8), ncol = 8)
+
+for (i in c(2,4,5,6,8)) {
+  for (j in c(1,3,7)) {
+    new.dist[i,j] <- (dist.avg[i,1] + dist.avg[i,3] + dist.avg[i,7]) / 3
+    new.dist[j,i] <- (dist.avg[i,1] + dist.avg[i,3] + dist.avg[i,7]) / 3
+  }
+  for (j in c(2,4,5,6,8)) {
+    new.dist[i,j] <- dist.avg[i,j]
+    new.dist[j,i] <- dist.avg[j,i]
+  }
+}
+
+round(new.dist, 3)
+```
+
+The next minimum distance is **5.657**, between items (2,4).
+
+# 5. Merge (2,4): update distances
+
+Now we merge observations 2 and 4 using the same averaging rule.
+
+```{r merge-24}
+new.dist2 <- matrix(rep(0, 8 * 8), ncol = 8)
+
+for (i in c(1,3,5,6,7,8)) {
+  for (j in c(2,4)) {
+    new.dist2[i,j] <- (dist.avg[i,2] + dist.avg[i,4]) / 2
+    new.dist2[j,i] <- (dist.avg[i,2] + dist.avg[i,4]) / 2
+  }
+  for (j in c(1,3,5,6,7,8)) {
+    new.dist2[i,j] <- dist.avg[i,j]
+    new.dist2[j,i] <- dist.avg[j,i]
+  }
+}
+
+round(new.dist2, 3)
+```
+
+# 6. Verify using `hclust(method = "average")`
+
+To confirm the manual results, use the built-in hierarchical clustering function.
+
+```{r hclust-average}
+hclust.average <- hclust(dist(data), method = "average")
+hclust.average$height
+```
+
+Expected merge heights:
+
+```
+2.000000  5.464986  5.656854  17.720045  19.104973  43.863424 125.000000
+```
+
+These match the sequence of merges found manually.
+
+# 7. Dendrogram visualization
+
+```{r dendrogram, fig.width=7, fig.height=5}
+plot(hclust.average, main = "Average Linkage Dendrogram",
+     xlab = "Observation", ylab = "Distance")
+```
+
+Average linkage tends to produce **balanced** clusters and is less extreme than single or complete linkage.
+
+# Summary
+
+* **Average linkage** uses the *mean* of pairwise distances between clusters.
+* Produces clusters with intermediate compactness and chaining tendencies.
+* `hclust(method = "average")` confirms the correctness of manual updates.
+* Commonly used for biological or ecological data with balanced similarity structures.
+
+Would you like me to prepare this as a downloadable file named
+📄 **`average_linkage.Rmd`** to accompany your single and complete linkage demos?

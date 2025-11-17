@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>K-means Clustering</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-11-17" />
+    <script src="libs/header-attrs-2.30/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# K-means Clustering
+]
+.subtitle[
+## Non-hierarchical Clustering
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-11-17
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## What is K-means Clustering?
+
+**K-means clustering** is a method of cluster analysis that:
+
+- Partitions `\(n\)` observations into `\(k\)` clusters
+
+- Each observation belongs to the cluster with the nearest mean (centroid)
+
+- Similar to expectation-maximization for Gaussian mixtures
+
+- Both attempt to find centers of natural clusters in the data
+
+---
+## Properties of K-means Clustering?
+
+- **Non-hierarchical** - creates flat partitions
+
+- **Unsupervised** - no labels needed
+
+- **Distance-based** - uses Euclidean distance
+
+- **Iterative** - alternates between assignment and update steps
+
+**Goal:** Find natural groupings in the data by minimizing within-cluster variation
+
+---
+## K-means Objective
+
+**We want to partition data into `\(K\)` clusters `\(C_1, ..., C_K\)` where:**
+
+1. Each observation belongs to **at least one** cluster
+2. Clusters are **non-overlapping** (no observation in multiple clusters)
+3. Within-cluster variation is **minimized**
+
+**Mathematical Objective:**
+
+`$$\min_{C_1, ..., C_K}\left\{\sum_{k=1}^K\frac{1}{|C_k|}\sum_{i,i' \in C_k}\sum_{j=1}^p(x_{ij}-x_{i'j})^2\right\}$$`
+
+This minimizes the sum of all pairwise squared Euclidean distances between observations in each cluster.
+
+---
+## K-means Objective
+
+**We want to partition data into `\(K\)` clusters `\(C_1, ..., C_K\)` where:**
+
+1. Each observation belongs to **at least one** cluster
+2. Clusters are **non-overlapping** (no observation in multiple clusters)
+3. Within-cluster variation is **minimized**
+
+**Equivalent formulation:**
+
+`$$\arg\min_C \sum_{k=1}^K \sum_{i \in C_k} ||x_i - \mu_k||^2$$`
+
+where `\(\mu_k\)` is the centroid (mean) of cluster `\(k\)`
+
+---
+
+## K-means Algorithm
+
+**Steps:**
+
+1. **Initialize:** Choose `\(k\)` points as initial cluster means (centroids)
+
+2. **Repeat until convergence:**
+   - **Assignment step:** Assign each point `\(x_i\)` to the cluster with the closest centroid
+   - **Update step:** Recalculate the centroid for each cluster
+
+**Centroid calculation:**
+`$$\mu_k = \frac{1}{|C_k|}\sum_{i \in C_k}x_i$$`
+---
+## K-means Algorithm
+
+**Convergence:**
+
+- K-means **always converges**
+
+- Assignment and update steps either reduce the objective function or leave it unchanged
+
+- Typically converges in relatively few iterations
+
+---
+## K-means clustering algorithm
+
+&lt;img src="img/kmeans.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+.small[ J. B. MacQueen "**Some Methods for classification and Analysis of Multivariate Observations**" 1967 https://projecteuclid.org/euclid.bsmsp/1200512992 ]
+
+---
+
+## K-means: Visual Example (Step 1)
+
+.pull-left[
+**Starting point:**
+- Expression of two genes for 14 samples
+- Some structure is visible in the data
+
+**Next step:** Choose initial centroids
+]
+
+.pull-right[
+&lt;img src="img/kmeans0.png" width="400px" /&gt;
+]
+
+---
+
+## K-means: Visual Example (Step 2)
+
+.pull-left[
+**Choose `\(K\)` centroids:**
+- User picks starting values (e.g., `\(K=3\)`)
+- Can be chosen randomly or using data-driven methods
+- Different initializations may lead to different results
+
+**Important:** Initial centroid placement affects final clustering
+]
+
+.pull-right[
+&lt;img src="img/kmeans1.png" width="400px" /&gt;
+]
+
+---
+
+## K-means: Visual Example (Step 3)
+
+.pull-left[
+**Assignment step:**
+- Find the closest centroid for each point
+- Distance is calculated (typically Euclidean)
+- Creates "first partition" into `\(K\)` clusters
+
+**Result:** Each point is now assigned to one of the `\(K\)` clusters
+]
+
+.pull-right[
+&lt;img src="img/kmeans2.png" width="400px" /&gt;
+]
+
+---
+
+## K-means: Visual Example (Step 4)
+
+.pull-left[
+**Update step:**
+- Calculate the center (mean) of each cluster
+- Re-compute centroids based on assigned points
+- New centroids will be used in next iteration
+
+**Iteration:** Repeat assignment and update until convergence
+]
+
+.pull-right[
+&lt;img src="img/kmeans3.png" width="400px" /&gt;
+]
+
+---
+
+## K-means: Visual Example (Step 5)
+
+.pull-left[
+**Convergence:**
+- Algorithm repeats until centroids stop moving
+- Final clusters are determined
+- Within-cluster variation is minimized
+
+.small[MacQueen, J.B. "Some Methods for Classification and Analysis of Multivariate Observations" (1967) https://projecteuclid.org/euclid.bsmsp/1200512992]
+]
+
+.pull-right[
+&lt;img src="img/kmeans4.png" width="400px" /&gt;
+]
+
+---
+
+## K-means in R: Basic Example
+
+
+``` r
+# Load iris data
+data(iris)
+iris_data &lt;- iris[, 1:4]
+
+# Perform k-means clustering with K=3
+set.seed(123)
+kmeans_result &lt;- kmeans(iris_data, centers = 3, nstart = 25)
+
+# View cluster assignments
+table(kmeans_result$cluster, iris$Species)
+```
+
+```
+##    
+##     setosa versicolor virginica
+##   1      0         48        14
+##   2      0          2        36
+##   3     50          0         0
+```
+
+**Key parameters:**
+- `centers`: Number of clusters (K)
+- `nstart`: Number of random initializations (use 25+ for stability)
+
+---
+
+## K-means in R: Basic Example
+
+
+``` r
+# View cluster centers
+kmeans_result$centers
+```
+
+```
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width
+## 1     5.901613    2.748387     4.393548    1.433871
+## 2     6.850000    3.073684     5.742105    2.071053
+## 3     5.006000    3.428000     1.462000    0.246000
+```
+
+``` r
+# Within-cluster sum of squares
+kmeans_result$tot.withinss
+```
+
+```
+## [1] 78.85144
+```
+
+---
+
+## K-means: Visualization
+
+
+``` r
+library(ggplot2)
+
+# Create data frame for plotting
+iris_clustered &lt;- data.frame(
+  iris_data,
+  Cluster = as.factor(kmeans_result$cluster),
+  Species = iris$Species
+)
+
+# Plot first two dimensions
+ggplot(iris_clustered, aes(x = Sepal.Length, y = Sepal.Width, 
+                           color = Cluster, shape = Species)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "K-means Clustering of Iris Data (K=3)") +
+  theme_minimal()
+```
+
+**Interpretation:** Compare cluster assignments with known species labels
+
+---
+
+## K-means: Visualization
+
+&lt;img src="Kmeans_files/figure-html/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /&gt;
+
+**Interpretation:** Compare cluster assignments with known species labels
+
+---
+
+## Choosing K: The Elbow Method
+
+**Problem:** How many clusters should we use?
+
+**Elbow method:**
+- Plot within-cluster sum of squares (WSS) vs. number of clusters
+- Look for an "elbow" where adding more clusters gives diminishing returns
+
+
+``` r
+# Calculate WSS for different K values
+wss &lt;- sapply(1:10, function(k) {
+  kmeans(iris_data, centers = k, nstart = 25)$tot.withinss
+})
+
+# Plot elbow curve
+plot(1:10, wss, type = "b", pch = 19,
+     xlab = "Number of Clusters (K)",
+     ylab = "Within-cluster Sum of Squares",
+     main = "Elbow Method for Optimal K")
+```
+
+**Look for:** The point where the curve "bends" (the elbow)
+
+---
+
+## Choosing K: The Elbow Method
+
+**Problem:** How many clusters should we use?
+
+**Elbow method:**
+- Plot within-cluster sum of squares (WSS) vs. number of clusters
+- Look for an "elbow" where adding more clusters gives diminishing returns
+
+&lt;img src="Kmeans_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" /&gt;
+
+**Look for:** The point where the curve "bends" (the elbow)
+
+---
+
+## Choosing K: Silhouette Method
+
+**Silhouette coefficient** measures how well each point fits in its cluster:
+
+`$$s(i) = \frac{b(i) - a(i)}{\max\{a(i), b(i)\}}$$`
+
+- `\(a(i)\)`: Average distance from point `\(i\)` to points in same cluster
+- `\(b(i)\)`: Average distance from point `\(i\)` to points in nearest neighboring cluster
+- Range: -1 to 1 (higher is better)
+
+---
+
+## Choosing K: Silhouette Method
+
+* `\(s(i) \approx 1\)`: point is well matched to its cluster
+* `\(s(i) \approx 0\)`: point lies between clusters
+* `\(s(i) &lt; 0\)`: point may be misclassified
+
+
+
+``` r
+library(cluster)
+
+# Calculate silhouette for different K
+avg_sil &lt;- sapply(2:10, function(k) {
+  km &lt;- kmeans(iris_data, centers = k, nstart = 25)
+  ss &lt;- silhouette(km$cluster, dist(iris_data))
+  mean(ss[, 3])
+})
+
+# Plot
+plot(2:10, avg_sil, type = "b", pch = 19,
+     xlab = "Number of Clusters (K)",
+     ylab = "Average Silhouette Width")
+```
+
+---
+
+## Choosing K: Silhouette Method
+
+1. Compute clustering for a range of `\(k\)` values (e.g., 2–10).
+2. For each `\(k\)`, calculate the average silhouette coefficient across all points.
+3. Plot the average silhouette width vs. `\(k\)` — typically as a line or bar plot.
+4. Choose the optimal number of clusters where samples are most coherently grouped and well-separated from other clusters (higher average silhouette).
+
+&lt;img src="Kmeans_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## K-means Advantages
+
+- **Simple and fast** - efficient for large datasets
+
+- **Scales well** - linear complexity O(nkd) where n = samples, k = clusters, d = dimensions
+
+- **Sharp partitions** - each point belongs to exactly one cluster
+
+- **Easy to implement** - straightforward algorithm
+
+- **Works well** when clusters are:
+  - Spherical (roughly circular/globular)
+  - Similar in size
+  - Similar in density
+  - Well-separated
+
+---
+
+## K-means Limitations
+
+- **Must specify K** - number of clusters not determined by algorithm
+
+- **Sensitive to initialization** - different starting points → different results
+- Solution: Use `nstart` parameter for multiple random starts
+
+- **Sensitive to outliers** - outliers can distort cluster centroids
+
+- **Assumes spherical clusters** - struggles with elongated or irregular shapes
+
+- **Euclidean distance only** - gives most weight to largest differences
+  - Cannot be used with qualitative data
+
+- **Equal-sized clusters** - tends to create clusters of similar sizes
+
+- **Local optima** - may not find global optimum
+
+---
+
+## PAM: K-medoids Clustering
+
+**Alternative to K-means:** Partitioning Around Medoids (PAM)
+
+**Key difference:**
+- **K-means:** Uses **centroids** (average of points in cluster)
+- **PAM:** Uses **medoids** (actual data point that represents cluster)
+
+**When to use PAM:**
+- Presence of outliers
+- Need non-Euclidean distance
+- Want representative objects from data
+
+---
+## PAM: K-medoids Clustering
+
+**Advantages of PAM:**
+- More robust to outliers
+- Works with any distance metric (not just Euclidean)
+- Medoid is an actual observation (more interpretable)
+
+**Disadvantages:**
+- Computationally more expensive than K-means
+- Slower for large datasets
+
+
+---
+
+## PAM in R
+
+
+``` r
+library(cluster)
+
+# Perform PAM clustering
+pam_result &lt;- pam(iris_data, k = 3)
+
+# View medoids (actual data points)
+pam_result$medoids
+
+# Compare with K-means
+table(PAM = pam_result$clustering, 
+      Kmeans = kmeans_result$cluster)
+
+# Silhouette plot
+plot(silhouette(pam_result), 
+     main = "Silhouette Plot for PAM Clustering")
+```
+
+**Medoids:** The "most representative" points within each cluster
+
+---
+
+## PAM in R
+
+
+```
+##    Kmeans
+## PAM  1  2  3
+##   1  0  0 50
+##   2 62  0  0
+##   3  0 38  0
+```
+
+&lt;img src="Kmeans_files/figure-html/unnamed-chunk-16-1.png" style="display: block; margin: auto;" /&gt;
+
+**Medoids:** The "most representative" points within each cluster
+
+---
+
+## Fuzzy K-means
+
+**Extension of K-means with soft assignments:**
+
+**Standard K-means:**
+- Each point belongs to exactly one cluster (hard assignment)
+
+**Fuzzy K-means:**
+- Each point has a **probability** of belonging to each cluster (soft assignment)
+- Membership values `\(\mu_{ij}\)` indicate degree of belonging to cluster `\(j\)`
+
+---
+## Fuzzy K-means
+
+**Algorithm:**
+1. **Initialize:** Choose `\(k\)` cluster centers
+2. **Repeat until convergence:**
+   - **Assignment:** Calculate probability of each point belonging to each cluster
+   - **Update:** Recalculate cluster centers using these probabilities
+
+**Membership constraint:** `\(\sum_{j=1}^k \mu_{ij} = 1\)` for each point `\(i\)`
+
+---
+
+## Fuzzy K-means: Mathematical Detail
+
+**Objective function:**
+
+`$$\min \sum_{i=1}^n \sum_{j=1}^k \mu_{ij}^m ||x_i - c_j||^2$$`
+
+where:
+- `\(\mu_{ij}^m\)` is the degree of membership of `\(x_i\)` in cluster `\(j\)`
+- `\(m\)` is the fuzziness parameter (typically `\(m = 2\)`)
+- Larger values of `\(m\)` make clusters more fuzzy
+
+---
+## Fuzzy K-means
+
+**Membership update:**
+
+`$$\mu_{ij} = \frac{1}{\sum_{l=1}^k \left(\frac{||x_i - c_j||}{||x_i - c_l||}\right)^{2/(m-1)}}$$`
+
+**Relationship:** Similar to EM algorithm and Gaussian mixture models
+
+**When to use:**
+- Overlapping clusters
+- Uncertain cluster boundaries
+- Need probability of cluster membership
+
+.small[https://www.kaggle.com/code/ysthehurricane/fuzzy-c-means-clustering-tutorial-r/code ]
+
+---
+
+## Fuzzy K-means in R
+
+
+``` r
+library(e1071)
+
+# Perform fuzzy clustering
+fuzzy_result &lt;- cmeans(iris_data, centers = 3, m = 2)
+
+# View membership probabilities (first 5 samples)
+head(fuzzy_result$membership, 3)
+```
+
+```
+##                1           2         3
+## [1,] 0.001072020 0.002304388 0.9966236
+## [2,] 0.007498397 0.016650860 0.9758507
+## [3,] 0.006414869 0.013760382 0.9798247
+```
+
+``` r
+# Assign to cluster with highest membership
+fuzzy_clusters &lt;- apply(fuzzy_result$membership, 1, which.max)
+
+# Compare with hard K-means
+table(Fuzzy = fuzzy_clusters, 
+      Kmeans = kmeans_result$cluster)
+```
+
+```
+##      Kmeans
+## Fuzzy  1  2  3
+##     1  2 38  0
+##     2 60  0  0
+##     3  0  0 50
+```
+
+
+---
+
+## K-means vs Fuzzy K-means: Visual Comparison
+
+
+``` r
+library(e1071)
+par(mfrow = c(1, 2))
+
+# K-means (hard clustering)
+plot(iris_data[, 1:2], col = kmeans_result$cluster, 
+     pch = 19, main = "K-means (Hard Clustering)")
+points(kmeans_result$centers[, 1:2], col = 1:3, pch = 8, cex = 2)
+
+# Fuzzy K-means (soft clustering - colored by max membership)
+fuzzy_result &lt;- cmeans(iris_data, centers = 3, m = 2)
+fuzzy_clusters &lt;- apply(fuzzy_result$membership, 1, which.max)
+plot(iris_data[, 1:2], col = fuzzy_clusters, 
+     pch = 19, main = "Fuzzy K-means (Soft Clustering)")
+points(fuzzy_result$centers[, 1:2], col = 1:3, pch = 8, cex = 2)
+```
+
+**Difference:** Fuzzy allows for uncertainty at cluster boundaries
+
+---
+
+## K-means vs Fuzzy K-means: Visual Comparison
+
+&lt;img src="Kmeans_files/figure-html/unnamed-chunk-19-1.png" style="display: block; margin: auto;" /&gt;
+
+**Difference:** Fuzzy allows for uncertainty at cluster boundaries
+
+---
+
+## Practical Considerations
+
+**Best practices for K-means:**
+
+1. **Standardize data** - especially when features have different scales
+
+2. **Use multiple initializations** - set `nstart = 25` or higher
+
+3. **Try different K values** - use elbow or silhouette method
+
+4. **Check cluster quality** - examine within/between cluster variation
+
+5. **Validate results** - use biological knowledge or cross-validation
+
+6. **Consider alternatives** if:
+   - Clusters are non-spherical → DBSCAN
+   - Hierarchical structure exists → Hierarchical clustering
+   - Overlapping clusters → Fuzzy K-means or GMM
+
+&lt;!--
+## K-means for Genomics Data
+
+**Gene expression clustering:**
+
+``` r
+# Assume expr_matrix is gene expression data (genes × samples)
+# Transpose to cluster samples
+expr_transposed &lt;- t(expr_matrix)
+
+# Standardize
+expr_scaled &lt;- scale(expr_transposed)
+
+# K-means clustering of samples
+set.seed(42)
+sample_clusters &lt;- kmeans(expr_scaled, centers = 3, nstart = 25)
+
+# Visualize with PCA
+pca_result &lt;- prcomp(expr_scaled)
+plot(pca_result$x[, 1:2], col = sample_clusters$cluster, pch = 19,
+     xlab = "PC1", ylab = "PC2", 
+     main = "Sample Clusters (K-means on PCA)")
+```
+
+**Applications:** Sample classification, identifying patient subtypes, QC
+--&gt;
+
+---
+
+## Summary
+
+**K-means clustering:**
+- Partitions data into `\(K\)` non-overlapping clusters
+- Minimizes within-cluster variation
+- Iterative algorithm: assignment → update → repeat
+- Always converges to local optimum
+
+**Key considerations:**
+- Choose appropriate `\(K\)` (elbow, silhouette methods)
+- Use multiple random starts (`nstart`)
+- Standardize data when needed
+- Check if assumptions are met (spherical clusters, similar sizes)
+
+&lt;!--**Variants:**
+- **PAM (K-medoids):** More robust, uses actual data points
+- **Fuzzy K-means:** Soft assignments with membership probabilities
+
+**Use when:** Need simple, fast clustering with well-separated, spherical groups--&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

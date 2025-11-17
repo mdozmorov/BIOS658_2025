@@ -27,6 +27,14 @@ editor_options:
 knitr::include_url('../../slides/09_Clustering/Clustering.html#1')
 ```
 
+## Non-hierarchical clustering
+### K-means
+
+<a href="../../slides/09_Clustering/Kmeans.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/09_Clustering/Kmeans.html#1')
+```
 
 ### Code examples
 

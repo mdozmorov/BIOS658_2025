@@ -143,6 +143,33 @@ pheatmap(
 
 ---
 
+## Correlation-based Clustering
+
+We can cluster genes using **(1 - Pearson correlation) / 2** as the distance measure
+instead of the default Euclidean distance.
+
+```{r heatmap-correlation, echo=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
+# Compute correlation-based distances
+dist_rows <- as.dist((1 - cor(t(mtx), method = "pearson")) / 2)
+dist_cols <- as.dist((1 - cor(mtx, method = "pearson")) / 2)
+
+# Plot heatmap with correlation distances
+pheatmap(
+  mtx,
+  annotation_col = annotation_col,
+  scale = "row",
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  clustering_distance_rows = dist_rows,
+  clustering_distance_cols = dist_cols,
+  clustering_method = "ward.D2",
+  main = "Top 20 Differentially Expressed Genes (Correlation-based Clustering)"
+)
+```
+
+
+---
+
 ## Interactive Heatmaps in R
 
 - Interactive heatmaps allow **zooming**, **hover tooltips**, and **dynamic clustering**.

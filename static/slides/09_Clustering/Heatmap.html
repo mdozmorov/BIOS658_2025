@@ -4,7 +4,7 @@
     <title>Visualizing Gene Expression with Heatmaps in R</title>
     <meta charset="utf-8" />
     <meta name="author" content="Mikhail Dozmorov" />
-    <meta name="date" content="2025-11-10" />
+    <meta name="date" content="2025-11-17" />
     <script src="libs/header-attrs-2.30/header-attrs.js"></script>
     <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
   </head>
@@ -22,7 +22,7 @@ class: center, middle, inverse, title-slide
 ### Virginia Commonwealth University
 ]
 .date[
-### 2025-11-10
+### 2025-11-17
 ]
 
 ---
@@ -140,6 +140,34 @@ pheatmap(
   * Groups **genes** with similar expression patterns.
   * Groups **samples** based on their expression profiles.
 * **Annotations**: help visualize sample groups (e.g., treatment).
+
+---
+
+## Correlation-based Clustering
+
+We can cluster genes using **(1 - Pearson correlation) / 2** as the distance measure
+instead of the default Euclidean distance.
+
+
+``` r
+# Compute correlation-based distances
+dist_rows &lt;- as.dist((1 - cor(t(mtx), method = "pearson")) / 2)
+dist_cols &lt;- as.dist((1 - cor(mtx, method = "pearson")) / 2)
+
+# Plot heatmap with correlation distances
+pheatmap(
+  mtx,
+  annotation_col = annotation_col,
+  scale = "row",
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  clustering_distance_rows = dist_rows,
+  clustering_distance_cols = dist_cols,
+  clustering_method = "ward.D2",
+  main = "Top 20 Differentially Expressed Genes (Correlation-based Clustering)"
+)
+```
+
 
 ---
 

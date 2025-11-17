@@ -43,3 +43,7 @@ knitr::include_url('../../slides/09_Clustering/Kmeans.html#1')
 - Single_linkage.Rmd, <a href="../../slides/09_Clustering/lab/Single_linkage.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Single_linkage.html" target="_blank">HTML</a>
 - Complete_linkage.Rmd, <a href="../../slides/09_Clustering/lab/Complete_linkage.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Complete_linkage.html" target="_blank">HTML</a>
 - Average_linkage.Rmd, <a href="../../slides/09_Clustering/lab/Average_linkage.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Average_linkage.html" target="_blank">HTML</a>
+
+- CramersV_gower.R, <a href="../../slides/09_Clustering/lab/CramersV_gower.R" target="_blank">Rmd</a>
+- Divisive_Kmeans.R, <a href="../../slides/09_Clustering/lab/Divisive_Kmeans.R" target="_blank">Rmd</a>
+- Kmeans_PAM.R, <a href="../../slides/09_Clustering/lab/Kmeans_PAM.R" target="_blank">Rmd</a>

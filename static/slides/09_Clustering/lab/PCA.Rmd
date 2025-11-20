@@ -1,0 +1,303 @@
+---
+title: "Clustering and Dimensionality Reduction Demo"
+author: "Mikhail Dozmorov"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+options(stringsAsFactors = FALSE)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(pander)
+library(scatterplot3d)
+library(limma)
+```
+
+# # 1. Load Data
+
+In this section, we read the NCI-60 dataset and inspect its structure. https://dctd.cancer.gov/drug-discovery-development/assays/high-throughput-screening-services/nci60
+
+```{r load-data}
+mtx <- read.delim(
+  "/Users/mdozmorov/Documents/Work/Teaching/BIOS658.2025/static/slides/09_Clustering/data/nci60.tsv",
+  sep = "\t", row.names = 1
+)
+dim(mtx)
+colnames(mtx)
+boxplot(mtx, main = "Expression Value Distributions")
+```
+
+---
+
+# # 2. Create Sample Annotations
+
+Samples contain embedded group names (e.g., `"K562.A.1"`).
+We extract the group name and correct minor inconsistencies.
+
+```{r annotations}
+groups <- sapply(colnames(mtx), function(x){
+  obj <- strsplit(x, ".", fixed = TRUE)
+  unlist(obj)[1]
+})
+
+groups[ groups %in% c("K562A","K562B") ] <- "K562"
+groups[ groups %in% c("MCF7A","MCF7D") ] <- "MCF7"
+
+table(groups)
+```
+
+---
+
+# # 3. PCA (Principal Component Analysis)
+
+We perform PCA on the scaled data and examine variance explained.
+
+```{r pca}
+pca <- prcomp(scale(t(mtx)))
+summary(pca)$importance[,1:5] %>% pander
+str(pca)
+```
+
+`prcomp()` returns a list with five main components. Here’s what each represents.
+
+* **`sdev` — Standard Deviations of Principal Components**
+  * A numeric vector of length = number of PCs.
+  * Each value is the **standard deviation** of a principal component.
+  * Larger = more variance explained by that PC.
+
+Square them to get eigenvalues: $\lambda_i = \text{sdev}_i^2$
+
+The proportion of variance explained:
+
+```r
+(sdev^2) / sum(sdev^2)
+```
+
+* **`rotation` — Loadings (Eigenvectors)**
+  * A **matrix of gene loadings**:
+    * **Rows = variables (genes)**
+    * **Columns = principal components (PC1…PC61)**
+  * Values represent how much each gene contributes to a PC.
+  * These are the **eigenvectors** of the covariance/correlation matrix.
+  * High absolute value = gene strongly influences that PC.
+
+* **`center` — Means Used for Centering**
+  * A named vector of gene-wise means.
+  * Each gene was mean-centered before PCA: $x_{ij}' = x_{ij} - \text{center}_i$
+
+* **`scale` — Scaling Factors (if `scale=TRUE`)**
+  * Contains **gene-wise scaling constants**.
+  * In other words: $x' = \frac{x - \text{center}}{\text{scale}}$
+  * If `scale=FALSE`, this component is `NULL`.
+
+* **`x` — Principal Component Scores**
+  * A matrix of **transformed coordinates** (scores) in PC space.
+    * Rows = samples
+    * Columns = PC1…PC61
+  * These are the coordinates you plot.
+  * `x[i, j]` = the position of sample *i* on PC *j*.
+  * They are computed as: $X_\text{scores} = X_\text{centered} \cdot \text{rotation}$
+
+---
+
+# # 4. PCA Visualization with ggplot2
+
+We visualize the first two principal components and label each point by sample name.
+
+```{r pca-ggplot}
+colorby <- "cells"
+
+pt <- ggplot(
+  data = data.frame(pca$x, cells = groups, samples = groups),
+  aes(x = PC1, y = PC2, label = samples)
+) +
+  theme(plot.title = element_text(face = "bold")) +
+  ggtitle(paste("PCA colored by", colorby)) +
+  geom_point(aes(color = groups), size = 3) +
+  geom_text_repel(size = 3) +
+  geom_hline(yintercept = 0, color = "gray65") +
+  geom_vline(xintercept = 0, color = "gray65") +
+  scale_x_continuous(
+    name = paste0("PC1 (", round(summary(pca)$importance[2,1]*100, 2), "%)")
+  ) +
+  scale_y_continuous(
+    name = paste0("PC2 (", round(summary(pca)$importance[2,2]*100, 2), "%)")
+  )
+
+pt
+```
+
+---
+
+# # 5. Additional PCA Visualizations
+
+## ggord
+
+```{r ggord}
+library(ggord)
+ggord(pca, groups, arrow = NULL)
+```
+
+## ggfortify
+
+```{r ggfortify}
+library(ggfortify)
+autoplot(
+  prcomp(scale(t(mtx))),
+  data = data.frame(groups = groups),
+  colour = "groups"
+)
+```
+
+
+---
+
+# # 6. Add Artificial Batch Effect
+
+We artificially square half of the samples to simulate batch effects.
+
+```{r batch-introduction}
+mtx_with_batch <- cbind(
+  mtx[, 1:round(ncol(mtx) / 2)],
+  mtx[, (round(ncol(mtx) / 2) + 1):ncol(mtx)]^2
+)
+boxplot(mtx_with_batch, main = "Expression with Artificial Batch Effect")
+
+batch <- c(rep(1, round(ncol(mtx)/2)), rep(2, ncol(mtx) - round(ncol(mtx)/2)))
+batch
+```
+
+---
+
+# # 7. PCA with Batch Effect
+
+```{r pca-batch}
+pca <- prcomp(t(scale(mtx_with_batch)))
+summary(pca)$importance[,1:5] %>% pander
+```
+
+### Visualization
+
+```{r pca-batch-plot}
+ggplot(
+  data = data.frame(pca$x, cells = groups, samples = groups,
+                    batch = factor(batch)),
+  aes(x = PC1, y = PC2, label = samples)
+) +
+  geom_point(aes(color = batch), size = 3) +
+  geom_text(size = 3)
+```
+
+---
+
+# # 8. Which Covariate Explains PCs?
+
+We test how strongly the batch variable associates with PC1–PC3.
+
+```{r pca-lm}
+lmp <- function(modelobject){
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1], f[2], f[3], lower.tail = FALSE)
+  attributes(p) <- NULL
+  p
+}
+
+covariates <- c("batch")
+
+for (covariate in covariates){
+  df <- data.frame(batch = batch, pca$x)
+
+  for (pc in c("PC1","PC2","PC3")){
+    model <- lm(as.numeric(df[[pc]]) ~ factor(df[[covariate]]))
+    rsq <- signif(summary(model)$adj.r.squared, 5)
+    pv  <- signif(lmp(model), 5)
+    print(paste(covariate, "explains", rsq, "of", pc, "p-value", pv))
+  }
+}
+```
+
+---
+
+# # 9. MDS (Multidimensional Scaling)
+
+```{r mds}
+plotMDS(
+  mtx_with_batch,
+  col = ifelse(batch == 1, "red", "blue"),
+  main = "MDS (Before Batch Removal)"
+)
+```
+
+---
+
+# # 10. t-SNE
+
+```{r tsne, message=FALSE}
+library(Rtsne)
+
+tsne <- Rtsne(
+  (scale(t(mtx))),
+  dims = 2,
+  perplexity = 20,
+  verbose = TRUE,
+  max_iter = 500
+)
+
+colors <- rainbow(length(unique(groups)))
+
+scores <- as.data.frame(tsne$Y)
+rownames(scores) <- colnames(mtx)
+colnames(scores) <- c("Comp.1", "Comp.2")
+scores$groups <- groups
+
+ggplot(scores, aes(x = Comp.1, y = Comp.2,
+                   label = groups, color = groups)) +
+  geom_point(size = 2) +
+  geom_text_repel(size = 2) +
+  geom_hline(yintercept = 0, color = "gray65") +
+  geom_vline(xintercept = 0, color = "gray65") +
+  theme(plot.title = element_text(face="bold"))
+```
+
+---
+
+# # 11. 3D PCA + Animated GIF
+
+```{r pca3d}
+scores <- as.data.frame(pca$x)
+
+scatterplot3d(
+  scores[,c("PC1","PC2","PC3")],
+  color = as.numeric(factor(batch))
+)
+```
+
+### Optional: Rotation Frames for GIF (Mac/Linux)
+
+```{r gif-generation, eval=FALSE}
+rename <- function(i){
+  if (i < 10)  return(paste0("000", i, "plot.png"))
+  if (i < 100) return(paste0("00",  i, "plot.png"))
+  paste0("0", i, "plot.png")
+}
+
+frames <- 360
+for (i in 1:frames){
+  name <- rename(i)
+  png(name)
+  s3d <- scatterplot3d(
+    scores[,c("PC1","PC2","PC3")],
+    main = paste("Angle", i),
+    angle = i,
+    pch = 19, cex.symbols = 0.5,
+    color = as.numeric(factor(batch))
+  )
+  coords <- s3d$xyz.convert(scores[,c("PC1","PC2","PC3")])
+  text(coords$x, coords$y, labels = groups, pos = 2, cex = 0.7)
+  dev.off()
+}
+
+system('magick convert *.png -delay 1 -loop 0 3d.gif')
+system("rm *.png")
+```

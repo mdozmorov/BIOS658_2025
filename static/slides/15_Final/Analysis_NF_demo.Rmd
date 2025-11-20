@@ -1,0 +1,424 @@
+---
+bibliography: /Users/mdozmorov/Documents/Work/GitHub/MDtemplate/inst/extdata/references/references_MD.bib
+csl: /Users/mdozmorov/Documents/Work/GitHub/MDtemplate/inst/extdata/styles.ref/genomebiology.csl
+output:
+  html_document:
+    toc: false
+    df_print: paged
+  pdf_document:
+    toc: false
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# Set up the environment
+library(knitr)
+opts_chunk$set(cache.path='cache/', fig.path='img/', cache=F, tidy=T, fig.keep='high', echo=F, dpi=100, warnings=F, message=F, comment=NA, warning=F, results='as.is') #out.width=700, 
+library(pander)
+panderOptions('table.split.table', Inf)
+set.seed(1)
+library(dplyr)
+options(stringsAsFactors = FALSE)
+```
+
+<!--
+# Methods
+
+Total RNA was prepared using KAPA Total RNA-seq kit with rRNA depletion as the first step, according to the manufacturer’s recommendations. RNA integrity (RIN) and yield will be assessed on an Agilent 2100 Bioanalyzer, and samples with RIN larger than 7 will be selected. Prior to the RNA-Seq, ribosomal RNA will be depleted from the samples using the RiboMinus&trade; Human/Mouse Transcriptome Isolation Kit (Thermo Fisher Scientific, Waltham, MA). All samples were sequenced on the Illumina Hi-Seq ??? sequencer. ~29 million 50bp single-end reads per sample were obtained. 
+
+Sequencing adapters were removed using `TrimGalore` v.0.6.4_dev [@krueger2015trim]. Quality control at each processing step was performed using the `FastQC` tool v0.11.9 (quality base calls, CG content distribution, duplicate levels, complexity level) [@andrews2010fastqc] and summarized using `MultiQC` v.1.8 [@Ewels:2016aa]. The Mouse GRCm38/mm10 reference genome and the corresponding gene annotation file were obtained from the Ensembl ftp server (ftp://ftp.ensembl.org/pub/current_fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.primary_assembly.fa.gz, ftp://ftp.ensembl.org/pub/current_gtf/mus_musculus/Mus_musculus.GRCm38.100.gtf.gz), accessed on 2020-05-15. Reads were aligned and counted on gene level (stranded alignment, column 4) using using the `STAR` v.2.5.2b aligner [@Dobin:2013aa]. RNA-seq counts were preprocessed and analyzed for differential expression using the `edgeR` v.3.30.0 [@Robinson:2010aa] R package. P-values for differentialy expressed genes were corrected using a False Discovery Rate (FDR) multiple testing correction method [@benjamini1995controlling]. 
+
+Functional enrichment analysis (GO, KEGG) was performed using the `enrichr` R package v.2.1 [@Chen:2013aa]. Enrichment analysis using custom signatures was performed using hypergeometric test in the `clusterProfiler` v.3.16.0 R package [@Yu2012]. Row-median centered $log_2(TPM + 1)$ expression profiles for selected genes were visualized using the `pheatmap` package v.1.0.12. All statistical calculations were performed within R/Bioconductor environment v4.0.0.
+-->
+
+# Libraries
+
+```{r libraries}
+library(openxlsx)
+library(writexl)
+library(DT)
+library(edgeR)
+library(sva)
+library(ggplot2)
+library(ggrepel)
+library(reshape2)
+library(plotly)
+library(dplyr)
+library(readr)
+# library(MDmisc)
+library(heatmaply)
+library(pheatmap)
+# library(shiny)
+library(ggplot2)
+library(pheatmap)
+# source("https://raw.githubusercontent.com/mdozmorov/enrichR/master/R/api_wrapper.R")
+library(enrichR) # install.packages("enrichR")
+# source("/Users/mdozmorov/Documents/Work/GitHub/RNA-seq/utils_NF.R")   # Helper functions
+library(annotables) # devtools::install_github("stephenturner/annotables") Annotations of Ensembl IDs
+library("ggsci")
+library(scales)
+# scales::show_col(pal_lancet("lanonc")(8))
+mycols = pal_lancet("lanonc")(8)
+```
+
+# Settings
+
+```{r}
+data_dir       <- getwd() # Working directory
+fileNameIn1 <- file.path(data_dir, "rsem_counts.tsv") # Counts
+
+fileName_rna   <- file.path(data_dir, "results/DEGs.xlsx") # File to save all results of differential expression analysis
+if (!dir.exists(file.path(data_dir, "results"))) dir.create(file.path(data_dir, "results"))
+p_val_cutoff   <- 0.05 # Regular p-value cutoff
+p_adj_cutoff   <- 0.3 # FDR cutoff
+nplot          <- 50 # How many genes to plot on a heatmap
+nbox           <- 9  # How many genes to plot on a boxplot
+ntable         <- 15 # Number of genes to output in a DEG table
+nkegg          <- 35 # Number of genes to output in a KEGG table
+# Color palette for the heatmap, https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/colorPaletteCheatsheet.pdf
+# col3 <- colorRampPalette(c('blue', 'white', 'red'))(20)
+# col3 <- colorRampPalette(c('blue', 'gray', 'yellow'))(20)
+# col3 <- colorRampPalette(c('green', 'black', 'red'))(20)
+# col3 <- colorRamps::green2red(n = 20)
+col3 <- RColorBrewer::brewer.pal(20, "RdBu")
+```
+
+```{r}
+library(org.Hs.eg.db)
+OrgDb = "org.Hs.eg.db"; species = "hsa"
+selected_annotations <- c("ensgene", "symbol", "biotype", "description")
+gene_annotations <- grch38[ !(grepl("_", grch38$chr) | grepl("GL", grch38$chr)), selected_annotations]
+gene_annotations <- gene_annotations[!duplicated(gene_annotations[, selected_annotations]), selected_annotations]
+# Remove empty gene symbol records
+gene_annotations <- gene_annotations[gene_annotations$symbol != "", ]
+# If a gene has multiple biotypes, take the first one
+gene_annotations <- gene_annotations %>% group_by(symbol, biotype) %>% slice_head()
+
+KEGG <- "KEGG_2019_Human"
+# Gene length for TPM calculations
+gene_length <- data.frame(Geneid = grch38$ensgene, Length = grch38$end - grch38$start)
+# All genes for background
+all.symbol <- unique(gene_annotations$symbol) 
+```
+
+# Sample annotations
+
+```{r}
+# Create the 'Sample' column
+samples <- c(
+  paste0("Control", 1:5), 
+  paste0("Treatment", 1:5)
+)
+
+# Create the 'Group' column
+# We repeat the group name 5 times for each condition
+groups <- c(
+  rep("Day0", 5), 
+  rep("Day2", 5)
+)
+
+# Combine into a data frame
+sample_annotation <- data.frame(
+  Sample = samples,
+  Group = groups
+)
+
+# View the specific columns to match your output
+print(sample_annotation[, c("Sample", "Group")])
+```
+
+# Load data
+
+## Nextflow
+
+```{r eval=TRUE, cache=FALSE}
+count_data <- read_tsv(fileNameIn1)
+counts <- data.frame(Geneid = count_data[, 1] %>% unlist(), count_data[, colnames(count_data)[!(colnames(count_data) %in% c("gene_id", "transcript_id(s)"))]])
+# Remove transcript versions
+counts$Geneid <- sapply(counts$Geneid, function(x) strsplit(x, ".", fixed = TRUE)[[1]][1])
+# Check is sample annotations and QC columns match
+sample_annotation <- sample_annotation[match(colnames(counts)[2:ncol(counts)], sample_annotation$Sample), ]
+all.equal(sample_annotation$Sample, colnames(counts)[2:ncol(counts)])
+```
+
+# Visualization
+
+# Sums of counts
+
+```{r}
+# Calculate column-wise sums for samples (excluding Geneid)
+sample_sums <- colSums(counts[, -1])
+
+# Create a data frame with sums and merge with the sample annotation
+sample_sums_df <- data.frame(Sample = names(sample_sums), Sum = sample_sums)
+sample_sums_annotated <- merge(sample_sums_df, sample_annotation, by = "Sample")
+
+# Order by the sum of counts
+sample_sums_annotated <- sample_sums_annotated[order(sample_sums_annotated$Sum), ]
+
+# Create a bar plot
+ggplot(sample_sums_annotated, aes(x = reorder(Sample, Sum), y = Sum, fill = Group)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(x = "Sample", y = "Sum of Counts", title = "Sum of Counts by Sample") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + coord_flip()
+```
+
+### Correlation matrix
+
+```{r}
+edgeR.dgelist = DGEList(counts = counts[, 2:ncol(counts)], genes = counts$Geneid)
+# Filtering
+keep <- rowSums(cpm(edgeR.dgelist)>1) >= 2
+edgeR.dgelist <- edgeR.dgelist[keep, , keep.lib.sizes=FALSE]
+# Normalization
+edgeR.dgelist = calcNormFactors((edgeR.dgelist), method = "TMM")
+edgeR.dgelist = estimateDisp(edgeR.dgelist)
+```
+
+```{r}
+# Get normalized CPMs
+mtx <- cpm(edgeR.dgelist, log = TRUE, normalized.lib.sizes = TRUE)
+rownames(mtx) <- edgeR.dgelist@.Data[[3]][, "genes"]
+mtx_to_plot <- varFilter(mtx, var.cutoff = 0.75)
+```
+
+```{r}
+IAC <- mtx_to_plot %>% cor(. , use = "pairwise.complete.obs",  method = "pearson") 
+plot_annotations <- data.frame(Group = sample_annotation$Group)
+rownames(plot_annotations) <- rownames(IAC)
+pheatmap(IAC,annotation_col = plot_annotations, clustering_method = "ward.D")
+```
+
+### Principal Components Analysis
+
+```{r}
+# PCA: Check for batch effects. Select one batch, to color points by its assignment
+pca <-  mtx_to_plot %>% t  %>% scale %>% prcomp
+data.frame(summary(pca)$importance)[, 1:min(5, ncol(summary(pca)$importance))] %>% pander # Percent of variance explained
+
+# # What correlates with the first component
+# covariates <- c("Sample_Plate", "Sentrix_ID", "Sentrix_Position", "Sample_Well", "Type", "Donor", "Injury", "Predicted.Gender")
+# for (covariate in covariates){
+#   pca.lm <- lm( as.numeric(PC1) ~ factor(eval(parse(text = covariate))), data = cbind(sample_annotation_subset, pca$x))
+#   print(paste(covariate, "accounts_subset for", signif(summary(pca.lm)$adj.r.squared, 5), "variability explained by PC1, p-value", signif(lmp(pca.lm), 5)))
+#   # pca.lm <- lm( as.numeric(PC2) ~ factor(eval(parse(text = covariate))), data = cbind(sample_annotation_subset, pca$x))
+#   # print(paste(covariate, "accounts_subset for", signif(summary(pca.lm)$adj.r.squared, 5), "variability explained by the second principle component, # p-value", signif(lmp(pca.lm), 5)))
+#   # pca.lm <- lm( as.numeric(PC3) ~ factor(eval(parse(text = covariate))), data = cbind(sample_annotation_subset, pca$x))
+#   # print(paste(covariate, "accounts_subset for", signif(summary(pca.lm)$adj.r.squared, 5), "variability explained by the third principle component, # p-value", signif(lmp(pca.lm), 5)))
+# }
+
+colorby <- "Group" # covariates[2]
+pt <- ggplot(data = data.frame(pca$x, sample_annotation, samples = sample_annotation$Sample, stringsAsFactors = F), 
+             aes(x = as.numeric(PC1), y = as.numeric(PC2), label = samples)) +
+  theme(plot.title = element_text(lineheight = 0.8, face="bold")) +
+  ggtitle(paste("PCA with batch, coloring by ", colorby)) +
+  geom_point(aes(color = eval(parse(text = colorby))), size = 3) +
+  geom_text_repel(colour = "black", size = 3) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  labs(color = colorby) +
+  scale_x_continuous(name = paste0("PC1, ", round(summary(pca)$importance[2,1] * 100, digits = 2), "% variability" )) +
+  scale_y_continuous(name = paste0("PC2, ", round(summary(pca)$importance[2,2] * 100, digits = 2), "% variability" ))
+plot(pt)
+
+# ggsave(filename = "Figures/Figure_PCA_withbatch.pdf", plot = pt, height = 8, width = 11)
+```
+
+
+# Differential Expression Analysis
+
+- Differentially espressed genes (DEGs) detected at False Discovery Rate (FDR) `r p_adj_cutoff`. See the total number in the table' annotations. Top `r nplot` or less DEGs are visualized.
+
+Lists of differentially expressed genes are stored in Excel file `r fileName_rna`. Results corresponding to Analysis 1, 2 etc. are stored in sheets with prefixes "1.", "2." etc. Sheets with suffexes "protein-coding", "lncRNA", and "other" store differentially expressed transcripts of the corresponding types. "KEGG" sheet, if present, contains pathways significantly enriched in differentially expressed protein-coding genes.
+
+**Legend for gene lists:** "Geneid", "symbol", "biotype" "description" - gene annotations; "Length" - length of a gene in bp; "logFC" - log fold change; "logCPM" - average Counts Per Million, log2; "LR" - log-likelihood; "P.Val"/"adj.P.Val" - non-/FDR-adjusted p-value.
+
+**Legend for KEGG pathway enrichment analysis:** "Term" - pathway name; "Overlap" - number of differentially expressed genes out of the total number of genes in the pathway; "P.value", "Adjusted.P.Value" - raw and adjusted for multiple testing p-values; "Genes" - names of differentially expressed genes in the pathway.
+
+<!--**Legend for GO/KEGG functional enrichment results:** "ID" - unique identifier of functional category; "Pvalue" - non-adjusted p-value; "OddsRatio" - enrichment odds ratio; "ExpCount" - number of genes expected to be selected in a category; "Count" - number of genes observed in the current list; "Size" - total number of genes in a category; "Term" - category description; "p.adj" - false discovery rate; "SYMBOL", "ENTREZ" - genes observed in the current list as annotated with a category
+
+Legend for gene lists: "Geneid", "symbol", "description" - gene annotations; "Length" - length of a gene in bp; "logFC" - log fold change; "logCPM" - average counts_subset Per Million, log2; "LR" - log-likelyhood; "P.Val"/"adj.P.Val" - non-/FDR-adjusted p-value.
+
+Functional enrichment analysis Legend: "database" - source of functional annotations, "category" - name of functional annotation,  "pval" - unadjusted enrichment p-value,  "qval" - FDR-adjusted p-value,  "genes" - comma-separated differentially expressed genes enriched in a corresponding functional category,  "direction" - UP/DN, an indicator whether genes are up- or downregulated.-->
+
+
+## Analysis
+
+```{r}
+# Define reference and treatment groups
+group_ref <- "Day0"
+group_trt <- "Day2"
+# Define analysis ID
+analysis_ID <- paste0("1.", group_trt, "_vs_", group_ref)
+# Subset the data, adjust manually
+# index <- sample_annotation$Group == group_trt | sample_annotation$Group == group_ref
+# Or, use all the data
+index <- sample_annotation$Sample == sample_annotation$Sample
+
+sample_annotation_subset <- sample_annotation[index, ]
+counts_subset <- counts[, 2:ncol(counts)]
+counts_subset <- data.frame(Geneid = counts[, 1], counts_subset[, index])
+all.equal(sample_annotation_subset$Sample, colnames(counts_subset[, 2:ncol(counts_subset)]))
+```
+
+```{r}
+# Adjust manually
+Group <- factor(sample_annotation_subset$Group)
+Group <- relevel(Group, ref = group_ref)
+Group
+design <- model.matrix(~Group, data = Group)
+```
+
+```{r}
+edgeR.dgelist = DGEList(counts = counts_subset[, 2:ncol(counts_subset)], genes = counts_subset$Geneid, group = Group)
+# Filtering
+keep <- rowSums(cpm(edgeR.dgelist)>1) >= 2
+edgeR.dgelist <- edgeR.dgelist[keep, , keep.lib.sizes=FALSE]
+# Normalization
+edgeR.dgelist = calcNormFactors((edgeR.dgelist), method = "TMM")
+edgeR.dgelist = estimateDisp(edgeR.dgelist, design)
+```
+
+```{r}
+# One-way ANOVA analysis
+fit <- glmFit(edgeR.dgelist, design)
+# Individual comparisons
+lrt <- glmLRT(fit, coef = 2)
+
+# --- Logic incorporated from p.vals ---
+# Get all significant genes with p_adj_cutoff = 1 (all genes)
+res.full <- topTags(lrt, n = Inf, p.value = 1) %>% as.data.frame()
+
+if (nrow(res.full) > 0) {
+  # Merge annotations by ensgene
+  res.full <- left_join(data.frame(res.full, stringsAsFactors = FALSE), 
+                        gene_annotations, by = c("genes" = "ensgene")) 
+  # Sort by LR (Likelihood Ratio)
+  res.full <- res.full[order(res.full$LR, decreasing = TRUE), ]
+}
+# --------------------------------------
+
+if (nrow(res.full[res.full$FDR < p_adj_cutoff, ]) > ntable) {
+  print(paste("Filtered by FDR", p_adj_cutoff))
+  res <- res.full[res.full$FDR < p_adj_cutoff, ]
+} else {
+  print(paste("Filtered by p-value", p_val_cutoff))
+  res <- res.full[res.full$PValue < p_val_cutoff, ]
+}
+```
+
+Total number of differentially expressed genes: `r nrow(res)`, `r nrow(res[ res$logFC > 0, , drop = FALSE])` are upregulated, `r nrow(res[ res$logFC < 0, , drop = FALSE])` are downregulated. 
+
+```{r}
+res <- res[ res$biotype == "protein_coding" & !is.na(res$biotype), ]
+```
+
+Stats after selecting for protein-coding genes only.  
+Total number of differentially expressed genes: `r nrow(res)`, `r nrow(res[ res$logFC > 0, , drop = FALSE])` are upregulated, `r nrow(res[ res$logFC < 0, , drop = FALSE])` are downregulated.
+
+### Boxplots of top `r nbox` genes
+
+Y-axis - expression on log2-scale. Note the range - values > 5 indicate medium expression level. Possible negative values mean a gene is very low expressed and was adjusted into negative range by normalization.
+
+```{r}
+selected_genes = unique(res$genes[!is.na(res$genes)])
+genes_slice <- selected_genes[1:min(length(selected_genes), nbox)]
+subset_groups <- c(group_trt, group_ref)
+
+# --- Logic incorporated from genes_to_boxplot ---
+# Select columns to subset based on groups
+subset_index <- sample_annotation_subset$Group %in% subset_groups
+
+# Select genes and match order (using ensgene)
+genes.to.plot <- gene_annotations[gene_annotations$ensgene %in% genes_slice, ]
+genes.to.plot <- genes.to.plot[match(edgeR.dgelist$genes$genes[edgeR.dgelist$genes$genes %in% genes.to.plot$ensgene], genes.to.plot$ensgene), ]
+index_to_keep  <- edgeR.dgelist$genes$genes %in% genes.to.plot$ensgene
+
+# Prepare expression matrix
+matrix.to.plot <- cpm(edgeR.dgelist, log = TRUE)
+matrix.to.plot <- matrix.to.plot[index_to_keep, subset_index, drop = FALSE] 
+rownames(matrix.to.plot) <- edgeR.dgelist$genes$genes[index_to_keep]
+colnames(matrix.to.plot) <- sample_annotation_subset$Group[subset_index]
+
+# Reshape for ggplot
+matrix.to.plot <- data.frame(Gene = rownames(matrix.to.plot), matrix.to.plot, check.names = FALSE)
+matrix.to.plot_melted <- tidyr::pivot_longer(matrix.to.plot, cols = colnames(matrix.to.plot)[colnames(matrix.to.plot) != "Gene"])
+matrix.to.plot_melted$Gene <- as.factor(matrix.to.plot_melted$Gene)
+matrix.to.plot_melted$name <- as.factor(matrix.to.plot_melted$name)
+
+# Plot
+ggplot(matrix.to.plot_melted, aes(x = name, y = value, group = name)) +
+  geom_boxplot(aes(fill = name)) +
+  facet_wrap(~ Gene, ncol = 3, scales = "free_y")
+```
+
+### Heatmap of top `r nplot` differentially expressed genes
+
+```{r fig.height=12}
+# --- Logic incorporated from genes_to_heatmap ---
+# Select columns to subset
+subset_index <- grepl(paste(subset_groups, collapse = "|"), sample_annotation_subset$Group) 
+
+# Prepare genes to plot (top nplot)
+genes.to.plot <- res[1:nplot, c("genes"), drop = FALSE] 
+genes.to.plot <- left_join(genes.to.plot, gene_annotations, by = c("genes" = "ensgene"))
+
+# Match order with edgeR object
+genes.to.plot <- genes.to.plot[match(edgeR.dgelist$genes$genes[edgeR.dgelist$genes$genes %in% genes.to.plot$genes], genes.to.plot$genes), , drop = FALSE]
+
+# Prepare matrix (log CPM)
+matrix.to.plot <- cpm(edgeR.dgelist, log = TRUE, normalized.lib.sizes=TRUE)[edgeR.dgelist$genes$genes %in% genes.to.plot$genes, subset_index]
+
+# Set rownames to symbol (mapped from ensgene)
+rownames(matrix.to.plot) <- genes.to.plot$symbol
+
+# Prepare annotation column
+annotation_col <- data.frame(Group = sample_annotation_subset$Group[subset_index])
+rownames(annotation_col) <- colnames(cpm(edgeR.dgelist)[, subset_index])
+
+# Clear symbols if too many genes
+if (nplot > 50) {
+  genes.to.plot$symbol <- ""
+}
+
+# Plot heatmap
+pheatmap(matrix.to.plot, 
+         color = colorRampPalette(c("navy", "white", "firebrick3"))(100), # Assumed col3 equivalent
+         clustering_method = "ward", 
+         treeheight_row = FALSE, 
+         treeheight_col = FALSE, 
+         annotation_col = annotation_col, 
+         labels_row = genes.to.plot$symbol, 
+         scale = "row")
+# ------------------------------------------------
+```
+
+### Volcano plot
+
+```{r}
+# BiocManager::install("BioSenior/ggVolcano", update = FALSE)
+library(ggVolcano)
+# use the function -- add_regulate to add a regulate column 
+# to the DEG result data. 
+res$FDR <- as.numeric(res$FDR)
+data <- add_regulate(data = res, log2FC_name = "logFC",
+                     fdr_name = "FDR", log2FC = 1, fdr = 0.3)
+
+
+# plot
+gradual_volcano(data, x = "log2FoldChange", y = "padj",
+          label = "symbol", label_number = 10,
+          fills = c("#53a4cf", "#aec5d1", "white", "#e2ae96", "#cc917c", "#a96d5d", "#91403e"),
+          colors = "#404950",
+          log2FC_cut = 0, FDR_cut = 1, add_line = FALSE, pointSizeRange = c(2, 2),
+          output = TRUE, filename = "results/volcano_plot.png")
+```
+
+# Save data
+
+```{r}
+x <- list(res.full)
+names(x) <- analysis_ID
+write_xlsx(x, fileName_rna)
+```
+

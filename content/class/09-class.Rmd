@@ -1,0 +1,27 @@
+---
+title: "Final project"
+# linktitle: "1. Introduction to RStudio and Images"
+date: "2025-12-01"
+class_date: "2025-12-01"
+draft: false
+output:
+  blogdown::html_page:
+    toc: false
+menu:
+  class:
+    parent: Class sessions
+    weight: 9
+type: docs
+weight: 9
+# pdf: 
+# thumb: 
+editor_options: 
+  chunk_output_type: console
+---
+
+<a href="../../slides/15_Final/16_final_project.html#1" target="_blank">Final project description</a>
+
+### Code examples
+
+- Analysis_NF_demo.Rmd, <a href="../../slides/15_Clustering/Analysis_NF_demo.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/Volcano.html" target="_blank">HTML</a>
+  - <a href="../../slides/15_Clustering/rsem_counts.tsv" target="_blank">rsem_counts.tsv</a> 

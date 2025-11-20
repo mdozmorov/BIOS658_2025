@@ -23,5 +23,5 @@ editor_options:
 
 ### Code examples
 
-- Analysis_NF_demo.Rmd, <a href="../../slides/15_Clustering/Analysis_NF_demo.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/Volcano.html" target="_blank">HTML</a>
-  - <a href="../../slides/15_Clustering/rsem_counts.tsv" target="_blank">rsem_counts.tsv</a> 
+- Analysis_NF_demo.Rmd, <a href="../../slides/15_Final/Analysis_NF_demo.Rmd" target="_blank">Rmd</a>, <a href="../../slides/15_Final/Analysis_NF_demo.html" target="_blank">HTML</a>
+  - <a href="../../slides/15_Final/rsem_counts.tsv" target="_blank">rsem_counts.tsv</a> 

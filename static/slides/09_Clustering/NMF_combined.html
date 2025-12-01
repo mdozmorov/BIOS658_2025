@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Non-negative Matrix Factorization</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-12-01" />
+    <script src="libs/header-attrs-2.30/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Non-negative Matrix Factorization
+]
+.subtitle[
+## Decomposing Gene Expression Data
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-12-01
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+# Matrix factorization — motivation
+
+- Many problems require decomposing observed data into interpretable component matrices (find parts that explain the whole).
+
+- Standard linear methods: Singular Value Decomposition (SVD), Principal Component Analysis (PCA).
+
+- PCA is optimal for minimum reconstruction error under orthogonality constraints, but recovered components may be hard to interpret biologically.
+
+- Matrix factorization methods aim to recover a small set of latent sources that combine to form observations.
+
+---
+# Linear mixing model (general)
+
+- Assume observations arise from linear combinations of latent sources:
+`$$X \approx WH$$`
+  - `\(X \in \mathbb{R}_{\ge 0}^{G\times S}\)` — observed data matrix (rows = **G** genes, columns = **S** samples).
+  - `\(W \in \mathbb{R}_{\ge 0}^{G\times K}\)` — basis matrix (columns = `\(K\)` **metagenes** / basis vectors).
+  - `\(H \in \mathbb{R}_{\ge 0}^{K\times S}\)` — coefficient matrix (rows = metagene expression across samples).
+  - Reconstruction: `\(\hat{X}=WH\)`. Column-wise: `\(x_{\cdot j} \approx \sum_{k=1}^K w_{\cdot k} h_{kj}.\)`
+
+- Goal: reduce dimensionality (from `\(G\)` genes to `\(K\ll\min(G,S)\)`) while keeping interpretability.
+
+---
+# Linear mixing in gene expression
+
+- For gene expression / RNA-seq: `\(X\)` contains non-negative measurements (counts, TPMs, normalized counts).
+
+- Columns of `\(W\)` are **building blocks** (metagenes): groups of co-expressed genes.
+
+- Columns of `\(\hat X\)` are reconstructed sample profiles; each sample's profile is an additive combination of metagenes weighted by the corresponding column of `\(H\)`.
+
+- Key challenge: recover both `\(W\)` and `\(H\)` from `\(X\)` alone (an underdetermined problem → need constraints/regularization).
+
+---
+# Non-negative Matrix Factorization (NMF)
+
+- **Model**: given non-negative `\(X\)`, find non-negative `\(W, H\)` such that `\(X \approx WH\)`.
+
+- Non-negativity prohibits subtractive reconstruction — parts combine additively to form the whole.
+
+- Equivalently, for each sample `\(j\)`:
+  `$$x_{\cdot j} \approx \sum_{k=1}^K w_{\cdot k} h_{kj}.$$`
+- NMF yields **parts-based** decompositions that are often biologically interpretable.
+
+---
+## NMF (visual)
+
+&lt;img src="img/nmf.png" width="550px" style="display: block; margin: auto;" /&gt;
+
+.small[ J. Brunet, P. Tamayo, T.R. Golub, &amp; J.P. Mesirov, Metagenes and molecular pattern discovery using matrix factorization, Proc. Natl. Acad. Sci. U.S.A. 101 (12) 4164-4169, https://doi.org/10.1073/pnas.0308531101 (2004). ]
+
+---
+# Biological interpretation
+
+- Columns of `\(W\)` correspond to **metagenes** — sets of genes that co-vary (possible pathways, cell types, programs).
+
+- Rows of `\(H\)` (or columns when viewed per sample) give **sample-specific weights** — activity of each metagene in each sample.
+
+- Example: Metagene 1 = immune genes; Metagene 2 = cell-cycle genes. Each sample is a non-negative mixture of these programs.
+
+- Advantages for biology:
+  - Non-negativity aligns with count/abundance data.
+  - Often yields sparse factors: each metagene involves a subset of genes; each sample activates a subset of metagenes.
+
+---
+# NMF: objective &amp; probabilistic view
+
+- Common objective (Euclidean / Frobenius norm):
+  `$$\min_{W\ge 0,\,H\ge 0} \|X - WH\|_F^2.$$`
+
+- Probabilistic view (Gaussian noise): maximizing likelihood leads to the same squared-error objective (subject to non-negativity constraints).
+
+- Alternative cost: Kullback–Leibler divergence
+  `$$D_{KL}(X\|\hat X)=\sum_{i,j} X_{ij}\log\frac{X_{ij}}{\hat X_{ij}} - X_{ij} + \hat X_{ij},$$`
+  useful when modeling Poisson-like count behavior.
+
+---
+## NMF idea (figure)
+
+&lt;img src="img/nmf_idea.png" width="900px" style="display: block; margin: auto;" /&gt;
+
+---
+# Optimization &amp; Algorithms
+
+* **Optimization challenge:**
+
+  * NMF is **non-convex** in both `\(W\)` and `\(H\)` → multiple local minima.
+  * **Initialization** strongly influences results and convergence.
+
+* **Common algorithms:**
+
+  * **Multiplicative updates** (Lee &amp; Seung): simple, preserve non-negativity.
+  * **Alternating least squares** with non-negativity constraints.
+  * **Coordinate descent** and **projected gradient** methods.
+
+* **Typical workflow:**
+
+  1. Initialize `\(W,H\)` (random or SVD-based).
+  2. Alternately update `\(H\)` and `\(W\)` until convergence.
+  3. Repeat multiple runs (`nrun`) to evaluate **stability** and **reproducibility**.
+
+---
+# Cost Functions &amp; Practical Considerations
+
+* **Common objective functions:**
+  * **Squared error:** `\(F(W,H)=|X-WH|_F^2\)`
+  * **Kullback–Leibler divergence:** `\(D_{KL}(X|WH)\)` 
+
+* **Regularization and constraints:**
+  * **Sparsity (L1)** on `\(W\)` or `\(H\)` → enhances interpretability.
+  * **Smoothness** or **orthogonality** constraints → improve factor distinctness.
+
+* **Best practices:**
+  * Because initialization is stochastic, **repeat runs** and assess **consensus**.
+  * Choose **cost function** and **constraints** based on data characteristics and interpretation goals.
+
+
+
+
+---
+# Why nonnegativity / historical notes
+
+- NMF roots: positive matrix factorization, nonnegative rank factorizations; popularized for parts-based learning by Lee &amp; Seung (1999).
+
+- Non-negativity yields additive, non-subtractive building blocks — conceptually attractive for gene expression and other abundance data.
+
+---
+# NMF for clustering &amp; soft membership
+
+- `\(H\)` provides a low-dimensional representation (meta-gene space); can use `\(H\)` for downstream tasks:
+  - Clustering of samples (soft assignments).
+  - Classification in meta-gene space.
+
+- NMF naturally handles overlapping clusters: samples can express multiple metagenes to varying degrees.
+
+&lt;img src="img/nmf_clustering.png" width="600px" style="display: block; margin: auto;" /&gt;
+
+---
+# NMF vs PCA comparison
+
+&lt;img src="img/nmfpca.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+---
+# NMF vs PCA comparison
+
+| Property | NMF | PCA |
+|---|---:|---:|
+| Sign constraint | Non-negative, additive | Can be negative (subtractive) |
+| Interpretability | Parts-based, often direct (metagenes) | Orthogonal contrasts of variance |
+| Orthogonality | Not required | Required |
+| Sparsity | Often sparse / local | Typically dense |
+| Useful for | Count/abundance data; interpretable modules | Variance explanation &amp; decorrelation |
+
+---
+# Choosing number of components `\(K\)`
+
+1. Stability analysis (repeat runs, consensus matrices).
+
+2. Cophenetic correlation (measure of clustering stability across runs).
+
+3. Reconstruction error (plot `\(\|X-WH\|_F^2\)` vs `\(K\)`, look for elbow).
+
+4. Biological validation (do factors match known pathways / cell types?).
+
+5. Cross-validation or predictive performance.
+
+**Rule of thumb**: start with `\(K\)` much smaller than `\(\min(G,S)\)` and explore a range.
+
+---
+## Intuition behind dimensionality reduction
+
+&lt;img src="img/matrix_factorization1.png" width="800px" style="display: block; margin: auto;" /&gt;
+
+.small[ Stein-O’Brien, Genevieve L., Raman Arora, Aedin C. Culhane, Alexander V. Favorov, Lana X. Garmire, Casey S. Greene, Loyal A. Goff et al. "Enter the matrix: factorization uncovers knowledge from omics." Trends in Genetics 34, no. 10 (2018): 790-805. https://doi.org/10.1016/j.tig.2018.07.003 ]
+
+---
+## Intuition behind dimensionality reduction (example figure)
+
+&lt;img src="img/matrix_factorization2.png" width="800px" style="display: block; margin: auto;" /&gt;
+
+.small[ Stein-O’Brien, Genevieve L., Raman Arora, Aedin C. Culhane, Alexander V. Favorov, Lana X. Garmire, Casey S. Greene, Loyal A. Goff et al. "Enter the matrix: factorization uncovers knowledge from omics." Trends in Genetics 34, no. 10 (2018): 790-805. https://doi.org/10.1016/j.tig.2018.07.003 ]
+
+---
+# Implementation in R (practical)
+.small[
+
+``` r
+# Simulate Gene Expression Data
+library(NMF)
+set.seed(123)
+
+n_genes &lt;- 300
+n_samples &lt;- 30
+true_k &lt;- 3  # true clusters
+
+# Latent metagenes (non-negative)
+W_true &lt;- matrix(runif(n_genes * true_k, 0, 2), nrow = n_genes, ncol = true_k)
+
+# Assign samples to clusters
+cluster_labels &lt;- rep(1:true_k, each = n_samples / true_k)
+
+# Sample weights (components × samples)
+H_true &lt;- matrix(0, nrow = true_k, ncol = n_samples)
+for (i in 1:n_samples) {
+  H_true[cluster_labels[i], i] &lt;- runif(1, 1, 2)
+}
+
+# Observed data with noise
+X &lt;- W_true %*% H_true + matrix(rnorm(n_genes * n_samples, sd = 0.2), n_genes, n_samples)
+X[X &lt; 0] &lt;- 0
+
+rownames(X) &lt;- paste0("Gene_", seq_len(n_genes))
+colnames(X) &lt;- paste0("Sample_", seq_len(n_samples))
+```
+]
+
+---
+## Run NMF Decomposition
+  
+
+``` r
+nmf_result &lt;- nmf(X, rank = 3, method = "brunet", nrun = 30, seed = 123)
+
+# Extract factor matrices
+W &lt;- basis(nmf_result)  # genes × components
+H &lt;- coef(nmf_result)   # components × samples
+```
+
+---
+## Visualize NMF Results
+
+.pull-left[
+
+``` r
+basismap(nmf_result, main = "Metagenes (W matrix)")
+```
+
+![](NMF_combined_files/figure-html/unnamed-chunk-9-1.png)&lt;!-- --&gt;
+]  
+.pull-right[
+
+``` r
+coefmap(nmf_result, main = "Sample Weights (H matrix)")
+```
+
+![](NMF_combined_files/figure-html/unnamed-chunk-10-1.png)&lt;!-- --&gt;
+]
+
+---
+## Identify Sample Clusters
+
+.pull-left[
+
+``` r
+consensusmap(nmf_result, main = "Consensus Clustering (stability across runs)")
+```
+
+![](NMF_combined_files/figure-html/unnamed-chunk-11-1.png)&lt;!-- --&gt;
+]
+.pull-right[
+
+``` r
+sample_clusters &lt;- predict(nmf_result)
+table(sample_clusters)
+```
+
+```
+## sample_clusters
+##  1  2  3 
+## 10 10 10
+```
+
+``` r
+# Compare to true labels
+table(True = cluster_labels, Predicted = sample_clusters)
+```
+
+```
+##     Predicted
+## True  1  2  3
+##    1  0 10  0
+##    2  0  0 10
+##    3 10  0  0
+```
+]  
+
+
+---
+## Inspect and Visualize Top Genes per Metagene
+  
+.pull-left[
+
+``` r
+top_genes &lt;- apply(W, 2, function(w) head(order(w, decreasing = TRUE), 10))
+top_genes
+```
+
+```
+##       [,1] [,2] [,3]
+##  [1,]   14  297  289
+##  [2,]  119  248  134
+##  [3,]  224  193  100
+##  [4,]   19   24  196
+##  [5,]  286  277   47
+##  [6,]  141  139   76
+##  [7,]  138   87  161
+##  [8,]   37    5  229
+##  [9,]  257   20   27
+## [10,]  241  118   56
+```
+]
+.pull-right[
+
+``` r
+library(pheatmap)
+
+annotation_col &lt;- data.frame(Cluster = factor(sample_clusters))
+rownames(annotation_col) &lt;- colnames(X)
+
+ann_colors &lt;- list(Cluster = c("1" = "#E41A1C", "2" = "#377EB8", "3" = "#4DAF4A"))
+
+pheatmap(X[top_genes[,1], ],
+         cluster_rows = FALSE,
+         cluster_cols = TRUE,
+         annotation_col = annotation_col,
+         annotation_colors = ann_colors,
+         main = "Top Genes of Component 1 Across Samples")
+```
+
+![](NMF_combined_files/figure-html/unnamed-chunk-14-1.png)&lt;!-- --&gt;
+]
+
+---
+## Visualize Samples in Component Space
+  
+
+``` r
+H_t &lt;- t(H)
+plot(H_t[,1], H_t[,2],
+     col = sample_clusters, pch = 19,
+     xlab = "Component 1", ylab = "Component 2",
+     main = "Samples in NMF Component Space")
+legend("topright", legend = paste("Cluster", 1:3), col = 1:3, pch = 19)
+```
+
+![](NMF_combined_files/figure-html/unnamed-chunk-15-1.png)&lt;!-- --&gt;
+
+---
+# Applications in genomics / RNA-seq
+
+- Identify gene expression modules (co-regulated programs).
+
+- Discover cancer subtypes or sample groups based on metagene activity.
+
+- Deconvolution / cell-type discovery from bulk profiles (metagenes ≈ cell-type signatures).
+
+- Integrate multi-omics by concatenation or joint factorization to find shared programs across modalities.
+
+- Reveal condition-specific vs shared patterns between disease and normal tissue.
+
+---
+# NMF Advantages
+
+- Parts-based, interpretable factors.
+
+- Aligns with non-negative biological measurements.
+
+- Often yields sparse, biologically meaningful modules.
+
+---
+## NMF Caveats
+
+- Non-convex problem → results depend on initialization.
+
+- Choosing `\(K\)` is nontrivial.
+
+- Preprocessing (normalization / transformation of RNA-seq counts) affects results — choose a representation reflecting the noise model (log-CPM, VST, or appropriate normalization).
+
+---
+# Summary
+
+- NMF decomposes non-negative genomics data into interpretable metagenes and sample weights.
+
+- Use appropriate cost (Frobenius vs KL) and preprocessing for the data type.
+
+- Perform multiple runs, assess stability, and validate components biologically.
+
+- Widely used for cancer subtyping, pathway discovery, deconvolution, and integrative analyses.
+
+---
+# References
+
+- R packages: `NMF`, `NNLM`, `RcppML`.
+
+- Python: `scikit-learn.decomposition.NMF`, `nimfa`.
+
+.small[
+https://CRAN.R-project.org/package=NMF  
+https://github.com/linxihui/NNLM  
+https://CRAN.R-project.org/package=RcppML  
+https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.NMF.html  
+https://nimfa.biolab.si/  
+- Lee, D., Seung, H. Learning the parts of objects by non-negative matrix factorization. Nature 401, 788–791 (1999). https://doi.org/10.1038/44565  
+- J. Brunet, P. Tamayo, T.R. Golub, &amp; J.P. Mesirov, Metagenes and molecular pattern discovery using matrix factorization, Proc. Natl. Acad. Sci. U.S.A. 101 (12) 4164-4169, https://doi.org/10.1073/pnas.0308531101 (2004).  
+- Lee, Daniel, and H. Sebastian Seung. “Algorithms for Non-negative Matrix Factorization.” In *Advances in Neural Information Processing Systems*, edited by T. Leen, T. Dietterich, and V. Tresp, vol. 13. Cambridge, MA: MIT Press, 2000. [https://proceedings.neurips.cc/paper_files/paper/2000/file/f9d1152547c0bde01830b7e8bd60024c-Paper.pdf](https://proceedings.neurips.cc/paper_files/paper/2000/file/f9d1152547c0bde01830b7e8bd60024c-Paper.pdf).
+]
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

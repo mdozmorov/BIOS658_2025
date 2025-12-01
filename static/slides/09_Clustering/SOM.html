@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Self-Organizing Maps</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-12-01" />
+    <script src="libs/header-attrs-2.30/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Self-Organizing Maps
+]
+.subtitle[
+## Kohonen Neural Networks for Data Visualization
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-12-01
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+
+# What are Self-Organizing Maps?
+
+- **Unsupervised neural network** technique invented by Teuvo Kohonen (1980s)
+
+- Performs **dimensionality reduction** while preserving topology
+
+- Maps high-dimensional data onto a low-dimensional grid (usually 2D)
+
+- Key property: **similar inputs → nearby positions on map**
+
+---
+# Structure of a SOM
+
+- **Input layer**: High-dimensional data vectors
+  - Example: gene expression across 1,000 genes
+
+- **Output layer**: 2D grid of neurons (e.g., 10×10 = 100 neurons)
+
+- **Weight vectors**: Each neuron has weights matching input dimensionality
+  - Each neuron represents a prototype in high-dimensional space
+
+- **No hidden layers**: Direct mapping from input to output grid
+
+---
+# Training Algorithm: Overview
+
+1. **Initialize** random weights for all grid neurons
+
+2. **For each training sample**:
+   - Find Best Matching Unit (BMU)
+   - Update BMU and neighbors
+
+3. **Repeat** for many iterations
+
+4. **Result**: Self-organized topological map
+
+---
+# Training Step 1: Find BMU
+
+- **Best Matching Unit (BMU)** = neuron closest to input
+
+- Calculate distance between input vector and all neuron weights
+  - Typically Euclidean distance
+
+- Select neuron with minimum distance
+
+```
+distance = sqrt(sum((input - neuron_weights)^2))
+```
+
+---
+# Training Step 2: Update Weights
+
+- **Update BMU** to become more like the input
+
+- **Update neighbors** based on distance from BMU
+
+- Update formula:
+```
+new_weight = old_weight + learning_rate × neighborhood_function × (input - old_weight)
+```
+
+- **Neighborhood function**: Typically Gaussian, centered on BMU
+  - Wide at start (many neighbors updated)
+  - Narrows over time (only BMU updated at end)
+
+---
+# Key Properties
+
+- **Topology preservation**: Adjacent neurons respond to similar inputs
+
+- **Vector quantization**: Neurons become prototypes of input space
+
+- **Competitive learning**: Neurons compete to represent each input
+
+- **Self-organization**: Structure emerges from data, not imposed
+
+---
+# Gene Expression Example: Setup
+
+**Scenario**: Analyze tumor samples based on gene expression
+
+- **Samples**: 200 tumor biopsies
+
+- **Features**: Expression levels of 5,000 genes per sample
+
+- **Goal**: Identify molecular subtypes without predefined labels
+
+---
+# Gene Expression Example: Data
+
+- **Input matrix**: 200 samples × 5,000 genes
+
+- Each sample is a point in 5,000-dimensional space
+
+- **Challenge**: Impossible to visualize directly
+
+- **SOM solution**: Map onto 2D grid (e.g., 15×15)
+
+---
+# Gene Expression Example: Training
+
+1. Initialize 15×15 grid (225 neurons)
+   - Each neuron has 5,000 weights (one per gene)
+
+2. Present tumor samples repeatedly
+
+3. Neurons organize based on expression patterns
+
+4. After training: similar tumors map to nearby grid positions
+
+---
+# Gene Expression Example: Results
+
+**What emerges on the trained map**:
+
+- **Clusters**: Groups of samples with similar expression
+  - May correspond to tumor subtypes
+
+- **Gradients**: Smooth transitions between subtypes
+
+- **Outliers**: Isolated samples with unique profiles
+
+---
+# Gene Expression Example: Interpretation
+
+**Analysis approaches**:
+
+- **Component planes**: Visualize individual gene patterns across map
+  - High expression genes for each region
+
+- **Hit histogram**: Count samples per neuron
+  - Identifies density of different subtypes
+
+- **U-matrix**: Shows distances between neighboring neurons
+  - Reveals cluster boundaries
+
+---
+
+# Gene Expression Example: Biological Insight
+
+**Discovered patterns might reveal**:
+
+- Aggressive vs. indolent tumor subtypes
+
+- Response to specific therapies
+
+- Activated biological pathways
+
+- Novel biomarkers for classification
+
+- Prognosis-related molecular signatures
+
+---
+## SOM example
+
+&lt;img src="img/som2.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+---
+## SOM example
+
+&lt;img src="img/som3.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+---
+## SOM example
+
+&lt;img src="img/som4.png" width="700px" style="display: block; margin: auto;" /&gt;
+
+&lt;!---
+# Applications Beyond Gene Expression
+
+- **Customer segmentation**: Market research
+
+- **Image analysis**: Texture classification, compression
+
+- **Financial data**: Pattern recognition in time series
+
+- **Quality control**: Process monitoring
+
+- **Text mining**: Document organization
+
+- **Robotics**: Sensor data analysis
+--&gt;
+
+---
+# Advantages
+
+- Intuitive 2D visualization of complex data
+
+- No assumptions about data distribution
+
+- Preserves topological relationships
+
+- Excellent for exploratory analysis
+
+- Handles missing data reasonably well
+
+- Interpretable component planes
+
+---
+# Limitations
+
+- Grid size must be chosen beforehand
+  - Too small: oversimplification
+  - Too large: overfitting
+
+- Computationally expensive for very large datasets
+
+- Training can be slow
+
+- Requires domain expertise for interpretation
+
+- Modern alternatives (t-SNE, UMAP) often preferred for pure visualization
+
+---
+# Comparison with Other Methods
+
+| Method | Supervised? | Preserves Topology? | Speed |
+|--------|-------------|---------------------|-------|
+| SOM | No | Yes | Moderate |
+| PCA | No | No | Fast |
+| t-SNE | No | Partially | Slow |
+| UMAP | No | Partially | Fast |
+| k-means | No | No | Fast |
+
+---
+# Implementation in R
+
+
+``` r
+library(kohonen)
+
+# Prepare data matrix
+data &lt;- scale(gene_expression_matrix)
+
+# Create SOM grid
+som_grid &lt;- somgrid(xdim = 15, ydim = 15, 
+                    topo = "hexagonal")
+
+# Train SOM
+som_model &lt;- som(data, grid = som_grid, 
+                 rlen = 100, alpha = c(0.05, 0.01))
+# Visualize
+plot(som_model, type = "codes")
+plot(som_model, type = "counts")
+plot(som_model, type = "dist.neighbours")
+```
+
+---
+## SOM on the iris Data
+
+Use the numeric variables (150 samples × 4 features).  
+
+SOM performs better with **scaled** data.
+
+
+``` r
+library(kohonen)
+
+# Extract numeric features
+data(iris)
+iris_mat &lt;- as.matrix(scale(iris[, 1:4]))
+
+dim(iris_mat)
+```
+
+```
+## [1] 150   4
+```
+
+---
+## Train the SOM Model
+
+We use a **7×7 hexagonal grid**, which is good for small datasets.
+
+
+``` r
+som_grid &lt;- somgrid(
+  xdim = 7,
+  ydim = 7,
+  topo = "hexagonal"
+)
+
+set.seed(123)
+som_model &lt;- som(
+  X = iris_mat,
+  grid = som_grid,
+  rlen = 200,
+  alpha = c(0.05, 0.01)  # learning rate schedule
+)
+```
+
+---
+## SOM Codebook Vectors (Prototype Patterns)
+
+Shows the “average pattern” for each neuron.
+
+
+``` r
+plot(som_model, type = "codes", main = "SOM Codebook Vectors")
+```
+
+![](SOM_files/figure-html/unnamed-chunk-7-1.png)&lt;!-- --&gt;
+
+---
+## Node Counts (Number of Samples In Each Cell)
+
+This reveals cluster sizes and density.
+
+
+``` r
+plot(som_model, type = "counts", main = "Sample Count per SOM Node")
+```
+
+![](SOM_files/figure-html/unnamed-chunk-8-1.png)&lt;!-- --&gt;
+
+Interpretation:
+
+* Highly populated nodes = dense clusters
+* Empty nodes = unused areas of the map
+
+---
+## U-Matrix (Neighbourhood Distances)
+
+Visualizes distances between nodes — useful for clustering.
+
+
+``` r
+plot(som_model, type = "dist.neighbours", main = "U-Matrix")
+```
+
+![](SOM_files/figure-html/unnamed-chunk-9-1.png)&lt;!-- --&gt;
+
+Interpretation:
+
+* Light areas = similar neighboring units
+* Dark borders = cluster boundaries
+
+---
+## Mapping Species to SOM Nodes
+
+.pull-left[
+
+``` r
+# Assign each sample to its winning neuron
+mapped &lt;- som_model$unit.classif
+
+df_map &lt;- data.frame(
+  Node = mapped,
+  Species = iris$Species
+)
+```
+
+Interpretation: If species cluster separately, SOM effectively discovered structure.
+]
+.pull-right[
+
+``` r
+library(ggplot2)
+
+ggplot(df_map, aes(Node, fill = Species)) +
+  geom_bar() +
+  theme_minimal() +
+  labs(title = "Species Distribution Across SOM Nodes",
+       x = "SOM Node (index)",
+       y = "Sample Count")
+```
+
+![](SOM_files/figure-html/unnamed-chunk-11-1.png)&lt;!-- --&gt;
+]
+
+---
+# Key Takeaways
+
+- SOMs reduce dimensionality while preserving data topology
+
+- Self-organization emerges through competitive learning
+
+- Excellent for exploring high-dimensional biological data
+
+- Particularly useful when you don't know what patterns to expect
+
+- Complements supervised methods for comprehensive analysis
+
+---
+# Resources
+
+**R packages**:
+- `kohonen`: Main SOM implementation
+- `som`: Alternative implementation
+- `popsom7`: A Fast, User-Friendly Implementation of Self-Organizing Maps
+
+**Python packages**:
+- `minisom`: Minimalistic SOM
+- `somoclu`: GPU-accelerated SOM
+
+.small[
+https://CRAN.R-project.org/package=kohonen  
+https://CRAN.R-project.org/package=som  
+https://CRAN.R-project.org/package=popsom7  
+https://pypi.org/project/MiniSom/  
+https://pypi.org/project/somoclu/  
+]
+
+---
+# References
+
+- P. Tamayo, D. Slonim, J. Mesirov, Q. Zhu, S. Kitareewan, E. Dmitrovsky, E.S. Lander, &amp; T.R. Golub, Interpreting patterns of gene expression with self-organizing maps: Methods and application to hematopoietic differentiation, Proc. Natl. Acad. Sci. U.S.A. 96 (6) 2907-2912, https://doi.org/10.1073/pnas.96.6.2907 (1999).
+
+- Wehrens, R., &amp; Kruisselbrink, J. (2018). Flexible Self-Organizing Maps in kohonen 3.0. Journal of Statistical Software, 87(7), 1–18. https://doi.org/10.18637/jss.v087.i07
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

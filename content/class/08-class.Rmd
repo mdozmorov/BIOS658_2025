@@ -37,12 +37,29 @@ knitr::include_url('../../slides/09_Clustering/Kmeans.html#1')
 ```
 
 ## Dimensionality reduction
-### PCA
 
 <a href="../../slides/09_Clustering/PCA_combined.html#1" target="_blank">Lecture slides in HTML format</a>
 
 ```{r echo=FALSE}
 knitr::include_url('../../slides/09_Clustering/PCA_combined.html#1')
+```
+
+<a href="../../slides/09_Clustering/ICA.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/09_Clustering/ICA.html#1')
+```
+
+<a href="../../slides/09_Clustering/NMF_combined.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/09_Clustering/NMF_combined.html#1')
+```
+
+<a href="../../slides/09_Clustering/SOM.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/09_Clustering/SOM.html#1')
 ```
 
 

@@ -62,6 +62,17 @@ knitr::include_url('../../slides/09_Clustering/NMF_combined.html#1')
 knitr::include_url('../../slides/09_Clustering/SOM.html#1')
 ```
 
+<a href="../../slides/09_Clustering/MDS.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/09_Clustering/MDS.html#1')
+```
+
+<a href="../../slides/09_Clustering/Clustering2_combined.html#1" target="_blank">Lecture slides in HTML format</a>
+
+```{r echo=FALSE}
+knitr::include_url('../../slides/09_Clustering/Clustering2_combined.html#1')
+```
 
 ### Code examples
 
@@ -78,6 +89,9 @@ knitr::include_url('../../slides/09_Clustering/SOM.html#1')
 - PCA.Rmd, <a href="../../slides/09_Clustering/lab/PCA.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/PCA.html" target="_blank">HTML</a>
   - <a href="../../slides/09_Clustering/data/nci60.tsv" target="_blank">nci60.tsv</a> 
 
+- MDS.Rmd, <a href="../../slides/09_Clustering/lab/MDS.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/MDS.html" target="_blank">HTML</a>
+
+- Clustering2_combined.Rmd, <a href="../../slides/09_Clustering/lab/Clustering2_combined.Rmd" target="_blank">Rmd</a>, <a href="../../slides/09_Clustering/lab/Clustering2_combined.html" target="_blank">HTML</a>
 
 # References
 

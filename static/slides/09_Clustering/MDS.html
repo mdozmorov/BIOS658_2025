@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Multidimensional scaling (MDS)</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikhail Dozmorov" />
+    <meta name="date" content="2025-12-01" />
+    <script src="libs/header-attrs-2.30/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Multidimensional scaling (MDS)
+]
+.subtitle[
+## Applications in Genomics
+]
+.author[
+### Mikhail Dozmorov
+]
+.institute[
+### Virginia Commonwealth University
+]
+.date[
+### 2025-12-01
+]
+
+---
+
+
+
+
+&lt;!-- HTML style block --&gt;
+&lt;style&gt;
+.large { font-size: 130%; }
+.small { font-size: 70%; }
+.tiny { font-size: 40%; }
+&lt;/style&gt;
+
+## What is Multidimensional Scaling (MDS)?
+
+- MDS aims to identify **latent variables** underlying inter-object similarity measures
+
+- **Reduce dimensionality** of data in a *non-linear* fashion
+
+- Reproduce **high-dimensional relationships** on a *lower-dimensional* display
+
+---
+## ## What is Multidimensional Scaling (MDS)?
+
+**Key Idea:**
+
+- Start with a **distance matrix** (not raw data)
+
+- Find coordinates in lower dimensions that best reproduce these distances
+
+- Similar objects appear close together, dissimilar objects far apart
+
+---
+## Multidimensional Scaling Types
+
+- **Classical MDS (cMDS):** Also called Principal Coordinates Analysis (PCoA)
+
+- **Metric MDS:** Preserves actual distance values
+
+- **Non-metric MDS:** Preserves only the rank order of distances
+
+---
+## MDS vs PCA vs SOM
+
+**Comparison:**
+
+| Method | Preserves | Interpretation |
+|:-------|:----------|:---------------|
+| **PCA** | Covariance of original data | Linear projection maximizing variance |
+| **SOM** | Topology (local neighborhood) | Nearby points represent similar items |
+| **MDS** | Metric (pairwise distances) | Maintains rank order of dissimilarities |
+
+---
+## MDS vs PCA vs SOM
+
+**Similarities:**
+
+- Both PCA and MDS are dimensionality reduction techniques
+
+- Both can be used for visualization
+
+- Classical MDS and PCA give identical results on Euclidean distances
+
+**Key difference:** MDS is **non-linear** dimensionality reduction, while PCA is linear
+
+---
+## When to Use MDS?
+
+**Use MDS when:**
+- You have a distance/dissimilarity matrix but not raw data
+- Working with non-Euclidean distances (e.g., genetic distances, sequence alignments)
+- Distance relationships are more meaningful than variance
+- Need to visualize phylogenetic relationships
+- Comparing complex objects (text, images, proteins)
+
+**Genomics applications:**
+- Population structure analysis with genetic distances
+- Comparing gene expression profiles with correlation distances
+- Microbiome community composition
+- Protein structure comparisons
+
+---
+## Classical MDS: The Math
+
+Given a **distance matrix** `\(D\)` with elements `\(d_{ij}\)` (distance between objects `\(i\)` and `\(j\)`):
+
+1. **Create squared distance matrix:** `\(D^{(2)}\)` with elements `\(d_{ij}^2\)`
+
+2. **Double centering:** Apply centering transformation
+`\(B = -\frac{1}{2}HD^{(2)}H\)`
+where `\(H = I - \frac{1}{n}\mathbf{1}\mathbf{1}^T\)` (centering matrix)
+
+3. **Eigendecomposition:** Solve `\(B = V\Lambda V^T\)`
+
+4. **Coordinates:** First `\(k\)` dimensions given by `\(X = V_k\Lambda_k^{1/2}\)`
+
+**Result:** Classical MDS with Euclidean distances = PCA on original data
+
+---
+## MDS Basic Algorithm
+
+**Iterative procedure for metric/non-metric MDS:**
+
+1. Obtain and order the `\(M\)` pairs of similarities
+
+2. Choose a configuration in `\(q\)` dimensions
+   - Compute inter-item distances and reference numbers
+   - Minimize **Kruskal's stress**
+
+3. Move points to improve configuration
+
+4. Repeat until **minimum stress** is achieved
+
+This is the general algorithm used by functions like `isoMDS()`
+
+---
+## Example 1: US Cities
+
+Classic MDS example - reconstruct city locations from distances
+
+
+``` r
+# Built-in dataset: road distances between US cities
+data(UScitiesD)
+UScitiesD
+
+# Perform classical MDS (2 dimensions)
+mds_cities &lt;- cmdscale(UScitiesD, k = 2)
+
+# Plot the result
+plot(mds_cities[, 1], mds_cities[, 2], 
+     type = "n", xlab = "Coordinate 1", ylab = "Coordinate 2",
+     main = "MDS of US Cities")
+text(mds_cities[, 1], mds_cities[, 2], 
+     labels = rownames(mds_cities), cex = 0.8)
+```
+
+**Note:** Cities arranged approximately in their geographic locations!
+
+---
+## Example 1: Output
+
+&lt;img src="MDS_files/figure-html/unnamed-chunk-2-1.png" style="display: block; margin: auto;" /&gt;
+
+MDS reconstructs approximate geographic positions from distances alone!
+
+---
+## Example 2: Iris Data
+
+Compare MDS with PCA on the classic iris dataset
+
+
+``` r
+# Load iris data
+data(iris)
+iris_data &lt;- iris[, 1:4]  # Just the measurements
+
+# Compute Euclidean distance matrix
+iris_dist &lt;- dist(iris_data, method = "euclidean")
+
+# Perform classical MDS
+mds_iris &lt;- cmdscale(iris_dist, k = 2)
+
+# For comparison: PCA
+pca_iris &lt;- prcomp(iris_data, center = TRUE, scale. = FALSE)
+```
+
+---
+## Example 2: MDS vs PCA Plots
+
+
+``` r
+par(mfrow = c(1, 2))
+
+# MDS plot
+plot(mds_iris[, 1], mds_iris[, 2], col = iris$Species, pch = 19,
+     xlab = "Dimension 1", ylab = "Dimension 2", main = "Classical MDS")
+legend("topright", legend = levels(iris$Species), 
+       col = 1:3, pch = 19, cex = 0.7)
+
+# PCA plot
+plot(pca_iris$x[, 1], pca_iris$x[, 2], col = iris$Species, pch = 19,
+     xlab = "PC1", ylab = "PC2", main = "PCA")
+```
+
+&lt;img src="MDS_files/figure-html/unnamed-chunk-4-1.png" style="display: block; margin: auto;" /&gt;
+
+**Result:** Nearly identical! (Classical MDS = PCA for Euclidean distances)
+
+---
+## Example 3: Gene Expression Data
+
+Using correlation-based distance for gene expression
+
+
+``` r
+# Simulate gene expression data
+set.seed(123)
+n_samples &lt;- 30
+n_genes &lt;- 100
+
+# Create data with 3 groups
+expr_data &lt;- matrix(rnorm(n_samples * n_genes), 
+                    nrow = n_samples, ncol = n_genes)
+
+# Add group structure
+expr_data[1:10, 1:30] &lt;- expr_data[1:10, 1:30] + 2
+expr_data[11:20, 31:60] &lt;- expr_data[11:20, 31:60] + 2
+expr_data[21:30, 61:90] &lt;- expr_data[21:30, 61:90] + 2
+
+groups &lt;- rep(c("Group1", "Group2", "Group3"), each = 10)
+```
+
+---
+## Example 3: Computing Distance
+
+
+``` r
+# Correlation-based distance
+# Distance = 1 - correlation
+cor_matrix &lt;- cor(t(expr_data))
+cor_dist &lt;- as.dist(1 - cor_matrix)
+
+# Perform MDS
+mds_expr &lt;- cmdscale(cor_dist, k = 2)
+
+# Plot
+plot(mds_expr[, 1], mds_expr[, 2], 
+     col = as.factor(groups), pch = 19, cex = 1.5,
+     xlab = "Dimension 1", ylab = "Dimension 2",
+     main = "MDS of Gene Expression (Correlation Distance)")
+legend("topright", legend = unique(groups), 
+       col = 1:3, pch = 19)
+```
+
+**Why correlation distance?** Gene expression patterns often show correlation structure rather than Euclidean distance structure
+
+---
+## Example 3: Visualization
+
+![](MDS_files/figure-html/unnamed-chunk-7-1.png)&lt;!-- --&gt;
+
+Clear separation of three expression groups!
+
+---
+## Assessing MDS Quality: GOF
+
+**Goodness-of-Fit (GOF):** How well do low-dimensional distances match original distances?
+
+
+``` r
+# cmdscale with eig=TRUE returns eigenvalues
+mds_result &lt;- cmdscale(iris_dist, k = 2, eig = TRUE)
+
+# Proportion of variance explained by first k dimensions
+eigenvalues &lt;- mds_result$eig[mds_result$eig &gt; 0]
+variance_explained &lt;- eigenvalues / sum(eigenvalues)
+
+# First two dimensions
+cat("Variance explained by first 2 dimensions:", 
+    round(sum(variance_explained[1:2]) * 100, 2), "%\n")
+```
+
+```
+## Variance explained by first 2 dimensions: 97.77 %
+```
+
+**Interpretation:** Similar to PCA's variance explained - higher is better
+
+---
+## Kruskal's Stress
+
+**Stress:** Measures how well distances on the MDS map correspond to input distances
+
+`\(\text{Stress} = \sqrt{\frac{\sum_{i&lt;j} (d_{ij} - \hat{d}_{ij})^2}{\sum_{i&lt;j} d_{ij}^2}}\)`
+
+**Procedure:**
+1. Start with original distances `\(d_{ij}\)`
+2. Compute fitted distances `\(\hat{d}_{ij}\)` in low-dimensional space
+3. Subtract, square, and sum the differences
+4. Take the square root
+5. Divide by a scaling factor (sum of squared original distances)
+
+**Lower stress → better fit**
+
+---
+
+## Stress: Another Quality Metric
+
+**Stress:** Measures discrepancy between original and reproduced distances
+
+
+``` r
+library(MASS)
+
+# Non-metric MDS with stress calculation
+nmds_iris &lt;- isoMDS(iris_dist, k = 2)
+
+# Print stress value
+cat("Stress:", round(nmds_iris$stress, 2), "\n")
+```
+
+**Stress interpretation:**
+- &lt; 5%: Excellent
+- 5-10%: Good
+- 10-20%: Fair
+- \&gt; 20%: Poor
+
+Lower stress = better fit
+
+---
+
+## Non-metric MDS Example
+
+Non-metric MDS preserves **rank order** of distances, not exact values
+
+
+``` r
+library(MASS)
+
+# Compute non-metric MDS
+set.seed(42)
+nmds_iris &lt;- isoMDS(iris_dist, k = 2)
+
+# Plot
+plot(nmds_iris$points[, 1], nmds_iris$points[, 2], 
+     col = iris$Species, pch = 19,
+     xlab = "NMDS1", ylab = "NMDS2",
+     main = paste("Non-metric MDS (Stress =", 
+                  round(nmds_iris$stress, 2), ")"))
+legend("topright", legend = levels(iris$Species), 
+       col = 1:3, pch = 19, cex = 0.8)
+```
+
+**Use case:** When exact distance values are unreliable but ordering is meaningful
+
+---
+
+## Different Distance Metrics
+
+MDS works with any distance metric!
+
+
+``` r
+# Different distance metrics
+euclidean_dist &lt;- dist(iris_data, method = "euclidean")
+manhattan_dist &lt;- dist(iris_data, method = "manhattan")
+canberra_dist &lt;- dist(iris_data, method = "canberra")
+
+# MDS on each
+mds_euclidean &lt;- cmdscale(euclidean_dist, k = 2)
+mds_manhattan &lt;- cmdscale(manhattan_dist, k = 2)
+mds_canberra &lt;- cmdscale(canberra_dist, k = 2)
+
+# Plot all three for comparison
+par(mfrow = c(1, 3))
+plot(mds_euclidean, col = iris$Species, main = "Euclidean")
+plot(mds_manhattan, col = iris$Species, main = "Manhattan")
+plot(mds_canberra, col = iris$Species, main = "Canberra")
+```
+
+Choice of distance metric can significantly affect results!
+
+---
+
+## MDS in Practice: Key Functions
+
+**Classical MDS:**
+
+``` r
+cmdscale(d, k = 2, eig = TRUE)
+```
+- `d`: distance matrix
+- `k`: number of dimensions
+- `eig`: return eigenvalues for GOF
+
+**Non-metric MDS:**
+
+``` r
+library(MASS)
+isoMDS(d, k = 2)
+```
+
+**Creating distance matrices:**
+
+``` r
+dist(x, method = "euclidean")  # Euclidean, manhattan, etc.
+as.dist(1 - cor(t(x)))         # Correlation distance
+```
+
+---
+
+## MDS Advantages
+
+- Works with **any distance/dissimilarity measure**
+
+- No assumption about data distribution
+
+- Intuitive visualization of complex relationships
+
+- Useful when you only have distances (no raw data)
+
+- Classical MDS is computationally efficient
+
+- Can handle missing distances (with appropriate methods)
+
+- Widely used in ecology, psychology, marketing, genomics
+
+---
+
+## MDS Limitations
+
+- Requires pre-computed distance matrix
+
+- Can be sensitive to outliers
+
+- No inherent variable loadings (unlike PCA)
+
+- Interpretation of axes can be difficult
+
+- Non-metric MDS can be slow for large datasets
+
+- Different distance metrics can give very different results
+
+- May need many dimensions to adequately represent data
+
+---
+
+## MDS vs Other Methods
+
+**When to use:**
+- **MDS:** Non-Euclidean distances, focus on between-object relationships
+- **PCA:** Raw data, focus on variance, need interpretable loadings
+- **t-SNE:** Local structure, clusters, non-linear relationships
+- **UMAP:** Similar to t-SNE but faster, preserves global structure better
+
+**Genomics context:**
+- Genetic distances → MDS
+- Gene expression variance → PCA
+- Single-cell clustering → t-SNE/UMAP
+- Population structure → MDS or PCA
+
+---
+
+## Summary
+
+**Key Takeaways:**
+
+1. MDS visualizes objects based on their pairwise distances
+
+2. Classical MDS = PCA when using Euclidean distances
+
+3. Works with any distance metric (correlation, genetic distance, etc.)
+
+4. Quality assessed by variance explained or stress
+
+5. Non-metric MDS useful when only distance ranks are reliable
+
+6. Widely applicable in genomics for population structure and expression analysis
+
+**R Functions:** `cmdscale()`, `isoMDS()`, `dist()`
+
+---
+
+## References and Resources
+
+- **R Documentation:** `?cmdscale`, `?isoMDS`
+- **Book:** Modern Multidimensional Scaling (Borg &amp; Groenen)
+- **Packages:** 
+  - `stats::cmdscale` (classical MDS)
+  - `MASS::isoMDS` (non-metric MDS)
+  - `vegan::metaMDS` (ecological data)
+  - `smacof` (advanced MDS methods)
+
+**Try it yourself:**
+
+``` r
+# Quick example
+data(eurodist)
+mds &lt;- cmdscale(eurodist, k = 2)
+plot(mds, type = "n")
+text(mds, labels = rownames(mds))
+```
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "ratio": "16:9",
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
